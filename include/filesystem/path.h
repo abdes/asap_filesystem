@@ -598,7 +598,7 @@ path::operator+=(value_type __x)
   return *this;
 }
 
-template <typename _CharT, typename = IsPathable<_CharT *>>
+template <typename _CharT, typename = path::IsPathable<_CharT *>>
 inline path&
 path::operator+=(_CharT __x)
 {
