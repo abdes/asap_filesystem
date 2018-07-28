@@ -413,7 +413,7 @@ path::string_type path::convert_loc(const char *__first, const char *__last,
                                     const std::locale &__loc) {
   auto &__cvt = std::use_facet<std::codecvt<wchar_t, char, mbstate_t>>(__loc);
   std::basic_string<wchar_t> __ws;
-  if (!__str_codecvt_in(__first, __last, __ws, __cvt))
+  if (!asap::filesystem::__str_codecvt_in(__first, __last, __ws, __cvt))
     // TODO: REPLACE
     ::abort();
     /*

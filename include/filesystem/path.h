@@ -76,7 +76,7 @@ inline bool __str_codecvt_in(
       _State &, const char *, const char *, const char *&, _CharT *, _CharT *,
       _CharT *&) const;
   _ConvFn __fn = &std::codecvt<_CharT, char, _State>::in;
-  return __do_str_codecvt(__first, __last, __outstr, __cvt, __state, __count,
+  return asap::filesystem::__do_str_codecvt(__first, __last, __outstr, __cvt, __state, __count,
                           __fn);
 }
 
@@ -87,7 +87,7 @@ inline bool __str_codecvt_in(
     const std::codecvt<_CharT, char, _State> &__cvt) {
   _State __state = {};
   size_t __n;
-  return __str_codecvt_in(__first, __last, __outstr, __cvt, __state, __n);
+  return asap::filesystem::__str_codecvt_in(__first, __last, __outstr, __cvt, __state, __n);
 }
 
 // Convert wide character string to narrow.
@@ -102,7 +102,7 @@ inline bool __str_codecvt_out(
       _State &, const _CharT *, const _CharT *, const _CharT *&, char *, char *,
       char *&) const;
   _ConvFn __fn = &std::codecvt<_CharT, char, _State>::out;
-  return __do_str_codecvt(__first, __last, __outstr, __cvt, __state, __count,
+  return asap::filesystem::__do_str_codecvt(__first, __last, __outstr, __cvt, __state, __count,
                           __fn);
 }
 
@@ -113,7 +113,7 @@ inline bool __str_codecvt_out(
     const std::codecvt<_CharT, char, _State> &__cvt) {
   _State __state = {};
   size_t __n;
-  return __str_codecvt_out(__first, __last, __outstr, __cvt, __state, __n);
+  return asap::filesystem::__str_codecvt_out(__first, __last, __outstr, __cvt, __state, __n);
 }
 
 // -----------------------------------------------------------------------------
@@ -264,7 +264,11 @@ class ASAP_FILESYSTEM_API path {
   }
 
   template <typename _CharT, typename = IsPathable<_CharT *>>
-  path &operator+=(_CharT __x);
+  path &operator+=(_CharT __x) {
+	  auto* __addr = std::addressof(__x);
+	  return concat(__addr, __addr + 1);
+  }
+
 
   template <typename _Source, typename = IsPathable<_Source>>
   path &concat(_Source const &__x) {
@@ -401,10 +405,6 @@ class ASAP_FILESYSTEM_API path {
     return __str;
   }
 
-  inline void swap(path &__lhs, path &__rhs) noexcept { __lhs.swap(__rhs); }
-
-  size_t hash_value(const path &__p) noexcept;
-
   //
   // Convert to string_type (no locale)
   //
@@ -483,6 +483,10 @@ class ASAP_FILESYSTEM_API path {
   List components_;  // empty unless type_ == Type::MULTI
   Type type_ = Type::MULTI;
 };
+
+inline void swap(path &__lhs, path &__rhs) noexcept { __lhs.swap(__rhs); }
+
+size_t hash_value(const path &__p) noexcept;
 
 /// An iterator for the components of a path
 class ASAP_FILESYSTEM_API path::iterator {
@@ -598,14 +602,6 @@ path::operator+=(value_type __x)
   return *this;
 }
 
-template <typename _CharT, typename = path::IsPathable<_CharT *>>
-inline path&
-path::operator+=(_CharT __x)
-{
-	auto* __addr = std::addressof(__x);
-	return concat(__addr, __addr + 1);
-}
-
 
 /// Append one path to another
 inline path operator/(const path &__lhs, const path &__rhs) {
@@ -691,7 +687,7 @@ struct path::Converter {
   static string_type convert(const _CharT *__f, const _CharT *__l) {
     std::codecvt_utf8<_CharT> __cvt;
     std::string __str;
-    if (__str_codecvt_out(__f, __l, __str, __cvt)) return __str;
+    if (asap::filesystem::__str_codecvt_out(__f, __l, __str, __cvt)) return __str;
 
     // TODO: REPLACE
     ::abort();
