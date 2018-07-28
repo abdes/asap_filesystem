@@ -633,7 +633,7 @@ struct path::Component : path {
   Component(string_type pathname, Type type, size_t pos)
       : path(std::move(pathname), type), pos_(pos) {}
 
-  Component() : pos_(-1) {}
+ // Component() : pos_(-1) {}
 
   size_t pos_;
 };
