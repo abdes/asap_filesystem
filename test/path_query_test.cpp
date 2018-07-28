@@ -71,17 +71,11 @@ TEST_CASE("Path / query / has_stem", "[common][filesystem][path][query]") {
 }
 
 TEST_CASE("Path / query / is_absolute", "[common][filesystem][path][query]") {
-#ifdef ASAP_WINDOWS_API
-  const bool is_posix = false;
-#else
-  const bool is_posix = true;
-#endif
-
-  REQUIRE( path("/").is_absolute() == is_posix );
-  REQUIRE( path("/foo").is_absolute() == is_posix );
-  REQUIRE( path("/foo/").is_absolute() == is_posix );
-  REQUIRE( path("/foo/bar").is_absolute() == is_posix );
-  REQUIRE( path("/foo/bar/").is_absolute() == is_posix );
+  REQUIRE( path("/").is_absolute() );
+  REQUIRE( path("/foo").is_absolute() );
+  REQUIRE( path("/foo/").is_absolute() );
+  REQUIRE( path("/foo/bar").is_absolute() );
+  REQUIRE( path("/foo/bar/").is_absolute() );
   REQUIRE( ! path("foo").is_absolute() );
   REQUIRE( ! path("foo/").is_absolute() );
   REQUIRE( ! path("foo/bar").is_absolute() );
@@ -91,11 +85,11 @@ TEST_CASE("Path / query / is_absolute", "[common][filesystem][path][query]") {
   REQUIRE( ! path("c:foo/").is_absolute() );
   REQUIRE( ! path("c:foo/bar").is_absolute() );
   REQUIRE( ! path("c:foo/bar/").is_absolute() );
-  REQUIRE( path("c:/").is_absolute() == !is_posix );
-  REQUIRE( path("c:/foo").is_absolute() == !is_posix );
-  REQUIRE( path("c:/foo/").is_absolute() == !is_posix );
-  REQUIRE( path("c:/foo/bar").is_absolute() == !is_posix );
-  REQUIRE( path("c:/foo/bar/").is_absolute() == !is_posix );
+  REQUIRE( path("c:/").is_absolute() );
+  REQUIRE( path("c:/foo").is_absolute() );
+  REQUIRE( path("c:/foo/").is_absolute() );
+  REQUIRE( path("c:/foo/bar").is_absolute() );
+  REQUIRE( path("c:/foo/bar/").is_absolute() );
 }
 
 TEST_CASE("Path / query / is_relative", "[common][filesystem][path][query]") {

@@ -11,7 +11,6 @@
 using asap::filesystem::path;
 using testing::TEST_PATHS;
 
-
 // -----------------------------------------------------------------------------
 //  DECOMPOSE
 // -----------------------------------------------------------------------------
@@ -75,7 +74,7 @@ TEST_CASE("Path / decompose / filename special cases",
   REQUIRE(path("/foo/bar/").filename() == "");
   REQUIRE(path("/").filename() == "");
 #ifdef __CYGWIN__
-  REQUIRE( path("//host").filename()       == ""        );
+  REQUIRE(path("//host").filename() == "");
 #else
   REQUIRE(path("//host").filename() == "");
 #endif
@@ -103,7 +102,6 @@ TEST_CASE("Path / decompose / parent_path basic",
   REQUIRE(p3.parent_path().parent_path().parent_path() == path("/"));
 }
 
-
 TEST_CASE("Path / decompose / relative_path basic",
           "[common][filesystem][path][decompose]") {
   path p1 = "foo";
@@ -122,13 +120,10 @@ TEST_CASE("Path / decompose / relative_path",
     REQUIRE(!prel.has_root_name());
     path rel;
     for (const auto &cmpt : p) {
-      if (!cmpt.has_root_path())
-        after_root = true;
-      if (after_root)
-        rel /= cmpt;
+      if (!cmpt.has_root_path()) after_root = true;
+      if (after_root) rel /= cmpt;
     }
-    if (prel != rel)
-      std::cout << prel << ' ' << rel << '\n';
+    if (prel != rel) std::cout << prel << ' ' << rel << '\n';
     REQUIRE(prel == rel);
   }
 }
@@ -143,16 +138,21 @@ TEST_CASE("Path / decompose / root_directory special cases",
   REQUIRE(p3.root_directory() == path("/"));
   path p4 = "///foo";
   REQUIRE(p4.root_directory() == path("/"));
+  path p5 = "//";
+  REQUIRE(p5.root_directory() == path("/"));
+  path p6 = "/";
+  REQUIRE(p6.root_directory() == path("/"));
 }
 
 TEST_CASE("Path / decompose / root_directory",
           "[common][filesystem][path][decompose]") {
   for (const path p : TEST_PATHS) {
+    CAPTURE(p);
     path rootdir = p.root_directory();
     REQUIRE(!rootdir.has_relative_path());
     if (!rootdir.empty())
 #if defined(__MINGW32__) || defined(__MINGW64__)
-      REQUIRE( rootdir.string() == "/" || rootdir.string() == "\\" );
+      REQUIRE(rootdir.string() == "/" || rootdir.string() == "\\");
 #else
       REQUIRE(rootdir.string() == "/");
 #endif
@@ -161,11 +161,12 @@ TEST_CASE("Path / decompose / root_directory",
 
 TEST_CASE("Path / decompose / root_name",
           "[common][filesystem][path][decompose]") {
-  REQUIRE(path("//foo").root_name() == "foo");
+  REQUIRE(path("//").root_name().empty());
+  REQUIRE(path("//foo").root_name() == "//foo");
+  REQUIRE(path("//foo/bar").root_name() == "//foo");
   REQUIRE(path("///foo").root_name().empty());
-#ifdef ASAP_WINDOWS_API
-  REQUIRE( path("c:/foo").root_name() == "c:" );
-#endif
+  REQUIRE(path("c:/foo").root_name() == "c:");
+  REQUIRE(path("c:foo").root_name() == "c:");
 }
 
 TEST_CASE("Path / decompose / root_path basic",
@@ -182,8 +183,7 @@ TEST_CASE("Path / decompose / root_path basic",
 #endif
 }
 
-TEST_CASE("Path / decompose / stem",
-          "[common][filesystem][path][decompose]") {
+TEST_CASE("Path / decompose / stem", "[common][filesystem][path][decompose]") {
   REQUIRE(path("/foo/bar.txt").stem() == path("bar"));
   path p = "foo.bar.baz.tar";
   std::vector<std::string> v;
@@ -208,4 +208,3 @@ TEST_CASE("Path / decompose / stem",
 
   REQUIRE(path().stem() == path());
 }
-

@@ -108,7 +108,7 @@ void test(const path& p, const Char* s)
   path func = p;
   func.append(s);
 
-  std::vector<const Char>
+  std::vector<char>
       input_range(s, s + std::char_traits<Char>::length(s));
   path range = p;
   range.append(input_range.begin(), input_range.end());

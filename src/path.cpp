@@ -47,7 +47,7 @@ bool path::has_extension() const {
 
 bool path::has_root_name() const {
   return (type_ == Type::ROOT_NAME) ||
-      (!components_.empty() &&
+         (!components_.empty() &&
           components_.begin()->type_ == Type::ROOT_NAME);
 }
 
@@ -58,17 +58,14 @@ bool path::has_root_path() const { return !root_path().empty(); }
 bool path::has_relative_path() const { return !relative_path().empty(); }
 
 bool path::has_parent_path() const {
-  return !parent_path().empty();;
+  return !parent_path().empty();
+  ;
 }
 
 bool path::has_filename() const { return !filename().empty(); }
 
 bool path::is_absolute() const {
-#ifdef ASAP_WINDOWS_API
-  return has_root_name() && has_root_directory();
-#else
-  return has_root_directory();
-#endif
+  return (has_root_directory() || (has_root_name() && has_root_directory()));
 }
 
 // End Query -------------------------------------------------------------------
@@ -81,18 +78,27 @@ path path::root_name() const {
   path ret;
   if (type_ == Type::ROOT_NAME)
     ret = *this;
-  else if (components_.size() && components_.begin()->type_ == Type::ROOT_NAME)
+  else if (!components_.empty() &&
+           components_.begin()->type_ == Type::ROOT_NAME)
     ret = *components_.begin();
   return ret;
 }
 
 path path::root_directory() const {
   path ret;
-  if (type_ == Type::ROOT_DIR)
-    ret = *this;
-  else if (type_ == Type::ROOT_NAME)
-    ret = path("/");
-  else if (!components_.empty()) {
+  if (type_ == Type::ROOT_DIR) {
+    // There will be one single component which has the simplified root dir '/'.
+    // That component does not have components! Test for this case to avoid
+    // issues with the recursive descent over parent directories.
+    if (!components_.empty()) ret = *components_.begin();
+	else ret = *this;
+  } else if (type_ == Type::ROOT_NAME) {
+    // Check for windows special case of drive letter
+    if (pathname_[1] == ':')
+      ret = path("");
+    else
+      ret = path("/");
+  } else if (!components_.empty()) {
     auto it = components_.begin();
     if (it->type_ == Type::ROOT_NAME) ++it;
     if (it != components_.end() && it->type_ == Type::ROOT_DIR) ret = *it;
@@ -133,9 +139,12 @@ path path::relative_path() const {
 
 path path::parent_path() const {
   path __ret;
-  if (!has_relative_path())
-    __ret = *this;
-  else if (components_.size() >= 2) {
+  if (!has_relative_path()) {
+    if (type_ == Type::ROOT_DIR)
+      __ret = *components_.begin();
+    else
+      __ret = *this;
+  } else if (components_.size() >= 2) {
     for (auto __it = components_.begin(), __end = std::prev(components_.end());
          __it != __end; ++__it) {
       __ret /= *__it;
@@ -143,19 +152,19 @@ path path::parent_path() const {
   }
   return __ret;
 
-/*
-  path ret;
-  if (components_.size() < 2) {
-    if (type_ == Type::ROOT_DIR) return *this;
-    if (type_ == Type::ROOT_NAME) return path("/");
+  /*
+    path ret;
+    if (components_.size() < 2) {
+      if (type_ == Type::ROOT_DIR) return *this;
+      if (type_ == Type::ROOT_NAME) return path("/");
+      return ret;
+    }
+    for (auto it = components_.begin(), end = std::prev(components_.end());
+         it != end; ++it) {
+      ret /= *it;
+    }
     return ret;
-  }
-  for (auto it = components_.begin(), end = std::prev(components_.end());
-       it != end; ++it) {
-    ret /= *it;
-  }
-  return ret;
-*/
+  */
 }
 
 path path::filename() const {
@@ -191,18 +200,19 @@ path path::extension() const {
 
 std::pair<const path::string_type *, std::size_t> path::FindExtension() const {
   const string_type *s = nullptr;
-  auto fn = filename();
-  if (!fn.empty()) s = &fn.pathname_;
+
+  if (type_ == Type::FILENAME)
+    s = &pathname_;
+  else if (type_ == Type::MULTI && !components_.empty()) {
+    const auto &c = components_.back();
+    if (c.type_ == Type::FILENAME) s = &c.pathname_;
+  }
 
   if (s) {
     if (auto sz = s->size()) {
-      if (sz <= 2 && (*s)[0] == dot) {
-        if (sz == 1 || (*s)[1] == dot)  // filename is "." or ".."
-          return {s, string_type::npos};
-        else
-          return {s, 0};  // filename is like ".?"
-      }
-      return {s, s->rfind(dot)};
+      if (sz <= 2 && (*s)[0] == dot) return {s, string_type::npos};
+      const auto pos = s->rfind(dot);
+      return {s, pos ? pos : string_type::npos};
     }
   }
   return {};
@@ -226,10 +236,9 @@ void path::SplitComponents() {
       if (!IsDirSeparator(pathname_[2])) {
         // got root name, find its end
         pos = 3;
-        while (pos < len && !IsDirSeparator(pathname_[pos]))
-          ++pos;
+        while (pos < len && !IsDirSeparator(pathname_[pos])) ++pos;
         AddRootName(pos);
-        if (pos < len) // also got root directory
+        if (pos < len)  // also got root directory
           AddRootDir(pos);
       } else {
         // got something like "///foo" which is just a root directory
@@ -241,28 +250,23 @@ void path::SplitComponents() {
       if (pathname_.find_first_not_of('/') == string_type::npos) {
         // entire path is just slashes
         type_ = Type::ROOT_DIR;
+        AddRootDir(0);
         return;
       }
       AddRootDir(0);
       ++pos;
     }
+  } else if (len > 1 && pathname_[1] == L':') {
+    // got disk designator
+    AddRootName(2);
+    if (len > 2 && IsDirSeparator(pathname_[2])) AddRootDir(2);
+    pos = 2;
   }
-#ifdef ASAP_WINDOWS_API
-  else if (len > 1 && pathname_[1] == L':')
-    {
-      // got disk designator
-      AddRootName(2);
-      if (len > 2 && IsDirSeparator(pathname_[2]))
-    _M_add_root_dir(2);
-      pos = 2;
-    }
-#endif
 
   size_t back = pos;
   while (pos < len) {
     if (IsDirSeparator(pathname_[pos])) {
-      if (back != pos)
-        AddFilename(back, pos - back);
+      if (back != pos) AddFilename(back, pos - back);
       back = ++pos;
     } else
       ++pos;
@@ -361,21 +365,18 @@ bool path::iterator::equals(iterator rhs) const {
 //------------------------------------------------------------------------------
 
 namespace {
-template<typename Iter1, typename Iter2>
+template <typename Iter1, typename Iter2>
 int do_compare(Iter1 begin1, Iter1 end1, Iter2 begin2, Iter2 end2) {
   int cmpt = 1;
   while (begin1 != end1 && begin2 != end2) {
-    if (begin1->native() < begin2->native())
-      return -cmpt;
-    if (begin1->native() > begin2->native())
-      return +cmpt;
+    if (begin1->native() < begin2->native()) return -cmpt;
+    if (begin1->native() > begin2->native()) return +cmpt;
     ++begin1;
     ++begin2;
     ++cmpt;
   }
   if (begin1 == end1) {
-    if (begin2 == end2)
-      return 0;
+    if (begin2 == end2) return 0;
     return -cmpt;
   }
   return +cmpt;
@@ -415,10 +416,10 @@ path::string_type path::convert_loc(const char *__first, const char *__last,
   if (!__str_codecvt_in(__first, __last, __ws, __cvt))
     // TODO: REPLACE
     ::abort();
-  /*
-    _GLIBCXX_THROW_OR_ABORT(filesystem_error(
-          "Cannot convert character sequence",
-          std::make_error_code(errc::illegal_byte_sequence)));*/
+    /*
+      _GLIBCXX_THROW_OR_ABORT(filesystem_error(
+            "Cannot convert character sequence",
+            std::make_error_code(errc::illegal_byte_sequence)));*/
 #ifdef ASAP_WINDOWS_API
   return __ws;
 #else
@@ -437,11 +438,11 @@ path &path::operator/=(const path &p) {
     if (this == &p)  // self-append
     {
       path rhs(p);
-      if (!IsDirSeparator(rhs.pathname_[0])) AppendSeparatorIfNeeded();
-      pathname_ += rhs.pathname_;
+      AppendSeparatorIfNeeded();
+      pathname_.append(rhs.pathname_);
     } else {
-      if (!IsDirSeparator(*p.pathname_.begin())) AppendSeparatorIfNeeded();
-      pathname_ += p.pathname_;
+      AppendSeparatorIfNeeded();
+      pathname_.append(p.pathname_);
     }
     SplitComponents();
   }
@@ -449,20 +450,20 @@ path &path::operator/=(const path &p) {
 }
 
 path &path::Append(path p) {
-  if (p.is_absolute()) operator=(std::move(p));
-#ifdef ASAP_WINDOWS_API
-    else if (p.has_root_name() && p.root_name() != root_name())
-      operator=(std::move(p));
-#endif
-  else
-    operator/=(const_cast<const path &>(p));
+  if (p.is_absolute())
+    operator=(std::move(p));
+  else {
+    AppendSeparatorIfNeeded();
+    pathname_.append(p.pathname_);
+    SplitComponents();
+  }
   return *this;
 }
 
 path::string_type::size_type path::AppendSeparatorIfNeeded() {
   if (!pathname_.empty() &&
 #ifdef ASAP_WINDOWS_API
-      *(pathname_.end() - 1) != colon &&
+      *(pathname_.end() - 1) != ':' &&
 #endif
       !IsDirSeparator(*(pathname_.end() - 1))) {
     string_type::size_type tmp(pathname_.size());
@@ -473,16 +474,31 @@ path::string_type::size_type path::AppendSeparatorIfNeeded() {
 }
 
 void path::EraseRedundantSeparator(string_type::size_type sep_pos) {
-  if (sep_pos                                  // a separator was added
-      && sep_pos < pathname_.size()            // and something was appended
-      && (pathname_[sep_pos + 1] == separator  // and it was also separator
+  if (sep_pos                              // a separator was added
+      && sep_pos < pathname_.size()        // and something was appended
+      && (pathname_[sep_pos + 1] == slash  // and it was also separator
 #ifdef BOOST_WINDOWS_API
-      || m_pathname[sep_pos + 1] ==
-             preferred_separator  // or preferred_separator
+          || m_pathname[sep_pos + 1] ==
+                 preferred_separator  // or preferred_separator
 #endif
-      )) {
+          )) {
     pathname_.erase(sep_pos, 1);
   }  // erase the added separator
+}
+
+std::size_t hash_value(const path &p) noexcept {
+  // [path.non-member]
+  // "If for two paths, p1 == p2 then hash_value(p1) == hash_value(p2)."
+  // Equality works as if by traversing the range [begin(), end()), meaning
+  // e.g. path("a//b") == path("a/b"), so we cannot simply hash _M_pathname
+  // but need to iterate over individual elements. Use the hash_combine from
+  // http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n3876.pdf
+  size_t seed = 0;
+  for (const auto &x : p) {
+    seed ^= std::hash<path::string_type>()(x.native()) + 0x9e3779b9 +
+            (seed << 6) + (seed >> 2);
+  }
+  return seed;
 }
 
 }  // namespace filesystem

@@ -23,6 +23,7 @@ TEST_CASE("Path / traits", "[common][filesystem][path]") {
   REQUIRE(IsPathableIter<std::string::iterator>::value);
   REQUIRE(IsConstructibleFrom<std::string, void>::value);
   REQUIRE(IsConstructibleFrom<std::string::iterator, std::string::iterator>::value);
+  REQUIRE(IsConstructibleFrom<char *, void>::value);
 
   std::string s = "ABC";
   path p(s);

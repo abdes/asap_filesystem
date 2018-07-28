@@ -115,7 +115,7 @@ TEST_CASE("Path / construct / path(InputIterator, InputIterator, format)",
           "[common][filesystem][path][construct]") {
   // path(InputIterator, InputIterator, format)
   const char s[] = "foo/bar";
-  const std::vector<const char> c(s, s + strlen(s));
+  const std::vector<char> c(s, s + strlen(s));
   auto c0 = c;
   path p0(std::begin(c0), std::end(c0));
   auto c1 = c;
@@ -148,7 +148,7 @@ TEST_CASE(
     "[common][filesystem][path][construct]") {
   // path(InputIterator, InputIterator, const locale&, format)
   const char s[] = "foo/bar";
-  const std::vector<const char> c(s, s + strlen(s));
+  const std::vector<char> c(s, s + strlen(s));
   std::locale loc;
   auto c0 = c;
   path p0(std::begin(c0), std::end(c0), loc);

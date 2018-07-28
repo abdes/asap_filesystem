@@ -17,7 +17,7 @@
 #include "config.h"
 #include "path_traits.h"
 
-#include <common/asap_common_api.h>
+#include <filesystem/asap_filesystem_api.h>
 
 namespace asap {
 namespace filesystem {
@@ -120,7 +120,7 @@ inline bool __str_codecvt_out(
 //                               class path
 // -----------------------------------------------------------------------------
 
-class ASAP_COMMON_API path {
+class ASAP_FILESYSTEM_API path {
   template <typename Tp1, typename Tp2 = void>
   using IsPathable = std::enable_if_t<
       asap::conjunction<asap::negation<std::is_same<Tp1, path>>,
@@ -131,12 +131,12 @@ class ASAP_COMMON_API path {
   //  represent paths.
 #ifdef ASAP_WINDOWS_API
   typedef wchar_t value_type;
-  static constexpr value_type separator = L'/';
+  static constexpr value_type slash = L'/';
   static constexpr value_type preferred_separator = L'\\';
   static constexpr value_type dot = L'.';
 #else
   typedef char value_type;
-  static constexpr value_type separator = '/';
+  static constexpr value_type slash = '/';
   static constexpr value_type preferred_separator = '/';
   static constexpr value_type dot = '.';
 #endif
@@ -289,7 +289,11 @@ class ASAP_COMMON_API path {
   path &replace_filename(const path &__replacement);
   path &replace_extension(const path &__replacement = path());
 
-  void swap(path &__rhs) noexcept;
+  void swap(path &__rhs) noexcept {
+	  pathname_.swap(__rhs.pathname_);
+	  components_.swap(__rhs.components_);
+	  std::swap(type_, __rhs.type_);
+  }
 
   //@}
 
@@ -451,11 +455,7 @@ class ASAP_COMMON_API path {
 
  private:
   static bool IsDirSeparator(value_type ch) {
-#ifdef ASAP_WINDOWS_API
-    return ch == L'/' || ch == preferred_separator;
-#else
-    return ch == '/';
-#endif
+    return ch == slash || ch == preferred_separator;
   }
 
   enum class Type : unsigned char { MULTI, ROOT_NAME, ROOT_DIR, FILENAME };
@@ -485,7 +485,7 @@ class ASAP_COMMON_API path {
 };
 
 /// An iterator for the components of a path
-class path::iterator {
+class ASAP_FILESYSTEM_API path::iterator {
  public:
   using difference_type = std::ptrdiff_t;
   using value_type = path;
@@ -598,6 +598,14 @@ path::operator+=(value_type __x)
   return *this;
 }
 
+template <typename _CharT, typename = IsPathable<_CharT *>>
+inline path&
+path::operator+=(_CharT __x)
+{
+	auto* __addr = std::addressof(__x);
+	return concat(__addr, __addr + 1);
+}
+
 
 /// Append one path to another
 inline path operator/(const path &__lhs, const path &__rhs) {
@@ -646,18 +654,22 @@ struct path::Converter<path::value_type> {
 template <typename _CharT>
 struct path::Converter {
 #ifdef ASAP_WINDOWS_API
-  static string_type wconvert(const char *__f, const char *__l, true_type) {
+  static string_type wconvert(const char *__f, const char *__l, std::true_type) {
     using _Cvt = std::codecvt<wchar_t, char, mbstate_t>;
     const auto &__cvt = std::use_facet<_Cvt>(std::locale{});
     std::wstring __wstr;
     if (__str_codecvt_in(__f, __l, __wstr, __cvt)) return __wstr;
+	//TODO: replace
+	::abort();
+	/*
     _GLIBCXX_THROW_OR_ABORT(
         filesystem_error("Cannot convert character sequence",
                          std::make_error_code(errc::illegal_byte_sequence)));
+						 */
   }
 
   static string_type wconvert(const _CharT *__f, const _CharT *__l,
-                              false_type) {
+                              std::false_type) {
     std::codecvt_utf8<_CharT> __cvt;
     std::string __str;
     if (__str_codecvt_out(__f, __l, __str, __cvt)) {
@@ -673,7 +685,7 @@ struct path::Converter {
   }
 
   static string_type convert(const _CharT *__f, const _CharT *__l) {
-    return wconvert(__f, __l, is_same<_CharT, char>{});
+    return wconvert(__f, __l, std::is_same<_CharT, char>{});
   }
 #else
   static string_type convert(const _CharT *__f, const _CharT *__l) {
@@ -736,13 +748,17 @@ inline std::string path::u8string() const {
 #ifdef ASAP_WINDOWS_API
   std::string __str;
   // convert from native encoding to UTF-8
-  codecvt_utf8<value_type> __cvt;
+  std::codecvt_utf8<value_type> __cvt;
   const value_type *__first = pathname_.data();
   const value_type *__last = __first + pathname_.size();
   if (__str_codecvt_out(__first, __last, __str, __cvt)) return __str;
+  // TODO: replace
+  ::abort();
+  /*
   _GLIBCXX_THROW_OR_ABORT(
       filesystem_error("Cannot convert character sequence",
                        std::make_error_code(errc::illegal_byte_sequence)));
+					   */
 #else
   return pathname_;
 #endif
@@ -755,20 +771,15 @@ inline std::u32string path::u32string() const { return string<char32_t>(); }
 template <typename _CharT, typename _Traits, typename _Allocator>
 inline std::basic_string<_CharT, _Traits, _Allocator> path::generic_string(
     const _Allocator &__a) const {
-#ifdef _GLIBCXX_FILESYSTEM_IS_WINDOWS
-  const value_type __slash = L'/';
-#else
-  const value_type __slash = '/';
-#endif
   string_type __str(__a);
 
   if (type_ == Type::ROOT_DIR)
-    __str.assign(1, __slash);
+    __str.assign(1, slash);
   else {
     __str.reserve(pathname_.size());
     bool __add_slash = false;
     for (auto &__elem : *this) {
-      if (__add_slash) __str += __slash;
+      if (__add_slash) __str += slash;
       __str += __elem.pathname_;
       __add_slash = __elem.type_ == Type::FILENAME;
     }

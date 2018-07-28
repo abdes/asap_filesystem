@@ -7,8 +7,8 @@
 
 #include <common/platform.h>
 
-#ifdef ASAP_WINDOWS
-#define ASAP_WINDOWS_API
-#else
+//#ifdef ASAP_WINDOWS
+//#define ASAP_WINDOWS_API
+//#else
 #define ASAP_POSIX_API
-#endif
+//#endif
