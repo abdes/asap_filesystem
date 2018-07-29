@@ -409,23 +409,6 @@ int path::compare(const value_type *__s) const { return compare(path(__s)); }
 
 // End Compare -----------------------------------------------------------------
 
-path::string_type path::convert_loc(const char *__first, const char *__last,
-                                    const std::locale &__loc) {
-  auto &__cvt = std::use_facet<std::codecvt<wchar_t, char, mbstate_t>>(__loc);
-  std::basic_string<wchar_t> __ws;
-  if (!asap::filesystem::__str_codecvt_in(__first, __last, __ws, __cvt))
-    // TODO: REPLACE
-    ::abort();
-    /*
-      _GLIBCXX_THROW_OR_ABORT(filesystem_error(
-            "Cannot convert character sequence",
-            std::make_error_code(errc::illegal_byte_sequence)));*/
-#ifdef ASAP_WINDOWS_API
-  return __ws;
-#else
-  return Converter<wchar_t>::convert(__ws.data(), __ws.data() + __ws.size());
-#endif
-}
 
 //
 // Append

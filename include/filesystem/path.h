@@ -5,8 +5,6 @@
 
 #pragma once
 
-#include <locale>
-
 #include <codecvt>
 #include <iomanip>
 #include <iostream>
@@ -22,125 +20,30 @@
 namespace asap {
 namespace filesystem {
 
-template <typename _OutStr, typename _InChar, typename _Codecvt,
-          typename _State, typename _Fn>
-bool __do_str_codecvt(const _InChar *__first, const _InChar *__last,
-                      _OutStr &__outstr, const _Codecvt &__cvt, _State &__state,
-                      size_t &__count, _Fn __fn) {
-  if (__first == __last) {
-    __outstr.clear();
-    __count = 0;
-    return true;
-  }
-
-  size_t __outchars = 0;
-  auto __next = __first;
-  const size_t __maxlen = __cvt.max_length() + 1;
-
-  std::codecvt_base::result __result;
-  do {
-    __outstr.resize(__outstr.size() + (__last - __next) * __maxlen);
-    auto __outnext = &__outstr.front() + __outchars;
-    auto const __outlast = &__outstr.back() + 1;
-    __result = (__cvt.*__fn)(__state, __next, __last, __next, __outnext,
-                             __outlast, __outnext);
-    __outchars = __outnext - &__outstr.front();
-  } while (__result == std::codecvt_base::partial && __next != __last &&
-           (__outstr.size() - __outchars) < __maxlen);
-
-  if (__result == std::codecvt_base::error) {
-    __count = __next - __first;
-    return false;
-  }
-
-  if (__result == std::codecvt_base::noconv) {
-    __outstr.assign(__first, __last);
-    __count = __last - __first;
-  } else {
-    __outstr.resize(__outchars);
-    __count = __next - __first;
-  }
-
-  return true;
-}
-
-// Convert narrow character string to wide.
-template <typename _CharT, typename _Traits, typename _Alloc, typename _State>
-inline bool __str_codecvt_in(
-    const char *__first, const char *__last,
-    std::basic_string<_CharT, _Traits, _Alloc> &__outstr,
-    const std::codecvt<_CharT, char, _State> &__cvt, _State &__state,
-    size_t &__count) {
-  using _Codecvt = std::codecvt<_CharT, char, _State>;
-  using _ConvFn = std::codecvt_base::result (_Codecvt::*)(
-      _State &, const char *, const char *, const char *&, _CharT *, _CharT *,
-      _CharT *&) const;
-  _ConvFn __fn = &std::codecvt<_CharT, char, _State>::in;
-  return asap::filesystem::__do_str_codecvt(__first, __last, __outstr, __cvt, __state, __count,
-                          __fn);
-}
-
-template <typename _CharT, typename _Traits, typename _Alloc, typename _State>
-inline bool __str_codecvt_in(
-    const char *__first, const char *__last,
-    std::basic_string<_CharT, _Traits, _Alloc> &__outstr,
-    const std::codecvt<_CharT, char, _State> &__cvt) {
-  _State __state = {};
-  size_t __n;
-  return asap::filesystem::__str_codecvt_in(__first, __last, __outstr, __cvt, __state, __n);
-}
-
-// Convert wide character string to narrow.
-template <typename _CharT, typename _Traits, typename _Alloc, typename _State>
-inline bool __str_codecvt_out(
-    const _CharT *__first, const _CharT *__last,
-    std::basic_string<char, _Traits, _Alloc> &__outstr,
-    const std::codecvt<_CharT, char, _State> &__cvt, _State &__state,
-    size_t &__count) {
-  using _Codecvt = std::codecvt<_CharT, char, _State>;
-  using _ConvFn = std::codecvt_base::result (_Codecvt::*)(
-      _State &, const _CharT *, const _CharT *, const _CharT *&, char *, char *,
-      char *&) const;
-  _ConvFn __fn = &std::codecvt<_CharT, char, _State>::out;
-  return asap::filesystem::__do_str_codecvt(__first, __last, __outstr, __cvt, __state, __count,
-                          __fn);
-}
-
-template <typename _CharT, typename _Traits, typename _Alloc, typename _State>
-inline bool __str_codecvt_out(
-    const _CharT *__first, const _CharT *__last,
-    std::basic_string<char, _Traits, _Alloc> &__outstr,
-    const std::codecvt<_CharT, char, _State> &__cvt) {
-  _State __state = {};
-  size_t __n;
-  return asap::filesystem::__str_codecvt_out(__first, __last, __outstr, __cvt, __state, __n);
-}
 
 // -----------------------------------------------------------------------------
 //                               class path
 // -----------------------------------------------------------------------------
 
 class ASAP_FILESYSTEM_API path {
+ private:
   template <typename Tp1, typename Tp2 = void>
   using IsPathable = std::enable_if_t<
       asap::conjunction<asap::negation<std::is_same<Tp1, path>>,
                         path_traits::IsConstructibleFrom<Tp1, Tp2>>::value>;
 
  public:
-  //  value_type is the character type used by the operating system API to
-  //  represent paths.
-#ifdef ASAP_WINDOWS_API
-  typedef wchar_t value_type;
-  static constexpr value_type slash = L'/';
-  static constexpr value_type preferred_separator = L'\\';
-  static constexpr value_type dot = L'.';
-#else
+  // value_type is the character type used by this implementation to represent the path
+  // internally. We follow the utf8-everywhere philosophy and we exclusively use UTF-8
+  // on any platform for the internal representation.
+  // https://utf8everywhere.org/
   typedef char value_type;
-  static constexpr value_type slash = '/';
-  static constexpr value_type preferred_separator = '/';
-  static constexpr value_type dot = '.';
-#endif
   typedef std::basic_string<value_type> string_type;
+#ifdef ASAP_WINDOWS
+  static constexpr value_type preferred_separator = '\\';
+#else
+  static constexpr value_type preferred_separator = '/';
+#endif
 
   enum format { native_format, generic_format, auto_format };
 
@@ -188,19 +91,6 @@ class ASAP_FILESYSTEM_API path {
             typename Require = IsPathable<InputIterator>>
   path(InputIterator first, InputIterator last, format = auto_format)
       : pathname_(convert(first, last)) {
-    SplitComponents();
-  }
-
-  template <class Source, typename Require = IsPathable<Source>>
-  path(const Source &source, const std::locale &loc, format = auto_format)
-      : pathname_(convert_loc(range_begin(source), range_end(source), loc)) {
-    SplitComponents();
-  }
-
-  template <class InputIterator, typename Require = IsPathable<InputIterator>>
-  path(InputIterator first, InputIterator last, const std::locale &loc,
-       format = auto_format)
-      : pathname_(convert_loc(first, last, loc)) {
     SplitComponents();
   }
 
@@ -432,28 +322,14 @@ class ASAP_FILESYSTEM_API path {
     return convert(s.c_str(), s.c_str() + s.size());
   }
 
-  static string_type convert_loc(const char *__first, const char *__last,
-                                 const std::locale &__loc);
-
-  template <typename _Iter>
-  static string_type convert_loc(_Iter __first, _Iter __last,
-                                 const std::locale &__loc) {
-    const std::string __str(__first, __last);
-    return convert_loc(__str.data(), __str.data() + __str.size(), __loc);
-  }
-
-  template <typename _InputIterator>
-  static string_type convert_loc(_InputIterator __src, null_terminated,
-                                 const std::locale &__loc) {
-    std::string __s = string_from_iter(__src);
-    return convert_loc(__s.data(), __s.data() + __s.size(), __loc);
-  }
-
   template <typename _CharT, typename _Traits, typename _Allocator>
   static std::basic_string<_CharT, _Traits, _Allocator> str_convert(
       const string_type &, const _Allocator &__a);
 
  private:
+  static constexpr value_type slash = '/';
+  static constexpr value_type dot = '.';
+  
   static bool IsDirSeparator(value_type ch) {
     return ch == slash || ch == preferred_separator;
   }
@@ -647,57 +523,13 @@ struct path::Converter<path::value_type> {
   }
 };
 
-template <typename _CharT>
-struct path::Converter {
-#ifdef ASAP_WINDOWS_API
-  static string_type wconvert(const char *__f, const char *__l, std::true_type) {
-    using _Cvt = std::codecvt<wchar_t, char, mbstate_t>;
-    const auto &__cvt = std::use_facet<_Cvt>(std::locale{});
-    std::wstring __wstr;
-    if (__str_codecvt_in(__f, __l, __wstr, __cvt)) return __wstr;
-	//TODO: replace
-	::abort();
-	/*
-    _GLIBCXX_THROW_OR_ABORT(
-        filesystem_error("Cannot convert character sequence",
-                         std::make_error_code(errc::illegal_byte_sequence)));
-						 */
+#ifdef ASAP_WINDOWS
+template <>
+struct path::Converter<wchar_t> {
+  static string_type convert(const wchar_t *__f, const wchar_t *__l) {
+    // TODO: narrow
+    return "";
   }
-
-  static string_type wconvert(const _CharT *__f, const _CharT *__l,
-                              std::false_type) {
-    std::codecvt_utf8<_CharT> __cvt;
-    std::string __str;
-    if (__str_codecvt_out(__f, __l, __str, __cvt)) {
-      const char *__f2 = __str.data();
-      const char *__l2 = __f2 + __str.size();
-      std::codecvt_utf8<wchar_t> __wcvt;
-      std::wstring __wstr;
-      if (__str_codecvt_in(__f2, __l2, __wstr, __wcvt)) return __wstr;
-    }
-    _GLIBCXX_THROW_OR_ABORT(
-        filesystem_error("Cannot convert character sequence",
-                         std::make_error_code(errc::illegal_byte_sequence)));
-  }
-
-  static string_type convert(const _CharT *__f, const _CharT *__l) {
-    return wconvert(__f, __l, std::is_same<_CharT, char>{});
-  }
-#else
-  static string_type convert(const _CharT *__f, const _CharT *__l) {
-    std::codecvt_utf8<_CharT> __cvt;
-    std::string __str;
-    if (asap::filesystem::__str_codecvt_out(__f, __l, __str, __cvt)) return __str;
-
-    // TODO: REPLACE
-    ::abort();
-    /*
-    _GLIBCXX_THROW_OR_ABORT(filesystem_error(
-        "Cannot convert character sequence",
-        std::make_error_code(errc::illegal_byte_sequence)));
-        */
-  }
-#endif
 
   static string_type convert(_CharT *__f, _CharT *__l) {
     return convert(const_cast<const _CharT *>(__f),
@@ -716,6 +548,7 @@ struct path::Converter {
                __gnu_cxx::__normal_iterator<_Iter, _Cont> __last)
     { return convert(__first.base(), __last.base()); }*/
 };
+#endif
 
 template <typename _CharT, typename _Traits, typename _Allocator>
 std::basic_string<_CharT, _Traits, _Allocator> path::str_convert(
@@ -723,8 +556,7 @@ std::basic_string<_CharT, _Traits, _Allocator> path::str_convert(
   if (__str.size() == 0)
     return std::basic_string<_CharT, _Traits, _Allocator>(__a);
 
-  // TODO: REPLACE
-  return {__str.begin(), __str.end(), __a};
+  return str_widen<_CharT, _Traits>(__str, __a);
 }
 
 template <typename _CharT, typename _Traits, typename _Allocator>
@@ -740,25 +572,7 @@ inline std::string path::string() const { return string<char>(); }
 
 inline std::wstring path::wstring() const { return string<wchar_t>(); }
 
-inline std::string path::u8string() const {
-#ifdef ASAP_WINDOWS_API
-  std::string __str;
-  // convert from native encoding to UTF-8
-  std::codecvt_utf8<value_type> __cvt;
-  const value_type *__first = pathname_.data();
-  const value_type *__last = __first + pathname_.size();
-  if (__str_codecvt_out(__first, __last, __str, __cvt)) return __str;
-  // TODO: replace
-  ::abort();
-  /*
-  _GLIBCXX_THROW_OR_ABORT(
-      filesystem_error("Cannot convert character sequence",
-                       std::make_error_code(errc::illegal_byte_sequence)));
-					   */
-#else
-  return pathname_;
-#endif
-}
+inline std::string path::u8string() const { return pathname_; }
 
 inline std::u16string path::u16string() const { return string<char16_t>(); }
 
