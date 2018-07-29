@@ -12,14 +12,11 @@ using asap::filesystem::path;
 using testing::ComparePaths;
 using testing::TEST_PATHS;
 
-
 // -----------------------------------------------------------------------------
 //  Assign
 // -----------------------------------------------------------------------------
 
-
-TEST_CASE("Path / assign / operator",
-          "[common][filesystem][path][assign]") {
+TEST_CASE("Path / assign / operator", "[common][filesystem][path][assign]") {
   SECTION("Using std::string") {
     for (const std::string &s : TEST_PATHS) {
       path p0 = s, p1, p2;
@@ -45,8 +42,7 @@ TEST_CASE("Path / assign / operator",
   }
 }
 
-TEST_CASE("Path / assign / assign",
-          "[common][filesystem][path][assign]") {
+TEST_CASE("Path / assign / assign", "[common][filesystem][path][assign]") {
   SECTION("Using std::string") {
     for (const std::string &s : TEST_PATHS) {
       path p0 = s, p1, p2, p3, p4;
@@ -84,8 +80,7 @@ TEST_CASE("Path / assign / assign",
   }
 }
 
-TEST_CASE("Path / assign / copy",
-          "[common][filesystem][path][assign]") {
+TEST_CASE("Path / assign / copy", "[common][filesystem][path][assign]") {
   for (const path p : TEST_PATHS) {
     path copy;
     copy = p;
@@ -93,8 +88,7 @@ TEST_CASE("Path / assign / copy",
   }
 }
 
-TEST_CASE("Path / assign / copy move",
-          "[common][filesystem][path][assign]") {
+TEST_CASE("Path / assign / copy move", "[common][filesystem][path][assign]") {
   for (const path p : TEST_PATHS) {
     path copy = p;
     path move;

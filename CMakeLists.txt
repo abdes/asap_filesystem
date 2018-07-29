@@ -37,7 +37,6 @@ set(source_path "${CMAKE_CURRENT_SOURCE_DIR}/src")
 
 set(public_headers
   "include/filesystem/filesystem.h"
-  "include/filesystem/config.h"
   "include/filesystem/path_traits.h"
   "include/filesystem/path.h"
   )

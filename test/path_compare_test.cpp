@@ -11,14 +11,11 @@
 using asap::filesystem::path;
 using testing::TEST_PATHS;
 
-
 // -----------------------------------------------------------------------------
 //  Compare
 // -----------------------------------------------------------------------------
 
-
-TEST_CASE("Path / compare / basic",
-          "[common][filesystem][path][compare]") {
+TEST_CASE("Path / compare / basic", "[common][filesystem][path][compare]") {
   path p("/foo/bar");
   REQUIRE(p.compare(p) == 0);
   REQUIRE(p.compare("/foo//bar") == 0);
@@ -33,8 +30,7 @@ TEST_CASE("Path / compare / basic",
   REQUIRE(path("a/b/").compare("a/b//") == 0);
 }
 
-TEST_CASE("Path / compare / path",
-          "[common][filesystem][path][compare]") {
+TEST_CASE("Path / compare / path", "[common][filesystem][path][compare]") {
   const path p0 = "/a/a/b/b";
   for (const path p : TEST_PATHS) {
     REQUIRE(p.compare(p) == 0);
@@ -48,15 +44,14 @@ TEST_CASE("Path / compare / path",
   }
 }
 
-TEST_CASE("Path / compare / strings",
-          "[common][filesystem][path][assign]") {
+TEST_CASE("Path / compare / strings", "[common][filesystem][path][assign]") {
   const std::string s0 = "/a/a/b/b";
   const path p0 = s0;
   for (const std::string &s : TEST_PATHS) {
     path p(s);
-    REQUIRE( p.compare(s) == 0 );
-    REQUIRE( p.compare(s.c_str()) == 0 );
-    REQUIRE( p.compare(p0) == p.compare(s0) );
-    REQUIRE( p.compare(p0) == p.compare(s0.c_str()) );
+    REQUIRE(p.compare(s) == 0);
+    REQUIRE(p.compare(s.c_str()) == 0);
+    REQUIRE(p.compare(p0) == p.compare(s0));
+    REQUIRE(p.compare(p0) == p.compare(s0.c_str()));
   }
 }

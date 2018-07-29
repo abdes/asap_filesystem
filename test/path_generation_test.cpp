@@ -12,11 +12,9 @@ using asap::filesystem::path;
 using testing::ComparePaths;
 using testing::TEST_PATHS;
 
-
 // -----------------------------------------------------------------------------
 //  Generation
 // -----------------------------------------------------------------------------
 
 TEST_CASE("Path / generation / normal",
-          "[common][filesystem][path][generation]") {
-}
+          "[common][filesystem][path][generation]") {}

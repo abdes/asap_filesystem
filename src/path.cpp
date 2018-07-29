@@ -5,11 +5,14 @@
 
 #include <filesystem/path.h>
 
+#include <common/assert.h>
+
 namespace fs = asap::filesystem;
 using fs::path;
 
 namespace asap {
 namespace filesystem {
+
 
 // -----------------------------------------------------------------------------
 //  Assign
@@ -90,8 +93,10 @@ path path::root_directory() const {
     // There will be one single component which has the simplified root dir '/'.
     // That component does not have components! Test for this case to avoid
     // issues with the recursive descent over parent directories.
-    if (!components_.empty()) ret = *components_.begin();
-	else ret = *this;
+    if (!components_.empty())
+      ret = *components_.begin();
+    else
+      ret = *this;
   } else if (type_ == Type::ROOT_NAME) {
     // Check for windows special case of drive letter
     if (pathname_[1] == ':')
@@ -321,33 +326,33 @@ path::iterator path::end() const {
 }
 
 path::iterator &path::iterator::operator++() {
-  //__glibcxx_assert(path_ != nullptr);
+  ASAP_ASSERT(path_ != nullptr);
   if (path_->type_ == Type::MULTI) {
-    //__glibcxx_assert(cur_ != path_->components_.end());
+    ASAP_ASSERT(cur_ != path_->components_.end());
     ++cur_;
   } else {
-    //__glibcxx_assert(!at_end_);
+    ASAP_ASSERT(!at_end_);
     at_end_ = true;
   }
   return *this;
 }
 
 path::iterator &path::iterator::operator--() {
-  //__glibcxx_assert(path_ != nullptr);
+  ASAP_ASSERT(path_ != nullptr);
   if (path_->type_ == Type::MULTI) {
-    //__glibcxx_assert(cur_ != path_->components_.begin());
+    ASAP_ASSERT(cur_ != path_->components_.begin());
     --cur_;
   } else {
-    //__glibcxx_assert(at_end_);
+    ASAP_ASSERT(at_end_);
     at_end_ = false;
   }
   return *this;
 }
 
 path::iterator::reference path::iterator::operator*() const {
-  //__glibcxx_assert(path_ != nullptr);
+  ASAP_ASSERT(path_ != nullptr);
   if (path_->type_ == Type::MULTI) {
-    //__glibcxx_assert(cur_ != path_->components_.end());
+    ASAP_ASSERT(cur_ != path_->components_.end());
     return *cur_;
   }
   return *path_;
@@ -383,32 +388,36 @@ int do_compare(Iter1 begin1, Iter1 end1, Iter2 begin2, Iter2 end2) {
 }
 }  // namespace
 
-int path::compare(const path &p) const noexcept {
+int path::compare(const path &other) const noexcept {
   struct CmptRef {
     const path *ptr;
     const string_type &native() const noexcept { return ptr->native(); }
   };
 
-  if (empty() && p.empty())
+  if (empty() && other.empty())
     return 0;
-  else if (type_ == Type::MULTI && p.type_ == Type::MULTI)
+  else if (type_ == Type::MULTI && other.type_ == Type::MULTI)
     return do_compare(components_.begin(), components_.end(),
-                      p.components_.begin(), p.components_.end());
+                      other.components_.begin(), other.components_.end());
   else if (type_ == Type::MULTI) {
-    CmptRef c[1] = {{&p}};
+    CmptRef c[1] = {{&other}};
     return do_compare(components_.begin(), components_.end(), c, c + 1);
-  } else if (p.type_ == Type::MULTI) {
+  } else if (other.type_ == Type::MULTI) {
     CmptRef c[1] = {{this}};
-    return do_compare(c, c + 1, p.components_.begin(), p.components_.end());
+    return do_compare(c, c + 1, other.components_.begin(),
+                      other.components_.end());
   } else
-    return pathname_.compare(p.pathname_);
+    return pathname_.compare(other.pathname_);
 }
-int path::compare(const string_type &__s) const { return compare(path(__s)); }
+int path::compare(const string_type &other) const {
+  return compare(path(other));
+}
 
-int path::compare(const value_type *__s) const { return compare(path(__s)); }
+int path::compare(const value_type *other) const {
+  return compare(path(other));
+}
 
 // End Compare -----------------------------------------------------------------
-
 
 //
 // Append

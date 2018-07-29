@@ -5,7 +5,7 @@
 
 #include <catch2/catch.hpp>
 
-#include<cstring>
+#include <cstring>
 
 #include <filesystem/path.h>
 #include "testsuite_fs.h"
@@ -13,7 +13,6 @@
 using asap::filesystem::path;
 using testing::ComparePaths;
 using testing::TEST_PATHS;
-
 
 // -----------------------------------------------------------------------------
 //  Construction
@@ -36,16 +35,14 @@ TEST_CASE("Path / construct / default",
   CHECK(std::distance(p.begin(), p.end()) == 0);
 }
 
-TEST_CASE("Path / construct / copy",
-          "[common][filesystem][path][construct]") {
+TEST_CASE("Path / construct / copy", "[common][filesystem][path][construct]") {
   for (const path p : TEST_PATHS) {
     path copy = p;
     ComparePaths(p, copy);
   }
 }
 
-TEST_CASE("Path / construct / move",
-          "[common][filesystem][path][construct]") {
+TEST_CASE("Path / construct / move", "[common][filesystem][path][construct]") {
   for (const path p : TEST_PATHS) {
     path copy = p;
     path move = std::move(copy);
@@ -131,42 +128,7 @@ TEST_CASE("Path / construct / path(InputIterator, InputIterator, format)",
   REQUIRE(p3 == p0);
 }
 
-TEST_CASE("Path / construct / path(const Source&, const locale&, format)",
-          "[common][filesystem][path][construct]") {
-  // path(const Source&, const locale&, format)
-  const char *s = "foo/bar";
-  std::locale loc;
-  path p0(s, loc);
-  path p1(s, loc, path::auto_format);
-  REQUIRE(p1 == p0);
-  path p2(s, loc, path::native_format);
-  REQUIRE(p2 == p0);
-  path p3(s, loc, path::generic_format);
-  REQUIRE(p3 == p0);
-}
-
-TEST_CASE(
-    "Path / construct / path(InputIterator, InputIterator, const locale&, format)",
-    "[common][filesystem][path][construct]") {
-  // path(InputIterator, InputIterator, const locale&, format)
-  const char s[] = "foo/bar";
-  const std::vector<char> c(s, s + strlen(s));
-  std::locale loc;
-  auto c0 = c;
-  path p0(std::begin(c0), std::end(c0), loc);
-  auto c1 = c;
-  path p1(std::begin(c1), std::end(c1), loc, path::auto_format);
-  REQUIRE(p1 == p0);
-  auto c2 = c;
-  path p2(std::begin(c2), std::end(c2), loc, path::native_format);
-  REQUIRE(p2 == p0);
-  auto c3 = c;
-  path p3(std::begin(c3), std::end(c3), loc, path::generic_format);
-  REQUIRE(p3 == p0);
-}
-
-TEST_CASE("Path / construct / range",
-          "[common][filesystem][path][construct]") {
+TEST_CASE("Path / construct / range", "[common][filesystem][path][construct]") {
   for (auto &s : TEST_PATHS) {
     path p1 = s;
     path p2(s.begin(), s.end());
@@ -190,46 +152,43 @@ TEST_CASE("Path / construct / range",
 
     // Test with input iterators and const value_types
 
-    std::vector<char>
-        r1((char *) s.c_str(), (char *) s.c_str() + s.size());
+    std::vector<char> r1((char *)s.c_str(), (char *)s.c_str() + s.size());
     path p9(r1.begin(), r1.end());
     ComparePaths(p1, p9);
 
-    std::vector<char>
-        r2((char *) s.c_str(),
-           (char *) s.c_str() + s.size() + 1); // includes null-terminator
+    std::vector<char> r2(
+        (char *)s.c_str(),
+        (char *)s.c_str() + s.size() + 1);  // includes null-terminator
     path p10(r2.begin());
     ComparePaths(p1, p10);
 
-    std::vector<char>
-        r3(s.c_str(), s.c_str() + s.size());
+    std::vector<char> r3(s.c_str(), s.c_str() + s.size());
     path p11(r3.begin(), r3.end());
     ComparePaths(p1, p11);
 
-    std::vector<char>
-        r4(s.c_str(), s.c_str() + s.size() + 1); // includes null-terminator
+    std::vector<char> r4(s.c_str(),
+                         s.c_str() + s.size() + 1);  // includes null-terminator
     path p12(r4.begin());
     ComparePaths(p1, p12);
 
     // Test with input iterators and const value_types
-    std::vector<wchar_t>
-        r5((wchar_t *) ws.c_str(), (wchar_t *) ws.c_str() + ws.size());
+    std::vector<wchar_t> r5((wchar_t *)ws.c_str(),
+                            (wchar_t *)ws.c_str() + ws.size());
     path p13(r5.begin(), r5.end());
     ComparePaths(p1, p13);
 
-    std::vector<wchar_t>
-        r6((wchar_t *) ws.c_str(),
-           (wchar_t *) ws.c_str() + ws.size() + 1); // includes null-terminator
+    std::vector<wchar_t> r6(
+        (wchar_t *)ws.c_str(),
+        (wchar_t *)ws.c_str() + ws.size() + 1);  // includes null-terminator
     path p14(r6.begin());
     ComparePaths(p1, p14);
 
-    std::vector<wchar_t>
-        r7(ws.c_str(), ws.c_str() + ws.size());
+    std::vector<wchar_t> r7(ws.c_str(), ws.c_str() + ws.size());
     path p15(r7.begin(), r7.end());
     ComparePaths(p1, p15);
 
-    std::vector<wchar_t>
-        r8(ws.c_str(), ws.c_str() + ws.size() + 1); // includes null-terminator
+    std::vector<wchar_t> r8(
+        ws.c_str(), ws.c_str() + ws.size() + 1);  // includes null-terminator
     path p16(r8.begin());
     ComparePaths(p1, p16);
   }

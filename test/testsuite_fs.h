@@ -7,12 +7,11 @@
 
 using asap::filesystem::path;
 
-#define PATH_CHK(p1, p2, fn) REQUIRE( p1.fn() == p2.fn() )
+#define PATH_CHK(p1, p2, fn) REQUIRE(p1.fn() == p2.fn())
 
 namespace testing {
 
-inline
-void ComparePaths(const path &p1, const path &p2) {
+inline void ComparePaths(const path &p1, const path &p2) {
   PATH_CHK(p1, p2, native);
   PATH_CHK(p1, p2, string);
   PATH_CHK(p1, p2, empty);
@@ -32,8 +31,8 @@ void ComparePaths(const path &p1, const path &p2) {
 }
 
 const std::string TEST_PATHS[] = {
-    "", "/", "//", "/.", "/./", "/a", "/a/", "/a//", "/a/b/c/d", "/a//b",
-    "a", "a/b", "a/b/", "a/b/c", "a/b/c.d", "a/b/..", "a/b/c.", "a/b/.c"
-};
+    "",     "/",     "//",       "/.",     "/./",    "/a",
+    "/a/",  "/a//",  "/a/b/c/d", "/a//b",  "a",      "a/b",
+    "a/b/", "a/b/c", "a/b/c.d",  "a/b/..", "a/b/c.", "a/b/.c"};
 
-}
+}  // namespace testing
