@@ -326,7 +326,7 @@ class ASAP_FILESYSTEM_API path {
 
   static bool IsDirSeparator(value_type ch) {
     return ch == slash
-#if ASAP_WINDOWS
+#ifdef ASAP_WINDOWS
            || ch == preferred_separator
 #endif
         ;
