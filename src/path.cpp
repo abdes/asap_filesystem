@@ -5,6 +5,10 @@
 
 #include <filesystem/path.h>
 
+#ifdef ASAP_WINDOWS
+# include <algorithm>
+#endif
+
 #include <common/assert.h>
 #include <common/platform.h>
 
