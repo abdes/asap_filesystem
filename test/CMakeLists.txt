@@ -47,6 +47,12 @@ set(sources
   "path_construct_test.cpp"
   "path_decompose_test.cpp"
   "path_generation_test.cpp"
+  "path_generic_test.cpp"
+  "path_iostream_test.cpp"
+  "path_iterator_test.cpp"
+  "path_modifiers_test.cpp"
+  "path_native_test.cpp"
+  "path_nonmembers_test.cpp"
   "path_query_test.cpp"
   "main.cpp"
   ${public_headers}

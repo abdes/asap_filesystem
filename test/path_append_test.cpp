@@ -141,8 +141,6 @@ TEST_CASE("Path / append / source / TEST_PATHS",
   for (const path p : TEST_PATHS) {
     for (const path q : TEST_PATHS) {
       test(p, q.c_str());
-      if (!std::is_same<path::value_type, char>::value)
-        test(p, q.string().c_str());
     }
   }
 }

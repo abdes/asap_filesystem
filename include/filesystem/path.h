@@ -335,8 +335,7 @@ class ASAP_FILESYSTEM_API path {
   enum class Type : unsigned char { MULTI, ROOT_NAME, ROOT_DIR, FILENAME };
 
   path(string_type pathname, Type type)
-      : pathname_(std::move(pathname)), type_(type) {
-  }
+      : pathname_(std::move(pathname)), type_(type) {}
 
   std::pair<const string_type *, size_t> FindExtension() const;
 
@@ -362,7 +361,7 @@ class ASAP_FILESYSTEM_API path {
 
 inline void swap(path &lhs, path &rhs) noexcept { lhs.swap(rhs); }
 
-size_t hash_value(const path &p) noexcept;
+size_t ASAP_FILESYSTEM_API hash_value(const path &p) noexcept;
 
 /// An iterator for the components of a path
 class ASAP_FILESYSTEM_API path::iterator {
@@ -409,8 +408,8 @@ class ASAP_FILESYSTEM_API path::iterator {
   iterator(const path *path, path::List::const_iterator iter)
       : path_(path), cur_(iter), at_end_() {}
 
-  iterator(const path *path, bool alloct_end)
-      : path_(path), cur_(), at_end_(alloct_end) {}
+  iterator(const path *path, bool at_end)
+      : path_(path), cur_(), at_end_(at_end) {}
 
   bool equals(iterator) const;
 

@@ -5,6 +5,8 @@
 
 #include <catch2/catch.hpp>
 
+#include <common/platform.h>
+
 #include <filesystem/path.h>
 #include "testsuite_fs.h"
 
@@ -82,6 +84,7 @@ TEST_CASE("Path / query / is_absolute", "[common][filesystem][path][query]") {
   REQUIRE(!path("foo/").is_absolute());
   REQUIRE(!path("foo/bar").is_absolute());
   REQUIRE(!path("foo/bar/").is_absolute());
+#ifdef ASAP_WINDOWS
   REQUIRE(!path("c:").is_absolute());
   REQUIRE(!path("c:foo").is_absolute());
   REQUIRE(!path("c:foo/").is_absolute());
@@ -92,6 +95,7 @@ TEST_CASE("Path / query / is_absolute", "[common][filesystem][path][query]") {
   REQUIRE(path("c:/foo/").is_absolute());
   REQUIRE(path("c:/foo/bar").is_absolute());
   REQUIRE(path("c:/foo/bar/").is_absolute());
+#endif
 }
 
 TEST_CASE("Path / query / is_relative", "[common][filesystem][path][query]") {

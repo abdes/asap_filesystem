@@ -5,6 +5,8 @@
 
 #include <catch2/catch.hpp>
 
+#include <common/platform.h>
+
 #include <filesystem/path.h>
 #include "testsuite_fs.h"
 
@@ -73,10 +75,10 @@ TEST_CASE("Path / decompose / filename special cases",
   REQUIRE(path("/foo/bar").filename() == "bar");
   REQUIRE(path("/foo/bar/").filename() == "");
   REQUIRE(path("/").filename() == "");
-#ifdef __CYGWIN__
+#ifdef ASAP_WINDOWS
   REQUIRE(path("//host").filename() == "");
 #else
-  REQUIRE(path("//host").filename() == "");
+  REQUIRE(path("//host").filename() == "host");
 #endif
   REQUIRE(path(".").filename() == ".");
   REQUIRE(path("..").filename() == "..");
@@ -161,12 +163,21 @@ TEST_CASE("Path / decompose / root_directory",
 
 TEST_CASE("Path / decompose / root_name",
           "[common][filesystem][path][decompose]") {
+#ifdef ASAP_WINDOWS
   REQUIRE(path("//").root_name().empty());
   REQUIRE(path("//foo").root_name() == "//foo");
   REQUIRE(path("//foo/bar").root_name() == "//foo");
   REQUIRE(path("///foo").root_name().empty());
   REQUIRE(path("c:/foo").root_name() == "c:");
   REQUIRE(path("c:foo").root_name() == "c:");
+#else
+  REQUIRE(path("//").root_name().empty());
+  REQUIRE(path("//foo").root_name().empty());
+  REQUIRE(path("//foo/bar").root_name().empty());
+  REQUIRE(path("///foo").root_name().empty());
+  REQUIRE(path("c:/foo").root_name().empty());
+  REQUIRE(path("c:foo").root_name().empty());
+#endif
 }
 
 TEST_CASE("Path / decompose / root_path basic",
@@ -176,8 +187,12 @@ TEST_CASE("Path / decompose / root_path basic",
   path p2 = "/foo/bar";
   REQUIRE(p2.root_path() == path("/"));
   path p3 = "//foo/bar";
+#ifdef ASAP_WINDOWS
   REQUIRE(p3.root_path() == path("//foo/"));
-#ifdef ASAP_WINDOWS_API
+#else
+  REQUIRE(p3.root_path() == path("/"));
+#endif
+#ifdef ASAP_WINDOWS
   path p4 = "c:/foo/bar";
   REQUIRE(p3.root_path() == path("c:/"));
 #endif

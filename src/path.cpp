@@ -6,13 +6,13 @@
 #include <filesystem/path.h>
 
 #include <common/assert.h>
+#include <common/platform.h>
 
 namespace fs = asap::filesystem;
 using fs::path;
 
 namespace asap {
 namespace filesystem {
-
 
 // -----------------------------------------------------------------------------
 //  Assign
@@ -236,6 +236,7 @@ void path::SplitComponents() {
 
   // look for root name or root directory
   if (IsDirSeparator(pathname_[0])) {
+#ifdef ASAP_WINDOWS
     // look for root name, such as "//foo"
     if (len > 2 && pathname_[1] == pathname_[0]) {
       if (!IsDirSeparator(pathname_[2])) {
@@ -250,7 +251,9 @@ void path::SplitComponents() {
         // composed of multiple redundant directory separators
         AddRootDir(0);
       }
-    } else {
+    } else
+#endif
+    {
       // got root directory
       if (pathname_.find_first_not_of('/') == string_type::npos) {
         // entire path is just slashes
@@ -261,12 +264,15 @@ void path::SplitComponents() {
       AddRootDir(0);
       ++pos;
     }
-  } else if (len > 1 && pathname_[1] == L':') {
+  }
+#ifdef ASAP_WINDOWS
+  else if (len > 1 && pathname_[1] == L':') {
     // got disk designator
     AddRootName(2);
     if (len > 2 && IsDirSeparator(pathname_[2])) AddRootDir(2);
     pos = 2;
   }
+#endif
 
   size_t back = pos;
   while (pos < len) {
@@ -317,7 +323,7 @@ void path::Trim() {
 
 path::iterator path::begin() const {
   if (type_ == Type::MULTI) return iterator(this, components_.begin());
-  return iterator(this, false);
+  return iterator(this, empty());
 }
 
 path::iterator path::end() const {
@@ -482,7 +488,7 @@ std::size_t hash_value(const path &p) noexcept {
   // [path.non-member]
   // "If for two paths, p1 == p2 then hash_value(p1) == hash_value(p2)."
   // Equality works as if by traversing the range [begin(), end()), meaning
-  // e.g. path("a//b") == path("a/b"), so we cannot simply hash _M_pathname
+  // e.g. path("a//b") == path("a/b"), so we cannot simply hash pathname_
   // but need to iterate over individual elements. Use the hash_combine from
   // http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n3876.pdf
   size_t seed = 0;
@@ -491,6 +497,62 @@ std::size_t hash_value(const path &p) noexcept {
             (seed << 6) + (seed >> 2);
   }
   return seed;
+}
+
+//
+//  MODIFIERS
+//
+
+path &path::make_preferred() {
+#ifdef ASAP_WINDOWS
+  std::replace(pathname_.begin(), pathname_.end(), slash, preferred_separator);
+#endif
+  return *this;
+}
+
+path &path::remove_filename() {
+  if (type_ == Type::MULTI) {
+    if (!components_.empty()) {
+      auto cmpt = std::prev(components_.end());
+      if (cmpt->type_ == Type::FILENAME && !cmpt->empty()) {
+        pathname_.erase(cmpt->pos_);
+        auto prev = std::prev(cmpt);
+        if (prev->type_ == Type::ROOT_DIR || prev->type_ == Type::ROOT_NAME) {
+          components_.erase(cmpt);
+          Trim();
+        } else
+          cmpt->clear();
+      }
+    }
+  } else if (type_ == Type::FILENAME)
+    clear();
+  return *this;
+}
+
+path &path::replace_filename(const path &replacement) {
+  remove_filename();
+  operator/=(replacement);
+  return *this;
+}
+
+path &path::replace_extension(const path &replacement) {
+  auto ext = FindExtension();
+  // Any existing extension() is removed
+  if (ext.first && ext.second != string_type::npos) {
+    if (ext.first == &pathname_)
+      pathname_.erase(ext.second);
+    else {
+      const auto &back = components_.back();
+      if (ext.first != &back.pathname_)
+        throw(std::logic_error("path::replace_extension failed"));
+      pathname_.erase(back.pos_ + ext.second);
+    }
+  }
+  // If replacement is not empty and does not begin with a dot character,
+  // a dot character is appended
+  if (!replacement.empty() && replacement.native()[0] != dot) pathname_ += dot;
+  operator+=(replacement);
+  return *this;
 }
 
 }  // namespace filesystem
