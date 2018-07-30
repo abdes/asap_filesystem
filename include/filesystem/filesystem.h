@@ -5,4 +5,7 @@
 
 #pragma once
 
-#include "path.h"
+#include <filesystem/fs_fwd.h>
+#include <filesystem/fs_path.h>
+#include <filesystem/filesystem_error.h>
+#include <filesystem/fs_ops.h>

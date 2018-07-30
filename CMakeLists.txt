@@ -40,10 +40,12 @@ set(public_headers
   "include/filesystem/fs_path_traits.h"
   "include/filesystem/fs_path.h"
   "include/filesystem/filesystem_error.h"
+  "include/filesystem/fs_fwd.h"
   )
 
 set(sources
   "src/fs_path.cpp"
+  "src/fs_ops.cpp"
   "src/filesystem_error.cpp"
   ${public_headers}
   )
@@ -75,7 +77,7 @@ set(private_compile_options)
 # Libraries
 # ------------------------------------------------------------------------------
 
-set(public_libraries ${META_PROJECT_NAME}::common)
+set(public_libraries ${META_PROJECT_NAME}::common fmt::fmt)
 
 # ------------------------------------------------------------------------------
 # Create targets

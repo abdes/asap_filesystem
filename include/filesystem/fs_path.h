@@ -221,6 +221,17 @@ class ASAP_FILESYSTEM_API path {
   int compare(const string_type &other) const;
   int compare(const value_type *other) const;
 
+  // generation
+  path lexically_normal() const;
+  path lexically_relative(const path& __base) const;
+
+  path lexically_proximate(const path& __base) const {
+    path __result = this->lexically_relative(__base);
+    if (__result.native().empty())
+      return *this;
+    return __result;
+  }
+
   // decomposition
 
   path root_name() const;
@@ -322,7 +333,6 @@ class ASAP_FILESYSTEM_API path {
 
  private:
   static constexpr value_type slash = '/';
-  static constexpr value_type dot = '.';
 
   static bool IsDirSeparator(value_type ch) {
     return ch == slash

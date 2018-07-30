@@ -18,6 +18,10 @@ using fs::path;
 namespace asap {
 namespace filesystem {
 
+namespace {
+static constexpr path::value_type dot = '.';
+}
+
 // -----------------------------------------------------------------------------
 //  Assign
 // -----------------------------------------------------------------------------
@@ -464,7 +468,7 @@ path &path::Append(path p) {
 
 path::string_type::size_type path::AppendSeparatorIfNeeded() {
   if (!pathname_.empty() &&
-#ifdef ASAP_WINDOWS_API
+#ifdef ASAP_WINDOWS
       *(pathname_.end() - 1) != ':' &&
 #endif
       !IsDirSeparator(*(pathname_.end() - 1))) {
@@ -473,19 +477,6 @@ path::string_type::size_type path::AppendSeparatorIfNeeded() {
     return tmp;
   }
   return 0;
-}
-
-void path::EraseRedundantSeparator(string_type::size_type sep_pos) {
-  if (sep_pos                              // a separator was added
-      && sep_pos < pathname_.size()        // and something was appended
-      && (pathname_[sep_pos + 1] == slash  // and it was also separator
-#ifdef BOOST_WINDOWS_API
-          || m_pathname[sep_pos + 1] ==
-                 preferred_separator  // or preferred_separator
-#endif
-          )) {
-    pathname_.erase(sep_pos, 1);
-  }  // erase the added separator
 }
 
 std::size_t hash_value(const path &p) noexcept {
@@ -558,6 +549,151 @@ path &path::replace_extension(const path &replacement) {
   operator+=(replacement);
   return *this;
 }
+
+
+
+
+namespace
+{
+inline bool is_dot(fs::path::value_type c) { return c == dot; }
+
+inline bool is_dot(const fs::path& path)
+{
+  const auto& filename = path.native();
+  return filename.size() == 1 && is_dot(filename[0]);
+}
+
+inline bool is_dotdot(const fs::path& path)
+{
+  const auto& filename = path.native();
+  return filename.size() == 2 && is_dot(filename[0]) && is_dot(filename[1]);
+}
+} // namespace
+
+path
+path::lexically_normal() const
+{
+  /*
+  C++17 [fs.path.generic] p6
+  - If the path is empty, stop.
+  - Replace each slash character in the root-name with a preferred-separator.
+  - Replace each directory-separator with a preferred-separator.
+  - Remove each dot filename and any immediately following directory-separator.
+  - As long as any appear, remove a non-dot-dot filename immediately followed
+    by a directory-separator and a dot-dot filename, along with any immediately
+    following directory-separator.
+  - If there is a root-directory, remove all dot-dot filenames and any
+    directory-separators immediately following them.
+  - If the last filename is dot-dot, remove any trailing directory-separator.
+  - If the path is empty, add a dot.
+  */
+  path ret;
+  // If the path is empty, stop.
+  if (empty())
+    return ret;
+  for (auto& p : *this)
+  {
+#ifdef ASAP_WINDOWS
+    // Replace each slash character in the root-name
+      if (p._M_type == _Type::_Root_name)
+	{
+	  string_type s = p.native();
+	  std::replace(s.begin(), s.end(), L'/', L'\\');
+	  ret /= s;
+	  continue;
+	}
+#endif
+    if (is_dotdot(p))
+    {
+      if (ret.has_filename())
+      {
+        // remove a non-dot-dot filename immediately followed by /..
+        if (!is_dotdot(ret.filename()))
+          ret.remove_filename();
+        else
+          ret /= p;
+      }
+      else if (!ret.has_relative_path())
+      {
+        if (!ret.is_absolute())
+          ret /= p;
+      }
+      else
+      {
+        // Got a path with a relative path (i.e. at least one non-root
+        // element) and no filename at the end (i.e. empty last element),
+        // so must have a trailing slash. See what is before it.
+        auto elem = std::prev(ret.end(), 2);
+        if (elem->has_filename() && !is_dotdot(*elem))
+        {
+          // Remove the filename before the trailing slash
+          // (equiv. to ret = ret.parent_path().remove_filename())
+          ret.pathname_.erase(elem.cur_->pos_);
+          ret.components_.erase(elem.cur_, ret.components_.end());
+        }
+        else // ???
+          ret /= p;
+      }
+    }
+    else if (is_dot(p))
+      ret /= path();
+    else
+      ret /= p;
+  }
+
+  if (ret.components_.size() >= 2)
+  {
+    auto back = std::prev(ret.end());
+    // If the last filename is dot-dot, ...
+    if (back->empty() && is_dotdot(*std::prev(back)))
+      // ... remove any trailing directory-separator.
+      ret = ret.parent_path();
+  }
+    // If the path is empty, add a dot.
+  else if (ret.empty())
+    ret = ".";
+
+  return ret;
+}
+
+path
+path::lexically_relative(const path& base) const
+{
+  path ret;
+  if (root_name() != base.root_name())
+    return ret;
+  if (is_absolute() != base.is_absolute())
+    return ret;
+  if (!has_root_directory() && base.has_root_directory())
+    return ret;
+  auto p = std::mismatch(begin(), end(), base.begin(), base.end());
+  auto a = p.first;
+  auto b = p.second;
+  if (a == end() && b == base.end())
+    ret = ".";
+  else
+  {
+    int n = 0;
+    for (; b != base.end(); ++b)
+    {
+      const path& p = *b;
+      if (is_dotdot(p))
+        --n;
+      else if (!is_dot(p))
+        ++n;
+    }
+    if (n >= 0)
+    {
+      const path dotdot("..");
+      while (n--)
+        ret /= dotdot;
+      for (; a != end(); ++a)
+        ret /= *a;
+    }
+  }
+  return ret;
+}
+
 
 }  // namespace filesystem
 }  // namespace asap
