@@ -133,7 +133,7 @@ path current_path_impl(std::error_code* ec) {
   ErrorHandler<path> err("current_path", ec);
 
   auto size = ::pathconf(".", _PC_PATH_MAX);
-  _LIBCPP_ASSERT(size >= 0, "pathconf returned a 0 as max size");
+  ASAP_ASSERT(size > 0);
 
   auto buff = std::unique_ptr<char[]>(new char[size + 1]);
   char* ret;
