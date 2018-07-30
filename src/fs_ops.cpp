@@ -76,8 +76,16 @@ struct ErrorHandler {
       case 2:
         throw filesystem_error(what, *p1, *p2, m_ec);
     }
-    _LIBCPP_UNREACHABLE();
+    // Unreachable
+    ASAP_ASSERT_FAIL();
+#if ASAP_COMPILER_IS_Clang || ASAP_COMPILER_IS_AppleClang
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wreturn-type"
+#endif
   }
+#if ASAP_COMPILER_IS_Clang || ASAP_COMPILER_IS_AppleClang
+#pragma clang diagnostic pop
+#endif
 
   template <class... Args>
   T report(const std::error_code& m_ec, const char* msg, Args const&... args) const {
@@ -95,8 +103,16 @@ struct ErrorHandler {
       case 2:
         throw filesystem_error(what, *p1, *p2, m_ec);
     }
-    _LIBCPP_UNREACHABLE();
+    // Unreachable
+    ASAP_ASSERT_FAIL();
+#if ASAP_COMPILER_IS_Clang || ASAP_COMPILER_IS_AppleClang
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wreturn-type"
+#endif
   }
+#if ASAP_COMPILER_IS_Clang || ASAP_COMPILER_IS_AppleClang
+#pragma clang diagnostic pop
+#endif
 
   T report(std::errc const& err) const { return report(make_error_code(err)); }
 
