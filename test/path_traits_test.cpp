@@ -5,7 +5,7 @@
 
 #include <catch2/catch.hpp>
 
-#include <filesystem/path.h>
+#include <filesystem/fs_path.h>
 
 using asap::filesystem::path_traits::IsConstructibleFrom;
 using asap::filesystem::path_traits::IsEncodedChar;

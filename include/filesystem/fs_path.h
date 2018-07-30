@@ -15,7 +15,7 @@
 #include <common/unicode/convert.h>
 
 #include <filesystem/asap_filesystem_api.h>
-#include <filesystem/path_traits.h>
+#include <filesystem/fs_path_traits.h>
 
 namespace asap {
 namespace filesystem {

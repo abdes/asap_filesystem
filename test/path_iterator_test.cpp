@@ -8,7 +8,7 @@
 #include <algorithm>
 #include <vector>
 
-#include <filesystem/path.h>
+#include <filesystem/fs_path.h>
 #include "testsuite_fs.h"
 
 using asap::filesystem::path;

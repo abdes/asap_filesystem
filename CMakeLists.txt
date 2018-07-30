@@ -37,12 +37,14 @@ set(source_path "${CMAKE_CURRENT_SOURCE_DIR}/src")
 
 set(public_headers
   "include/filesystem/filesystem.h"
-  "include/filesystem/path_traits.h"
-  "include/filesystem/path.h"
+  "include/filesystem/fs_path_traits.h"
+  "include/filesystem/fs_path.h"
+  "include/filesystem/filesystem_error.h"
   )
 
 set(sources
-  "src/path.cpp"
+  "src/fs_path.cpp"
+  "src/filesystem_error.cpp"
   ${public_headers}
   )
 
