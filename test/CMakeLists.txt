@@ -54,6 +54,8 @@ set(sources
   "path_native_test.cpp"
   "path_nonmembers_test.cpp"
   "path_query_test.cpp"
+  # operations
+  "ops_current_path.cpp"
   "main.cpp"
   ${public_headers}
 )
