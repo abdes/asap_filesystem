@@ -3,9 +3,11 @@
 //    (See accompanying file LICENSE or copy at
 //   https://opensource.org/licenses/BSD-3-Clause)
 
+#include <limits.h>
 #include <unistd.h>
 #include <stdlib.h>
 
+#include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/statvfs.h>
 
