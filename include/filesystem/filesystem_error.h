@@ -23,31 +23,26 @@ class ASAP_FILESYSTEM_API filesystem_error : public std::system_error {
  public:
   filesystem_error(const std::string& what, std::error_code ec)
       : std::system_error(ec, what),
-        data_(std::make_shared<Data>(path(), path())){
+        data_(std::make_shared<Data>(path(), path())) {
     create_what(0);
   }
 
   filesystem_error(const std::string& what, const path& p1, std::error_code ec)
-      : std::system_error(ec, what),
-        data_(std::make_shared<Data>(p1, path())){
+      : std::system_error(ec, what), data_(std::make_shared<Data>(p1, path())) {
     create_what(1);
   }
 
   filesystem_error(const std::string& what, const path& p1, const path& p2,
                    std::error_code ec)
-      : std::system_error(ec, what),
-        data_(std::make_shared<Data>(p1, p2)){
+      : std::system_error(ec, what), data_(std::make_shared<Data>(p1, p2)) {
     create_what(2);
   }
 
   ~filesystem_error() override;
 
-  const path& path1() const noexcept {
-    return data_->path1_; }
-  const path& path2() const noexcept {
-    return data_->path2_; }
-  const char* what() const noexcept override {
-    return data_->what_.c_str(); }
+  const path& path1() const noexcept { return data_->path1_; }
+  const path& path2() const noexcept { return data_->path2_; }
+  const char* what() const noexcept override { return data_->what_.c_str(); }
 
  private:
   void create_what(int num_paths);
@@ -61,7 +56,5 @@ class ASAP_FILESYSTEM_API filesystem_error : public std::system_error {
   std::shared_ptr<Data> data_;
 };
 
-
-}
-}
-
+}  // namespace filesystem
+}  // namespace asap

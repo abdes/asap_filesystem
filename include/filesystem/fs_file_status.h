@@ -55,7 +55,7 @@ class ASAP_FILESYSTEM_API file_status {
   //@{
 
   void type(file_type ftype) noexcept { ftype_ = ftype; }
-  
+
   void permissions(perms permissions) noexcept { permissions_ = permissions; }
 
   //@}

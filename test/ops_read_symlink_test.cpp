@@ -7,12 +7,23 @@
 
 #include "fs_testsuite.h"
 
-using testing::ComparePaths;
-using testing::TEST_PATHS;
-
 // -----------------------------------------------------------------------------
-//  Generation
+//  read_symlink
 // -----------------------------------------------------------------------------
 
-TEST_CASE("Path / generation / normal",
-          "[common][filesystem][path][generation]") {}
+TEST_CASE("Ops / read_symlink", "[common][filesystem][ops][read_symlink]") {
+  auto p = testing::nonexistent_path();
+  std::error_code ec;
+
+  fs::read_symlink(p, ec);
+  REQUIRE(ec);
+
+  fs::path tgt = ".";
+  fs::create_symlink(tgt, p);
+
+  auto result = read_symlink(p, ec);
+  REQUIRE(!ec);
+  REQUIRE(result == tgt);
+
+  fs::remove(p);
+}

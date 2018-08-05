@@ -6,7 +6,7 @@
 #include <filesystem/fs_path.h>
 
 #ifdef ASAP_WINDOWS
-# include <algorithm>
+#include <algorithm>
 #endif
 
 #include <common/assert.h>
@@ -550,29 +550,21 @@ path &path::replace_extension(const path &replacement) {
   return *this;
 }
 
-
-
-
-namespace
-{
+namespace {
 inline bool is_dot(fs::path::value_type c) { return c == dot; }
 
-inline bool is_dot(const fs::path& path)
-{
-  const auto& filename = path.native();
+inline bool is_dot(const fs::path &path) {
+  const auto &filename = path.native();
   return filename.size() == 1 && is_dot(filename[0]);
 }
 
-inline bool is_dotdot(const fs::path& path)
-{
-  const auto& filename = path.native();
+inline bool is_dotdot(const fs::path &path) {
+  const auto &filename = path.native();
   return filename.size() == 2 && is_dot(filename[0]) && is_dot(filename[1]);
 }
-} // namespace
+}  // namespace
 
-path
-path::lexically_normal() const
-{
+path path::lexically_normal() const {
   /*
   C++17 [fs.path.generic] p6
   - If the path is empty, stop.
@@ -589,111 +581,86 @@ path::lexically_normal() const
   */
   path ret;
   // If the path is empty, stop.
-  if (empty())
-    return ret;
-  for (auto& p : *this)
-  {
+  if (empty()) return ret;
+  for (auto &p : *this) {
 #ifdef ASAP_WINDOWS
     // Replace each slash character in the root-name
-      if (p._M_type == _Type::_Root_name)
-	{
-	  string_type s = p.native();
-	  std::replace(s.begin(), s.end(), L'/', L'\\');
-	  ret /= s;
-	  continue;
-	}
+    if (p._M_type == _Type::_Root_name) {
+      string_type s = p.native();
+      std::replace(s.begin(), s.end(), L'/', L'\\');
+      ret /= s;
+      continue;
+    }
 #endif
-    if (is_dotdot(p))
-    {
-      if (ret.has_filename())
-      {
+    if (is_dotdot(p)) {
+      if (ret.has_filename()) {
         // remove a non-dot-dot filename immediately followed by /..
         if (!is_dotdot(ret.filename()))
           ret.remove_filename();
         else
           ret /= p;
-      }
-      else if (!ret.has_relative_path())
-      {
-        if (!ret.is_absolute())
-          ret /= p;
-      }
-      else
-      {
+      } else if (!ret.has_relative_path()) {
+        if (!ret.is_absolute()) ret /= p;
+      } else {
         // Got a path with a relative path (i.e. at least one non-root
         // element) and no filename at the end (i.e. empty last element),
         // so must have a trailing slash. See what is before it.
         auto elem = std::prev(ret.end(), 2);
-        if (elem->has_filename() && !is_dotdot(*elem))
-        {
+        if (elem->has_filename() && !is_dotdot(*elem)) {
           // Remove the filename before the trailing slash
           // (equiv. to ret = ret.parent_path().remove_filename())
           ret.pathname_.erase(elem.cur_->pos_);
           ret.components_.erase(elem.cur_, ret.components_.end());
-        }
-        else // ???
+        } else  // ???
           ret /= p;
       }
-    }
-    else if (is_dot(p))
+    } else if (is_dot(p))
       ret /= path();
     else
       ret /= p;
   }
 
-  if (ret.components_.size() >= 2)
-  {
+  if (ret.components_.size() >= 2) {
     auto back = std::prev(ret.end());
     // If the last filename is dot-dot, ...
     if (back->empty() && is_dotdot(*std::prev(back)))
       // ... remove any trailing directory-separator.
       ret = ret.parent_path();
   }
-    // If the path is empty, add a dot.
+  // If the path is empty, add a dot.
   else if (ret.empty())
     ret = ".";
 
   return ret;
 }
 
-path
-path::lexically_relative(const path& base) const
-{
+path path::lexically_relative(const path &base) const {
   path ret;
-  if (root_name() != base.root_name())
-    return ret;
-  if (is_absolute() != base.is_absolute())
-    return ret;
-  if (!has_root_directory() && base.has_root_directory())
-    return ret;
+  if (root_name() != base.root_name()) return ret;
+  if (is_absolute() != base.is_absolute()) return ret;
+  if (!has_root_directory() && base.has_root_directory()) return ret;
   auto p = std::mismatch(begin(), end(), base.begin(), base.end());
   auto a = p.first;
   auto b = p.second;
   if (a == end() && b == base.end())
     ret = ".";
-  else
-  {
+  else {
     int n = 0;
-    for (; b != base.end(); ++b)
-    {
-      const path& p = *b;
+    for (; b != base.end(); ++b) {
+      const path &p = *b;
       if (is_dotdot(p))
         --n;
       else if (!is_dot(p))
         ++n;
     }
-    if (n >= 0)
-    {
+    if (n >= 0) {
       const path dotdot("..");
-      while (n--)
-        ret /= dotdot;
-      for (; a != end(); ++a)
-        ret /= *a;
+      while (n--) ret /= dotdot;
+      for (; a != end(); ++a) ret /= *a;
     }
   }
   return ret;
 }
-
 
 }  // namespace filesystem
 }  // namespace asap

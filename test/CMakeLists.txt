@@ -35,7 +35,7 @@ set(include_path "${CMAKE_CURRENT_SOURCE_DIR}")
 set(source_path "${CMAKE_CURRENT_SOURCE_DIR}")
 
 set(public_headers
-  "testsuite_fs.h"
+  "fs_testsuite.h"
   )
 
 set(sources
@@ -56,7 +56,32 @@ set(sources
   "path_query_test.cpp"
   # operations
   "file_status_test.cpp"
+  "ops_absolute_test.cpp"
+  "ops_canonical_test.cpp"
+  "ops_copy_test.cpp"
+  "ops_copy_file_test.cpp"
+  "ops_create_dir_test.cpp"
+  "ops_create_symlink_test.cpp"
   "ops_current_path_test.cpp"
+  "ops_equivalent_test.cpp"
+  "ops_exists_test.cpp"
+  "ops_file_size_test.cpp"
+  "ops_is_empty_test.cpp"
+  "ops_last_write_time_test.cpp"
+  "ops_permissions_test.cpp"
+  "ops_proximate_test.cpp"
+  "ops_read_symlink_test.cpp"
+  "ops_relative_test.cpp"
+  "ops_remove_test.cpp"
+  "ops_space_test.cpp"
+  "ops_status_test.cpp"
+  "ops_symlink_status_test.cpp"
+  "ops_temp_dir_test.cpp"
+  "ops_weakly_canonical_test.cpp"
+  # directory iterators
+  "dir_iterator_test.cpp"
+  "dir_reverse_iterator_test.cpp"
+  "dir_pop_test.cpp"
   "main.cpp"
   ${public_headers}
 )

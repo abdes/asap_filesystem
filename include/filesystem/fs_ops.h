@@ -150,7 +150,8 @@ inline bool copy_file(const path &from, const path &to, copy_options opt,
   return copy_file_impl(from, to, opt, &ec);
 }
 
-inline void copy_symlink(const path &existing_symlink, const path &new_symlink) {
+inline void copy_symlink(const path &existing_symlink,
+                         const path &new_symlink) {
   copy_symlink_impl(existing_symlink, new_symlink);
 }
 

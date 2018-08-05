@@ -5,11 +5,7 @@
 
 #include <catch2/catch.hpp>
 
-#include <common/platform.h>
-
-#include <filesystem/fs_path.h>
-
-using asap::filesystem::path;
+#include "fs_testsuite.h"
 
 // -----------------------------------------------------------------------------
 //  Generic string format

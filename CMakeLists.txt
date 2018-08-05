@@ -41,10 +41,13 @@ set(public_headers
   "include/filesystem/fs_path.h"
   "include/filesystem/filesystem_error.h"
   "include/filesystem/fs_fwd.h"
+  "include/filesystem/fs_dir.h"
   )
 
 set(sources
   "src/fs_path.cpp"
+  "src/fs_error.h"
+  "src/fs_dir_iterator.cpp"
   "src/fs_ops.cpp"
   "src/filesystem_error.cpp"
   ${public_headers}

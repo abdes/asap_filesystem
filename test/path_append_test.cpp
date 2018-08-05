@@ -5,16 +5,14 @@
 
 #include <catch2/catch.hpp>
 
-#include <filesystem/fs_path.h>
-#include "testsuite_fs.h"
+#include "fs_testsuite.h"
 
-using asap::filesystem::path;
 using testing::ComparePaths;
 using testing::TEST_PATHS;
 
 // path::operator/=(const path&)
 
-path append(path l, const path& r) {
+fs::path append(fs::path l, const fs::path& r) {
   l /= r;
   return l;
 }
@@ -91,18 +89,18 @@ TEST_CASE("Path / append / path", "[common][filesystem][path][append]") {
 // Equivalent to: return operator/=(path(first, last));
 
 template <typename Char>
-void test(const path& p, const Char* s) {
-  path expected = p;
-  expected /= path(s);
+void test(const fs::path& p, const Char* s) {
+  fs::path expected = p;
+  expected /= fs::path(s);
 
-  path oper = p;
+  fs::path oper = p;
   oper /= s;
 
-  path func = p;
+  fs::path func = p;
   func.append(s);
 
   std::vector<char> input_range(s, s + std::char_traits<Char>::length(s));
-  path range = p;
+  fs::path range = p;
   range.append(input_range.begin(), input_range.end());
 
   ComparePaths(oper, expected);
@@ -110,7 +108,7 @@ void test(const path& p, const Char* s) {
   ComparePaths(range, expected);
 }
 
-TEST_CASE("Path / append / source", "[common][filesystem][path][append]") {
+TEST_CASE("Path / append / source", "[common][filesystem][fs::path][append]") {
   test("/foo/bar", "/foo/");
 
   test("baz", "baz");
@@ -124,7 +122,7 @@ TEST_CASE("Path / append / source", "[common][filesystem][path][append]") {
   test("dir/", "/file");
   test("dir/", "file");
 
-  // C++17 [fs.path.append] p4
+  // C++17 [fs.fs::path.append] p4
   test("//host", "foo");
   test("//host/", "foo");
   test("foo", "");
@@ -137,9 +135,9 @@ TEST_CASE("Path / append / source", "[common][filesystem][path][append]") {
 }
 
 TEST_CASE("Path / append / source / TEST_PATHS",
-          "[common][filesystem][path][append]") {
-  for (const path p : TEST_PATHS) {
-    for (const path q : TEST_PATHS) {
+          "[common][filesystem][fs::path][append]") {
+  for (const fs::path p : TEST_PATHS) {
+    for (const fs::path q : TEST_PATHS) {
       test(p, q.c_str());
     }
   }

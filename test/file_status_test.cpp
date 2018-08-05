@@ -5,11 +5,9 @@
 
 #include <catch2/catch.hpp>
 
-#include <filesystem/fs_file_status.h>
+#include "fs_testsuite.h"
 
-namespace fs = asap::filesystem;
-
-template<typename... Args>
+template <typename... Args>
 constexpr bool nothrow_constructible() {
   return std::is_nothrow_constructible<fs::file_status, Args...>::value;
 }
@@ -18,40 +16,42 @@ constexpr bool nothrow_constructible() {
 //  Constructors have noexcept
 // -----------------------------------------------------------------------------
 
-TEST_CASE("Ops / file_status / construction / nothrow", "[common][filesystem][file_status]") {
+TEST_CASE("Ops / file_status / construction / nothrow",
+          "[common][filesystem][file_status]") {
   fs::file_status st0;
-  REQUIRE( st0.type() == fs::file_type::none );
-  REQUIRE( st0.permissions() == fs::perms::unknown );
-  static_assert( nothrow_constructible<>(), "" );
+  REQUIRE(st0.type() == fs::file_type::none);
+  REQUIRE(st0.permissions() == fs::perms::unknown);
+  static_assert(nothrow_constructible<>(), "");
 
   fs::file_status st1(fs::file_type::regular);
-  REQUIRE( st1.type() == fs::file_type::regular );
-  REQUIRE( st1.permissions() == fs::perms::unknown );
-  static_assert( nothrow_constructible<fs::file_type>(), "" );
+  REQUIRE(st1.type() == fs::file_type::regular);
+  REQUIRE(st1.permissions() == fs::perms::unknown);
+  static_assert(nothrow_constructible<fs::file_type>(), "");
 
   fs::file_status st2(fs::file_type::directory, fs::perms::owner_all);
-  REQUIRE( st2.type() == fs::file_type::directory );
-  REQUIRE( st2.permissions() == fs::perms::owner_all );
-  static_assert( nothrow_constructible<fs::file_type, fs::perms>(), "" );
+  REQUIRE(st2.type() == fs::file_type::directory);
+  REQUIRE(st2.permissions() == fs::perms::owner_all);
+  static_assert(nothrow_constructible<fs::file_type, fs::perms>(), "");
 
-  static_assert( nothrow_constructible<const fs::file_status&>(), "" );
-  static_assert( nothrow_constructible<fs::file_status>(), "" );
+  static_assert(nothrow_constructible<const fs::file_status&>(), "");
+  static_assert(nothrow_constructible<fs::file_status>(), "");
 }
 
 // -----------------------------------------------------------------------------
 //  Check member initialization during construction
 // -----------------------------------------------------------------------------
 
-TEST_CASE("Ops / file_status / construction", "[common][filesystem][file_status]") {
+TEST_CASE("Ops / file_status / construction",
+          "[common][filesystem][file_status]") {
   fs::file_status st;
-  REQUIRE( st.type() == fs::file_type::none );
-  REQUIRE( st.permissions() == fs::perms::unknown );
+  REQUIRE(st.type() == fs::file_type::none);
+  REQUIRE(st.permissions() == fs::perms::unknown);
 
   st.type(fs::file_type::symlink);
-  REQUIRE( st.type() == fs::file_type::symlink );
-  REQUIRE( st.permissions() == fs::perms::unknown );
+  REQUIRE(st.type() == fs::file_type::symlink);
+  REQUIRE(st.permissions() == fs::perms::unknown);
 
   st.permissions(fs::perms::owner_all);
-  REQUIRE( st.type() == fs::file_type::symlink );
-  REQUIRE( st.permissions() == fs::perms::owner_all );
+  REQUIRE(st.type() == fs::file_type::symlink);
+  REQUIRE(st.permissions() == fs::perms::owner_all);
 }

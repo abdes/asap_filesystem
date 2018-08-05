@@ -5,12 +5,8 @@
 
 #include <catch2/catch.hpp>
 
-#include <common/platform.h>
+#include "fs_testsuite.h"
 
-#include <filesystem/fs_path.h>
-#include "testsuite_fs.h"
-
-using asap::filesystem::path;
 using testing::TEST_PATHS;
 
 // -----------------------------------------------------------------------------

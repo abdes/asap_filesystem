@@ -223,12 +223,11 @@ class ASAP_FILESYSTEM_API path {
 
   // generation
   path lexically_normal() const;
-  path lexically_relative(const path& __base) const;
+  path lexically_relative(const path &__base) const;
 
-  path lexically_proximate(const path& __base) const {
+  path lexically_proximate(const path &__base) const {
     path __result = this->lexically_relative(__base);
-    if (__result.native().empty())
-      return *this;
+    if (__result.native().empty()) return *this;
     return __result;
   }
 

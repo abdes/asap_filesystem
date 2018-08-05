@@ -3,11 +3,9 @@
 //    (See accompanying file LICENSE or copy at
 //   https://opensource.org/licenses/BSD-3-Clause)
 
-#include <iostream>
+#include <catch2/catch.hpp>
 
-#include <filesystem/fs_path.h>
-
-using asap::filesystem::path;
+#include "fs_testsuite.h"
 
 // -----------------------------------------------------------------------------
 //  iostream input and output

@@ -3,8 +3,10 @@
 //    (See accompanying file LICENSE or copy at
 //   https://opensource.org/licenses/BSD-3-Clause)
 
+#include <fcntl.h>  // for ‘O_RDONLY’, ‘O_NONBLOCK’
+#include <time.h>   // for struct timespec
+#include <array>
 #include <cstdio>  // for BUFSIZ
-#include <fcntl.h> // for ‘O_RDONLY’, ‘O_NONBLOCK’
 
 #include <limits.h>
 #include <stdlib.h>
@@ -15,9 +17,11 @@
 #include <sys/types.h>
 
 #include <common/assert.h>
-#include <fmt/format.h>
+#include <common/platform.h>
 
 #include <filesystem/filesystem.h>
+
+#include "fs_error.h"
 
 namespace asap {
 namespace filesystem {
@@ -35,129 +39,21 @@ inline bool is_set(Bitmask obj, Bitmask bits) {
 }
 
 // -----------------------------------------------------------------------------
-//                        detail: error handling
+//                            detail: struct ::stat
 // -----------------------------------------------------------------------------
 
-std::error_code capture_errno() {
-  ASAP_ASSERT(errno != 0);
-  return {errno, std::generic_category()};
-}
+// Use typedef instead of using to avoid gcc warning on struct ::stat not
+// declaring anything. (alternative is: "using StatT = struct ::stat;" )
+typedef struct ::stat StatT;
+typedef struct ::timespec TimeSpec;
 
-template <class T>
-T error_value();
-
-template <>
-constexpr void error_value<void>() {}
-
-template <>
-bool error_value<bool>() {
-  return false;
-}
-
-template <>
-uintmax_t error_value<uintmax_t>() {
-  return uintmax_t(-1);
-}
-
-template <>
-constexpr file_time_type error_value<file_time_type>() {
-  return file_time_type::min();
-}
-
-template <>
-path error_value<path>() {
-  return {};
-}
-
-template <class T>
-struct ErrorHandler {
-  const char* func_name;
-  std::error_code* ec = nullptr;
-  const path* p1 = nullptr;
-  const path* p2 = nullptr;
-
-  ErrorHandler(const char* fname, std::error_code* ec, const path* p1 = nullptr,
-               const path* p2 = nullptr)
-      : func_name(fname), ec(ec), p1(p1), p2(p2) {
-    if (ec) ec->clear();
-  }
-  ErrorHandler(ErrorHandler const&) = delete;
-  ErrorHandler& operator=(ErrorHandler const&) = delete;
-
-  T report(const std::error_code& m_ec) const {
-    if (ec) {
-      *ec = m_ec;
-      return error_value<T>();
-    }
-    std::string what = std::string("in ") + func_name;
-    switch (bool(p1) + bool(p2)) {
-      case 0:
-        throw filesystem_error(what, m_ec);
-      case 1:
-        throw filesystem_error(what, *p1, m_ec);
-      case 2:
-        throw filesystem_error(what, *p1, *p2, m_ec);
-    }
-    // Unreachable
-    ASAP_ASSERT_FAIL();
-#if ASAP_COMPILER_IS_Clang || ASAP_COMPILER_IS_AppleClang
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wreturn-type"
+#if defined(ASAP_APPLE)
+TimeSpec extract_mtime(StatT const& st) { return st.st_mtimespec; }
+TimeSpec extract_atime(StatT const& st) { return st.st_atimespec; }
+#else
+TimeSpec extract_mtime(StatT const& st) { return st.st_mtim; }
+TimeSpec extract_atime(StatT const& st) { return st.st_atim; }
 #endif
-#if ASAP_COMPILER_IS_GNU
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wreturn-type"
-#endif
-  }
-#if ASAP_COMPILER_IS_Clang || ASAP_COMPILER_IS_AppleClang
-#pragma clang diagnostic pop
-#endif
-#if ASAP_COMPILER_IS_GNU
-#pragma GCC diagnostic pop
-#endif
-
-  template <class... Args>
-  T report(const std::error_code& m_ec, const char* msg,
-           Args const&... args) const {
-    if (ec) {
-      *ec = m_ec;
-      return error_value<T>();
-    }
-    std::string what =
-        std::string("in ") + func_name + ": " + fmt::format(msg, args...);
-    switch (bool(p1) + bool(p2)) {
-      case 0:
-        throw filesystem_error(what, m_ec);
-      case 1:
-        throw filesystem_error(what, *p1, m_ec);
-      case 2:
-        throw filesystem_error(what, *p1, *p2, m_ec);
-    }
-    // Unreachable
-    ASAP_ASSERT_FAIL();
-#if ASAP_COMPILER_IS_Clang || ASAP_COMPILER_IS_AppleClang
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wreturn-type"
-#endif
-#if ASAP_COMPILER_IS_GNU
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wreturn-type"
-#endif
-  }
-#if ASAP_COMPILER_IS_Clang || ASAP_COMPILER_IS_AppleClang
-#pragma clang diagnostic pop
-#endif
-#if ASAP_COMPILER_IS_GNU
-#pragma GCC diagnostic pop
-#endif
-
-  T report(std::errc const& err) const { return report(make_error_code(err)); }
-
-  template <class... Args>
-  T report(std::errc const& err, const char* msg, Args const&... args) const {
-    return report(std::make_error_code(err), msg, args...);
-  }
-};
 
 // -----------------------------------------------------------------------------
 //                            detail: FileDescriptor
@@ -193,8 +89,6 @@ struct FileDescriptor {
   file_status get_status() const { return status_; }
   StatT const& get_stat() const { return stat_; }
 
-  bool status_known() const { return asap::filesystem::status_known(status_); }
-
   file_status refresh_status(std::error_code& ec);
 
   void close() noexcept {
@@ -202,7 +96,7 @@ struct FileDescriptor {
     fd_ = -1;
   }
 
-  FileDescriptor(FileDescriptor&& other)
+  FileDescriptor(FileDescriptor&& other) noexcept
       : name_(other.name_),
         fd_(other.fd_),
         stat_(other.stat_),
@@ -213,7 +107,7 @@ struct FileDescriptor {
 
   ~FileDescriptor() { close(); }
 
-  FileDescriptor() = default;
+  FileDescriptor() = delete;
   FileDescriptor(FileDescriptor const&) = delete;
   FileDescriptor& operator=(FileDescriptor const&) = delete;
 
@@ -221,13 +115,22 @@ struct FileDescriptor {
   explicit FileDescriptor(const path* p, int fd = -1) : name_(*p), fd_(fd) {}
 };
 
+file_status create_file_status(std::error_code& m_ec, path const& p,
+                               const StatT& path_stat, std::error_code* ec);
+
+file_status FileDescriptor::refresh_status(std::error_code& ec) {
+  // FD must be open and good.
+  status_ = file_status{};
+  stat_ = {};
+  std::error_code m_ec;
+  if (::fstat(fd_, &stat_) == -1) m_ec = capture_errno();
+  status_ = detail::create_file_status(m_ec, name_, stat_, &ec);
+  return status_;
+}
+
 // -----------------------------------------------------------------------------
 //                            detail: posix stat
 // -----------------------------------------------------------------------------
-
-// Use typedef instead of using to avoid gcc warning on struct ::stat not
-// declaring anything. (alternative is: "using StatT = struct ::stat;" )
-typedef struct ::stat StatT;
 
 perms posix_get_perms(const StatT& st) noexcept {
   return static_cast<perms>(st.st_mode) & perms::mask;
@@ -294,8 +197,9 @@ file_status posix_lstat(path const& p, std::error_code* ec) {
   return posix_lstat(p, path_stat, ec);
 }
 
-bool posix_ftruncate(const FileDescriptor& fd, size_t to_size, std::error_code& ec) {
-  if (::ftruncate(fd.fd, to_size) == -1) {
+bool posix_ftruncate(const FileDescriptor& fd, size_t to_size,
+                     std::error_code& ec) {
+  if (::ftruncate(fd.fd_, to_size) == -1) {
     ec = capture_errno();
     return true;
   }
@@ -303,8 +207,9 @@ bool posix_ftruncate(const FileDescriptor& fd, size_t to_size, std::error_code& 
   return false;
 }
 
-bool posix_fchmod(const FileDescriptor& fd, const StatT& st, std::error_code& ec) {
-  if (::fchmod(fd.fd, st.st_mode) == -1) {
+bool posix_fchmod(const FileDescriptor& fd, const StatT& st,
+                  std::error_code& ec) {
+  if (::fchmod(fd.fd_, st.st_mode) == -1) {
     ec = capture_errno();
     return true;
   }
@@ -515,10 +420,10 @@ bool do_copy_file_default(FileDescriptor& read_fd, FileDescriptor& write_fd,
   // higher values reduce number of system calls
   // constexpr size_t BUFFER_SIZE = 4096;
   char buf[BUFSIZ];
-  size_t size;
+  ssize_t size;
 
   while ((size = ::read(read_fd.fd_, buf, BUFSIZ)) > 0) {
-    if (::write(write_fd.fd_, buf, size) < 0) {
+    if (::write(write_fd.fd_, buf, static_cast<size_t>(size)) < 0) {
       ec = capture_errno();
       return false;
     }
@@ -737,6 +642,244 @@ void current_path_impl(const path& p, std::error_code* ec) {
 }
 
 // -----------------------------------------------------------------------------
+//                               equivalent
+// -----------------------------------------------------------------------------
+
+bool equivalent_impl(const path& p1, const path& p2, std::error_code* ec) {
+  ErrorHandler<bool> err("equivalent", ec, &p1, &p2);
+
+  std::error_code ec1, ec2;
+  StatT st1 = {}, st2 = {};
+  auto s1 = detail::posix_stat(p1.native(), st1, &ec1);
+  if (!exists(s1)) return err.report(std::errc::not_supported);
+  auto s2 = detail::posix_stat(p2.native(), st2, &ec2);
+  if (!exists(s2)) return err.report(std::errc::not_supported);
+
+  return detail::stat_equivalent(st1, st2);
+}
+
+// -----------------------------------------------------------------------------
+//                               file_size
+// -----------------------------------------------------------------------------
+
+uintmax_t file_size_impl(const path& p, std::error_code* ec) {
+  ErrorHandler<uintmax_t> err("file_size", ec, &p);
+
+  std::error_code m_ec;
+  StatT st;
+  file_status fst = detail::posix_stat(p, st, &m_ec);
+  if (!exists(fst) || !is_regular_file(fst)) {
+    std::errc error_kind = is_directory(fst) ? std::errc::is_a_directory
+                                             : std::errc::not_supported;
+    if (!m_ec) m_ec = make_error_code(error_kind);
+    return err.report(m_ec);
+  }
+  // is_regular_file(p) == true
+  return static_cast<uintmax_t>(st.st_size);
+}
+
+// -----------------------------------------------------------------------------
+//                              hard_link_count
+// -----------------------------------------------------------------------------
+
+uintmax_t hard_link_count_impl(const path& p, std::error_code* ec) {
+  ErrorHandler<uintmax_t> err("hard_link_count", ec, &p);
+
+  std::error_code m_ec;
+  StatT st;
+  detail::posix_stat(p, st, &m_ec);
+  if (m_ec) return err.report(m_ec);
+  return static_cast<uintmax_t>(st.st_nlink);
+}
+
+// -----------------------------------------------------------------------------
+//                               fs_is_empty
+// -----------------------------------------------------------------------------
+
+bool fs_is_empty_impl(const path& p, std::error_code* ec) {
+  ErrorHandler<bool> err("is_empty", ec, &p);
+
+  std::error_code m_ec;
+  StatT pst;
+  auto st = detail::posix_stat(p, pst, &m_ec);
+  if (m_ec)
+    return err.report(m_ec);
+  else if (!is_directory(st) && !is_regular_file(st))
+    return err.report(std::errc::not_supported);
+  else if (is_directory(st)) {
+    auto it = ec ? directory_iterator(p, *ec) : directory_iterator(p);
+    if (ec && *ec) return false;
+    return it == directory_iterator{};
+  } else if (is_regular_file(st))
+    return static_cast<uintmax_t>(pst.st_size) == 0;
+
+  // Unreachable
+  ASAP_UNREACHABLE();
+}
+
+// -----------------------------------------------------------------------------
+//                               last_write_time
+// -----------------------------------------------------------------------------
+
+namespace detail {
+namespace {
+bool ft_is_representable(TimeSpec tm) {
+  using namespace std::chrono;
+  if (tm.tv_sec >= 0) {
+    return tm.tv_sec < seconds::max().count() ||
+           (tm.tv_sec == seconds::max().count() &&
+            tm.tv_nsec <= nanoseconds::max().count());
+  } else if (tm.tv_sec == (seconds::min().count() - 1)) {
+    return tm.tv_nsec >= nanoseconds::min().count();
+  } else {
+    return tm.tv_sec >= seconds::min().count();
+  }
+}
+
+file_time_type ft_convert_from_timespec(TimeSpec tm) {
+  using namespace std::chrono;
+  using rep = typename file_time_type::rep;
+  using fs_duration = typename file_time_type::duration;
+  using fs_seconds = duration<rep>;
+  using fs_nanoseconds = duration<rep, std::nano>;
+
+  if (tm.tv_sec >= 0 || tm.tv_nsec == 0) {
+    return file_time_type(
+        fs_seconds(tm.tv_sec) +
+        duration_cast<fs_duration>(fs_nanoseconds(tm.tv_nsec)));
+  } else {  // tm.tv_sec < 0
+    auto adj_subsec =
+        duration_cast<fs_duration>(fs_seconds(1) - fs_nanoseconds(tm.tv_nsec));
+    auto Dur = fs_seconds(tm.tv_sec + 1) - adj_subsec;
+    return file_time_type(Dur);
+  }
+}
+
+}  // namespace
+}  // namespace detail
+
+static file_time_type extract_last_write_time(const path& p, const StatT& st,
+                                              std::error_code* ec) {
+  ErrorHandler<file_time_type> err("last_write_time", ec, &p);
+
+  auto ts = detail::extract_mtime(st);
+
+  if (!detail::ft_is_representable(ts))
+    return err.report(std::errc::value_too_large);
+
+  return detail::ft_convert_from_timespec(ts);
+}
+
+file_time_type last_write_time_impl(const path& p, std::error_code* ec) {
+  ErrorHandler<file_time_type> err("last_write_time", ec, &p);
+
+  std::error_code m_ec;
+  StatT st;
+  detail::posix_stat(p, st, &m_ec);
+  if (m_ec) return err.report(m_ec);
+  return extract_last_write_time(p, st, ec);
+}
+
+void last_write_time_impl(const path& p, file_time_type new_time,
+                          std::error_code* ec) {
+  ErrorHandler<void> err("last_write_time", ec, &p);
+
+  using namespace std::chrono;
+
+  auto d = new_time.time_since_epoch();
+  auto s = duration_cast<seconds>(d);
+  // TODO: Change this
+#if 1  //_GLIBCXX_USE_UTIMENSAT
+  auto ns = duration_cast<nanoseconds>(d - s);
+  if (ns < ns.zero())  // tv_nsec must be non-negative and less than 10e9.
+  {
+    --s;
+    ns += seconds(1);
+  }
+  detail::TimeSpec ts[2];
+  ts[0].tv_sec = 0;
+  ts[0].tv_nsec = UTIME_OMIT;
+  ts[1].tv_sec = static_cast<std::time_t>(s.count());
+  ts[1].tv_nsec = static_cast<long>(ns.count());
+  if (::utimensat(AT_FDCWD, p.c_str(), ts, 0)) err.report(capture_errno());
+#elif ASAP_HAVE_UTIME_H
+  posix::utimbuf times;
+  times.modtime = s.count();
+  times.actime = do_stat(
+      p, ec, [](const auto& st) { return extract_atime(st); }, times.modtime);
+  if (posix::utime(p.c_str(), &times)) err.report(capture_errno());
+#else
+  err.report(std::errc::not_supported);
+#endif
+}
+
+// -----------------------------------------------------------------------------
+//                               permissions
+// -----------------------------------------------------------------------------
+
+void permissions_impl(const path& p, perms prms, perm_options opts,
+                      std::error_code* ec) {
+  ErrorHandler<void> err("permissions", ec, &p);
+
+  auto has_opt = [&](perm_options o) { return bool(o & opts); };
+  const bool resolve_symlinks = !has_opt(perm_options::nofollow);
+  const bool add_perms = has_opt(perm_options::add);
+  const bool remove_perms = has_opt(perm_options::remove);
+  ASAP_ASSERT(
+      ((add_perms + remove_perms + has_opt(perm_options::replace)) == 1) &&
+      "One and only one of the perm_options constants replace, add, or remove "
+      "is present in opts");
+
+  bool set_sym_perms = false;
+  prms &= perms::mask;
+  if (!resolve_symlinks || (add_perms || remove_perms)) {
+    std::error_code m_ec;
+    file_status st = resolve_symlinks ? detail::posix_stat(p, &m_ec)
+                                      : detail::posix_lstat(p, &m_ec);
+    set_sym_perms = is_symlink(st);
+    if (m_ec) return err.report(m_ec);
+    ASAP_ASSERT((st.permissions() != perms::unknown) &&
+                "Permissions unexpectedly unknown");
+    if (add_perms)
+      prms |= st.permissions();
+    else if (remove_perms)
+      prms = st.permissions() & ~prms;
+  }
+  const auto real_perms = detail::posix_convert_perms(prms);
+
+#if defined(AT_SYMLINK_NOFOLLOW) && defined(AT_FDCWD)
+  const int flags = set_sym_perms ? AT_SYMLINK_NOFOLLOW : 0;
+  if (::fchmodat(AT_FDCWD, p.c_str(), real_perms, flags) == -1) {
+    return err.report(capture_errno());
+  }
+#else
+  if (set_sym_perms) return err.report(errc::operation_not_supported);
+  if (::chmod(p.c_str(), real_perms) == -1) {
+    return err.report(capture_errno());
+  }
+#endif
+}
+
+// -----------------------------------------------------------------------------
+//                               read_symlink
+// -----------------------------------------------------------------------------
+
+path read_symlink_impl(const path& p, std::error_code* ec) {
+  ErrorHandler<path> err("read_symlink", ec, &p);
+
+  char buff[PATH_MAX + 1];
+  std::error_code m_ec;
+  ::ssize_t ret;
+  if ((ret = ::readlink(p.c_str(), buff, PATH_MAX)) == -1) {
+    return err.report(capture_errno());
+  }
+  ASAP_ASSERT(ret <= PATH_MAX);
+  ASAP_ASSERT(ret > 0);
+  buff[ret] = 0;
+  return {buff};
+}
+
+// -----------------------------------------------------------------------------
 //                               remove
 // -----------------------------------------------------------------------------
 
@@ -753,32 +896,27 @@ bool remove_impl(const path& p, std::error_code* ec) {
 //                               remove_all
 // -----------------------------------------------------------------------------
 
-/*
 namespace {
 
 uintmax_t do_remove_all_impl(path const& p, std::error_code& ec) {
   const auto npos = static_cast<uintmax_t>(-1);
   const file_status st = symlink_status_impl(p, &ec);
-  if (ec)
-    return npos;
+  if (ec) return npos;
   uintmax_t count = 1;
   if (is_directory(st)) {
     for (directory_iterator it(p, ec); !ec && it != directory_iterator();
          it.increment(ec)) {
-      auto other_count = remove_all_impl(it->path(), ec);
-      if (ec)
-        return npos;
+      auto other_count = do_remove_all_impl(it->path(), ec);
+      if (ec) return npos;
       count += other_count;
     }
-    if (ec)
-      return npos;
+    if (ec) return npos;
   }
-  if (!remove_impl(p, &ec))
-    return npos;
+  if (!remove_impl(p, &ec)) return npos;
   return count;
 }
 
-} // end namespace
+}  // end namespace
 
 uintmax_t remove_all_impl(const path& p, std::error_code* ec) {
   ErrorHandler<uintmax_t> err("remove_all", ec, &p);
@@ -786,13 +924,11 @@ uintmax_t remove_all_impl(const path& p, std::error_code* ec) {
   std::error_code mec;
   auto count = do_remove_all_impl(p, mec);
   if (mec) {
-    if (mec == std::errc::no_such_file_or_directory)
-      return 0;
+    if (mec == std::errc::no_such_file_or_directory) return 0;
     return err.report(mec);
   }
   return count;
 }
- */
 
 // -----------------------------------------------------------------------------
 //                               rename
