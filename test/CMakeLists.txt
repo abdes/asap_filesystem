@@ -55,7 +55,8 @@ set(sources
   "path_nonmembers_test.cpp"
   "path_query_test.cpp"
   # operations
-  "ops_current_path.cpp"
+  "file_status_test.cpp"
+  "ops_current_path_test.cpp"
   "main.cpp"
   ${public_headers}
 )
