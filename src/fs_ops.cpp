@@ -1,15 +1,15 @@
-//        Copyright The Authors 8.
+//        Copyright The Authors 2018.
 //    Distributed under the 3-Clause BSD License.
 //    (See accompanying file LICENSE or copy at
 //   https://opensource.org/licenses/BSD-3-Clause)
 
 #include <limits.h>
-#include <unistd.h>
 #include <stdlib.h>
+#include <unistd.h>
 
-#include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/statvfs.h>
+#include <sys/types.h>
 
 #include <common/assert.h>
 #include <fmt/format.h>
@@ -18,8 +18,6 @@
 
 namespace asap {
 namespace filesystem {
-
-
 
 namespace {
 
@@ -32,53 +30,60 @@ std::error_code capture_errno() {
   return {errno, std::generic_category()};
 }
 
-template<class T>
+template <class T>
 T error_value();
-template<>
+
+template <>
 constexpr void error_value<void>() {}
-template<>
+
+template <>
 bool error_value<bool>() {
   return false;
 }
-template<>
+
+template <>
 uintmax_t error_value<uintmax_t>() {
   return uintmax_t(-1);
 }
-template<>
+
+template <>
 constexpr file_time_type error_value<file_time_type>() {
   return file_time_type::min();
 }
-template<>
+
+template <>
 path error_value<path>() {
   return {};
 }
 
-template<class T>
+template <class T>
 struct ErrorHandler {
-  const char *func_name;
-  std::error_code *ec = nullptr;
-  const path *p1 = nullptr;
-  const path *p2 = nullptr;
+  const char* func_name;
+  std::error_code* ec = nullptr;
+  const path* p1 = nullptr;
+  const path* p2 = nullptr;
 
-  ErrorHandler(const char *fname, std::error_code *ec, const path *p1 = nullptr,
-               const path *p2 = nullptr)
+  ErrorHandler(const char* fname, std::error_code* ec, const path* p1 = nullptr,
+               const path* p2 = nullptr)
       : func_name(fname), ec(ec), p1(p1), p2(p2) {
-    if (ec)
-      ec->clear();
+    if (ec) ec->clear();
   }
-  ErrorHandler(ErrorHandler const &) = delete;
-  ErrorHandler &operator=(ErrorHandler const &) = delete;
+  ErrorHandler(ErrorHandler const&) = delete;
+  ErrorHandler& operator=(ErrorHandler const&) = delete;
 
-  T report(const std::error_code &m_ec) const {
+  T report(const std::error_code& m_ec) const {
     if (ec) {
       *ec = m_ec;
       return error_value<T>();
     }
     std::string what = std::string("in ") + func_name;
-    switch (bool(p1) +bool(p2)) {
-      case 0:throw filesystem_error(what, m_ec);
-      case 1:throw filesystem_error(what, *p1, m_ec);
-      case 2:throw filesystem_error(what, *p1, *p2, m_ec);
+    switch (bool(p1) + bool(p2)) {
+      case 0:
+        throw filesystem_error(what, m_ec);
+      case 1:
+        throw filesystem_error(what, *p1, m_ec);
+      case 2:
+        throw filesystem_error(what, *p1, *p2, m_ec);
     }
     // Unreachable
     ASAP_ASSERT_FAIL();
@@ -86,25 +91,34 @@ struct ErrorHandler {
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wreturn-type"
 #endif
+#if ASAP_COMPILER_IS_GNU
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wreturn-type"
+#endif
   }
 #if ASAP_COMPILER_IS_Clang || ASAP_COMPILER_IS_AppleClang
 #pragma clang diagnostic pop
 #endif
+#if ASAP_COMPILER_IS_GNU
+#pragma GCC diagnostic pop
+#endif
 
-  template<class... Args>
-  T report(const std::error_code &m_ec,
-           const char *msg,
-           Args const &... args) const {
+  template <class... Args>
+  T report(const std::error_code& m_ec, const char* msg,
+           Args const&... args) const {
     if (ec) {
       *ec = m_ec;
       return error_value<T>();
     }
     std::string what =
         std::string("in ") + func_name + ": " + fmt::format(msg, args...);
-    switch (bool(p1) +bool(p2)) {
-      case 0:throw filesystem_error(what, m_ec);
-      case 1:throw filesystem_error(what, *p1, m_ec);
-      case 2:throw filesystem_error(what, *p1, *p2, m_ec);
+    switch (bool(p1) + bool(p2)) {
+      case 0:
+        throw filesystem_error(what, m_ec);
+      case 1:
+        throw filesystem_error(what, *p1, m_ec);
+      case 2:
+        throw filesystem_error(what, *p1, *p2, m_ec);
     }
     // Unreachable
     ASAP_ASSERT_FAIL();
@@ -112,25 +126,33 @@ struct ErrorHandler {
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wreturn-type"
 #endif
+#if ASAP_COMPILER_IS_GNU
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wreturn-type"
+#endif
   }
 #if ASAP_COMPILER_IS_Clang || ASAP_COMPILER_IS_AppleClang
 #pragma clang diagnostic pop
 #endif
+#if ASAP_COMPILER_IS_GNU
+#pragma GCC diagnostic pop
+#endif
 
-  T report(std::errc const &err) const { return report(make_error_code(err)); }
+  T report(std::errc const& err) const { return report(make_error_code(err)); }
 
-  template<class... Args>
-  T report(std::errc const &err, const char *msg, Args const &... args) const {
+  template <class... Args>
+  T report(std::errc const& err, const char* msg, Args const&... args) const {
     return report(std::make_error_code(err), msg, args...);
   }
 };
-
 
 // -----------------------------------------------------------------------------
 //                              posix stat
 // -----------------------------------------------------------------------------
 
-using StatT = struct ::stat;
+// Use typedef instead of using to avoid gcc warning on struct ::stat not
+// declaring anything. (alternative is: "using StatT = struct ::stat;" )
+typedef struct ::stat StatT;
 
 perms posix_get_perms(const StatT& st) noexcept {
   return static_cast<perms>(st.st_mode) & perms::mask;
@@ -140,11 +162,9 @@ perms posix_get_perms(const StatT& st) noexcept {
   return static_cast< ::mode_t>(prms & perms::mask);
 }
 
-
 file_status create_file_status(std::error_code& m_ec, path const& p,
                                const StatT& path_stat, std::error_code* ec) {
-  if (ec)
-    *ec = m_ec;
+  if (ec) *ec = m_ec;
   if (m_ec && (m_ec.value() == ENOENT || m_ec.value() == ENOTDIR)) {
     return file_status(file_type::not_found);
   } else if (m_ec) {
@@ -177,11 +197,9 @@ file_status create_file_status(std::error_code& m_ec, path const& p,
   return fs_tmp;
 }
 
-
 file_status posix_stat(path const& p, StatT& path_stat, std::error_code* ec) {
   std::error_code m_ec;
-  if (::stat(p.c_str(), &path_stat) == -1)
-    m_ec = capture_errno();
+  if (::stat(p.c_str(), &path_stat) == -1) m_ec = capture_errno();
   return create_file_status(m_ec, p, path_stat, ec);
 }
 
@@ -192,8 +210,7 @@ file_status posix_stat(path const& p, std::error_code* ec) {
 
 file_status posix_lstat(path const& p, StatT& path_stat, std::error_code* ec) {
   std::error_code m_ec;
-  if (::lstat(p.c_str(), &path_stat) == -1)
-    m_ec = capture_errno();
+  if (::lstat(p.c_str(), &path_stat) == -1) m_ec = capture_errno();
   return create_file_status(m_ec, p, path_stat, ec);
 }
 
@@ -202,29 +219,24 @@ file_status posix_lstat(path const& p, std::error_code* ec) {
   return posix_lstat(p, path_stat, ec);
 }
 
-}
-
+}  // namespace
 
 // -----------------------------------------------------------------------------
 //                               absolute
 // -----------------------------------------------------------------------------
 
-static path do_absolute_impl(const path &p, path *cwd, std::error_code *ec) {
-  if (ec)
-    ec->clear();
-  if (p.is_absolute())
-    return p;
+static path do_absolute_impl(const path& p, path* cwd, std::error_code* ec) {
+  if (ec) ec->clear();
+  if (p.is_absolute()) return p;
   *cwd = current_path_impl(ec);
-  if (ec && *ec)
-    return {};
+  if (ec && *ec) return {};
   return (*cwd) / p;
 }
 
-path absolute_impl(const path &p, std::error_code *ec) {
+path absolute_impl(const path& p, std::error_code* ec) {
   path cwd;
   return do_absolute_impl(p, &cwd, ec);
 }
-
 
 // -----------------------------------------------------------------------------
 //                               canonical
@@ -249,13 +261,11 @@ path canonical_impl(path const& orig_p, std::error_code* ec) {
 #endif
 }
 
-
-
 // -----------------------------------------------------------------------------
 //                              current path
 // -----------------------------------------------------------------------------
 
-path current_path_impl(std::error_code *ec) {
+path current_path_impl(std::error_code* ec) {
   ErrorHandler<path> err("current_path", ec);
 
   auto size = ::pathconf(".", _PC_PATH_MAX);
@@ -268,23 +278,19 @@ path current_path_impl(std::error_code *ec) {
   return {buff.get()};
 }
 
-void current_path_impl(const path &p, std::error_code *ec) {
+void current_path_impl(const path& p, std::error_code* ec) {
   ErrorHandler<void> err("current_path", ec, &p);
-  if (::chdir(p.c_str()) == -1)
-    err.report(capture_errno());
+  if (::chdir(p.c_str()) == -1) err.report(capture_errno());
 }
-
 
 // -----------------------------------------------------------------------------
 //                               remove
 // -----------------------------------------------------------------------------
 
-
 bool remove_impl(const path& p, std::error_code* ec) {
   ErrorHandler<bool> err("remove", ec, &p);
   if (::remove(p.c_str()) == -1) {
-    if (errno != ENOENT)
-      err.report(capture_errno());
+    if (errno != ENOENT) err.report(capture_errno());
     return false;
   }
   return true;
@@ -341,8 +347,7 @@ uintmax_t remove_all_impl(const path& p, std::error_code* ec) {
 
 void rename_impl(const path& from, const path& to, std::error_code* ec) {
   ErrorHandler<void> err("rename", ec, &from, &to);
-  if (::rename(from.c_str(), to.c_str()) == -1)
-    err.report(capture_errno());
+  if (::rename(from.c_str(), to.c_str()) == -1) err.report(capture_errno());
 }
 
 // -----------------------------------------------------------------------------
@@ -359,7 +364,7 @@ void resize_file_impl(const path& p, uintmax_t size, std::error_code* ec) {
 //                               space
 // -----------------------------------------------------------------------------
 
-space_info __space(const path& p, std::error_code* ec) {
+space_info space_impl(const path& p, std::error_code* ec) {
   ErrorHandler<void> err("space", ec, &p);
   space_info si;
   struct statvfs m_svfs = {};
@@ -380,11 +385,9 @@ space_info __space(const path& p, std::error_code* ec) {
   return si;
 }
 
-
 // -----------------------------------------------------------------------------
 //                               status
 // -----------------------------------------------------------------------------
-
 
 file_status status_impl(const path& p, std::error_code* ec) {
   return posix_stat(p, ec);
@@ -394,28 +397,26 @@ file_status symlink_status_impl(const path& p, std::error_code* ec) {
   return posix_lstat(p, ec);
 }
 
-
-
 // -----------------------------------------------------------------------------
 //                               temp_directory_path
 // -----------------------------------------------------------------------------
 
-path temp_directory_path_impl(std::error_code *ec) {
+path temp_directory_path_impl(std::error_code* ec) {
   ErrorHandler<path> err("temp_directory_path", ec);
 
   path p;
 #ifdef ASAP_WINDOWS
+  // TODO: Windows implementation of temp_directory_path_impl
   // GetTempPathW
   // GetLastError
+  return err.report(std::errc::not_supported);
 #else
-  const char *env_paths[] = {"TMPDIR", "TMP", "TEMP", "TEMPDIR"};
-  const char *ret = nullptr;
+  const char* env_paths[] = {"TMPDIR", "TMP", "TEMP", "TEMPDIR"};
+  const char* ret = nullptr;
 
-  for (auto &ep : env_paths)
-    if ((ret = ::getenv(ep)))
-      break;
-  if (ret == nullptr)
-    ret = "/tmp";
+  for (auto& ep : env_paths)
+    if ((ret = ::getenv(ep))) break;
+  if (ret == nullptr) ret = "/tmp";
   p = path(ret);
 #endif
 
@@ -425,12 +426,11 @@ path temp_directory_path_impl(std::error_code *ec) {
     return err.report(status_ec, "cannot access path \"{}\"", p.string());
 
   if (!exists(st) || !is_directory(st))
-    return err.report(std::errc::not_a_directory, "path \"{}\" is not a directory",
-                      p.string());
+    return err.report(std::errc::not_a_directory,
+                      "path \"{}\" is not a directory", p.string());
 
   return p;
 }
-
 
 // -----------------------------------------------------------------------------
 //                               weakly_canonical
@@ -439,8 +439,7 @@ path temp_directory_path_impl(std::error_code *ec) {
 path weakly_canonical_impl(const path& p, std::error_code* ec) {
   ErrorHandler<path> err("weakly_canonical", ec, &p);
 
-  if (p.empty())
-    return canonical_impl("", ec);
+  if (p.empty()) return canonical_impl("", ec);
 
   path result;
   std::error_code m_ec;
@@ -454,11 +453,11 @@ path weakly_canonical_impl(const path& p, std::error_code* ec) {
   path tmp;
   auto iter = p.begin(), end = p.end();
   // find leading elements of p that exist:
-  while (iter != end)
-  {
+  while (iter != end) {
     tmp = result / *iter;
     st = status_impl(tmp, &m_ec);
-    if (exists(st)) swap(result, tmp);
+    if (exists(st))
+      swap(result, tmp);
     else {
       if (status_known(st)) m_ec.clear();
       break;
@@ -466,19 +465,17 @@ path weakly_canonical_impl(const path& p, std::error_code* ec) {
     ++iter;
   }
   // canonicalize:
-  if (!m_ec && !result.empty())
-    result = canonical_impl(result, &m_ec);
-  if (m_ec) result.clear();
+  if (!m_ec && !result.empty()) result = canonical_impl(result, &m_ec);
+  if (m_ec)
+    result.clear();
   else {
     // append the non-existing elements:
-    while (iter != end)
-      result /= *iter++;
+    while (iter != end) result /= *iter++;
     // normalize:
     result = result.lexically_normal();
   }
   return result;
 }
 
-
-}
-}
+}  // namespace filesystem
+}  // namespace asap

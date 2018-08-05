@@ -1,4 +1,4 @@
-//        Copyright The Authors 8.
+//        Copyright The Authors 2018.
 //    Distributed under the 3-Clause BSD License.
 //    (See accompanying file LICENSE or copy at
 //   https://opensource.org/licenses/BSD-3-Clause)
@@ -6,6 +6,7 @@
 #pragma once
 
 #include <filesystem/asap_filesystem_api.h>
+#include <filesystem/fs_fwd.h>
 
 namespace asap {
 namespace filesystem {
@@ -16,40 +17,53 @@ namespace filesystem {
 
 class ASAP_FILESYSTEM_API file_status {
  public:
-  // constructors
+  /// @name Constructors and destructor
+  //@{
+
   file_status() noexcept : file_status(file_type::none) {}
 
-  explicit file_status(file_type __ft, perms __prms = perms::unknown) noexcept
-      : __ft_(__ft),
-        __prms_(__prms) {}
+  explicit file_status(file_type ftype,
+                       perms permissions = perms::unknown) noexcept
+      : ftype_(ftype), permissions_(permissions) {}
 
   file_status(const file_status &) noexcept = default;
   file_status(file_status &&) noexcept = default;
 
   ~file_status() {}
 
+  //@}
+
+  /// @name assignments
+  //@{
+
   file_status &operator=(const file_status &) noexcept = default;
+
   file_status &operator=(file_status &&) noexcept = default;
 
-  // observers
+  //@}
 
-  file_type
-  type() const noexcept { return __ft_; }
+  /// @name observers
+  //@{
 
-  perms
-  permissions() const noexcept { return __prms_; }
+  file_type type() const noexcept { return ftype_; }
 
-  // modifiers
+  perms permissions() const noexcept { return permissions_; }
 
-  void type(file_type __ft) noexcept { __ft_ = __ft; }
+  //@}
 
-  void permissions(perms __p) noexcept { __prms_ = __p; }
+  /// @name modifiers
+  //@{
+
+  void type(file_type ftype) noexcept { ftype_ = ftype; }
+  
+  void permissions(perms permissions) noexcept { permissions_ = permissions; }
+
+  //@}
 
  private:
-  file_type __ft_;
-  perms __prms_;
+  file_type ftype_;
+  perms permissions_;
 };
 
-}
-}
-
+}  // namespace filesystem
+}  // namespace asap

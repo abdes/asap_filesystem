@@ -7,9 +7,9 @@
 
 #include <filesystem/asap_filesystem_api.h>
 
+#include <filesystem/fs_file_status.h>
 #include <filesystem/fs_fwd.h>
 #include <filesystem/fs_path.h>
-#include <filesystem/fs_file_status.h>
 
 namespace asap {
 namespace filesystem {
@@ -29,7 +29,7 @@ ASAP_FILESYSTEM_API
 bool copy_file_impl(const path &from, const path &to, copy_options opt,
                     std::error_code *ec = nullptr);
 ASAP_FILESYSTEM_API
-void copy_symlink_impl(const path &__existing_symlink, const path &new_symlink,
+void copy_symlink_impl(const path &existing_symlink, const path &new_symlink,
                        std::error_code *ec = nullptr);
 ASAP_FILESYSTEM_API
 bool create_directories_impl(const path &p, std::error_code *ec = nullptr);
@@ -52,7 +52,8 @@ path current_path_impl(std::error_code *ec = nullptr);
 ASAP_FILESYSTEM_API
 void current_path_impl(const path &p, std::error_code *ec = nullptr);
 ASAP_FILESYSTEM_API
-bool equivalent_impl(const path &p, const path &, std::error_code *ec = nullptr);
+bool equivalent_impl(const path &p, const path &,
+                     std::error_code *ec = nullptr);
 ASAP_FILESYSTEM_API
 uintmax_t file_size_impl(const path &p, std::error_code *ec = nullptr);
 ASAP_FILESYSTEM_API
@@ -60,12 +61,14 @@ uintmax_t hard_link_count_impl(const path &p, std::error_code *ec = nullptr);
 ASAP_FILESYSTEM_API
 bool fs_is_empty_impl(const path &p, std::error_code *ec = nullptr);
 ASAP_FILESYSTEM_API
-file_time_type last_write_time_impl(const path &p, std::error_code *ec = nullptr);
+file_time_type last_write_time_impl(const path &p,
+                                    std::error_code *ec = nullptr);
 ASAP_FILESYSTEM_API
 void last_write_time_impl(const path &p, file_time_type new_time,
                           std::error_code *ec = nullptr);
 ASAP_FILESYSTEM_API
-void permissions_impl(const path &p, perms, perm_options, std::error_code * = nullptr);
+void permissions_impl(const path &p, perms, perm_options,
+                      std::error_code * = nullptr);
 ASAP_FILESYSTEM_API
 path read_symlink_impl(const path &p, std::error_code *ec = nullptr);
 ASAP_FILESYSTEM_API
@@ -73,9 +76,11 @@ bool remove_impl(const path &p, std::error_code *ec = nullptr);
 ASAP_FILESYSTEM_API
 uintmax_t remove_all_impl(const path &p, std::error_code *ec = nullptr);
 ASAP_FILESYSTEM_API
-void rename_impl(const path &from, const path &to, std::error_code *ec = nullptr);
+void rename_impl(const path &from, const path &to,
+                 std::error_code *ec = nullptr);
 ASAP_FILESYSTEM_API
-void resize_file_impl(const path &p, uintmax_t size, std::error_code *ec = nullptr);
+void resize_file_impl(const path &p, uintmax_t size,
+                      std::error_code *ec = nullptr);
 ASAP_FILESYSTEM_API
 space_info space_impl(const path &p, std::error_code *ec = nullptr);
 ASAP_FILESYSTEM_API
@@ -145,13 +150,13 @@ inline bool copy_file(const path &from, const path &to, copy_options opt,
   return copy_file_impl(from, to, opt, &ec);
 }
 
-inline void copy_symlink(const path &__existing, const path &__new) {
-  copy_symlink_impl(__existing, __new);
+inline void copy_symlink(const path &existing_symlink, const path &new_symlink) {
+  copy_symlink_impl(existing_symlink, new_symlink);
 }
 
-inline void copy_symlink(const path &__existing, const path &__new,
+inline void copy_symlink(const path &existing_symlink, const path &new_symlink,
                          std::error_code &ec) noexcept {
-  copy_symlink_impl(__existing, __new, &ec);
+  copy_symlink_impl(existing_symlink, new_symlink, &ec);
 }
 
 inline bool create_directories(const path &p) {
@@ -168,40 +173,40 @@ inline bool create_directory(const path &p, std::error_code &ec) noexcept {
   return create_directory_impl(p, &ec);
 }
 
-inline bool create_directory(const path &p, const path &__attrs) {
-  return create_directory_impl(p, __attrs);
+inline bool create_directory(const path &p, const path &attributes) {
+  return create_directory_impl(p, attributes);
 }
 
-inline bool create_directory(const path &p, const path &__attrs,
+inline bool create_directory(const path &p, const path &attributes,
                              std::error_code &ec) noexcept {
-  return create_directory_impl(p, __attrs, &ec);
+  return create_directory_impl(p, attributes, &ec);
 }
 
-inline void create_directory_symlink(const path &to, const path &__new) {
-  create_directory_symlink_impl(to, __new);
+inline void create_directory_symlink(const path &to, const path &new_symlink) {
+  create_directory_symlink_impl(to, new_symlink);
 }
 
-inline void create_directory_symlink(const path &to, const path &__new,
+inline void create_directory_symlink(const path &to, const path &new_symlink,
                                      std::error_code &ec) noexcept {
-  create_directory_symlink_impl(to, __new, &ec);
+  create_directory_symlink_impl(to, new_symlink, &ec);
 }
 
-inline void create_hard_link(const path &to, const path &__new) {
-  create_hard_link_impl(to, __new);
+inline void create_hard_link(const path &to, const path &new_hardlink) {
+  create_hard_link_impl(to, new_hardlink);
 }
 
-inline void create_hard_link(const path &to, const path &__new,
+inline void create_hard_link(const path &to, const path &new_hardlink,
                              std::error_code &ec) noexcept {
-  create_hard_link_impl(to, __new, &ec);
+  create_hard_link_impl(to, new_hardlink, &ec);
 }
 
-inline void create_symlink(const path &to, const path &__new) {
-  create_symlink_impl(to, __new);
+inline void create_symlink(const path &to, const path &new_symlink) {
+  create_symlink_impl(to, new_symlink);
 }
 
-inline void create_symlink(const path &to, const path &__new,
+inline void create_symlink(const path &to, const path &new_symlink,
                            std::error_code &ec) noexcept {
-  return create_symlink_impl(to, __new, &ec);
+  return create_symlink_impl(to, new_symlink, &ec);
 }
 
 inline bool status_known(file_status status) noexcept {
@@ -341,7 +346,8 @@ inline file_time_type last_write_time(const path &p) {
   return last_write_time_impl(p);
 }
 
-inline file_time_type last_write_time(const path &p, std::error_code &ec) noexcept {
+inline file_time_type last_write_time(const path &p,
+                                      std::error_code &ec) noexcept {
   return last_write_time_impl(p, &ec);
 }
 
@@ -354,18 +360,19 @@ inline void last_write_time(const path &p, file_time_type file_time,
   last_write_time_impl(p, file_time, &ec);
 }
 
-inline void permissions(const path &p, perms prms,
-                        perm_options opts = perm_options::replace) {
-  permissions_impl(p, prms, opts);
+inline void permissions(const path &p, perms permissions,
+                        perm_options options = perm_options::replace) {
+  permissions_impl(p, permissions, options);
 }
 
-inline void permissions(const path &p, perms prms, std::error_code &ec) noexcept {
-  permissions_impl(p, prms, perm_options::replace, &ec);
+inline void permissions(const path &p, perms permissions,
+                        std::error_code &ec) noexcept {
+  permissions_impl(p, permissions, perm_options::replace, &ec);
 }
 
-inline void permissions(const path &p, perms prms, perm_options opts,
+inline void permissions(const path &p, perms permissions, perm_options options,
                         std::error_code &ec) {
-  permissions_impl(p, prms, opts, &ec);
+  permissions_impl(p, permissions, options, &ec);
 }
 
 inline path proximate(const path &p, const path &base, std::error_code &ec) {
@@ -404,7 +411,8 @@ inline path relative(const path &p, std::error_code &ec) {
 }
 
 inline path relative(const path &p, const path &base = current_path()) {
-  return weakly_canonical_impl(p).lexically_relative(weakly_canonical_impl(base));
+  return weakly_canonical_impl(p).lexically_relative(
+      weakly_canonical_impl(base));
 }
 
 inline bool remove(const path &p) { return remove_impl(p); }
@@ -423,7 +431,8 @@ inline void rename(const path &from, const path &to) {
   return rename_impl(from, to);
 }
 
-inline void rename(const path &from, const path &to, std::error_code &ec) noexcept {
+inline void rename(const path &from, const path &to,
+                   std::error_code &ec) noexcept {
   return rename_impl(from, to, &ec);
 }
 

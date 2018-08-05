@@ -5,10 +5,10 @@
 
 #pragma once
 
-#include <cstdint>
-#include <type_traits>   // for std::underlying_type
-#include <system_error>  // for std::std::error_code
 #include <chrono>
+#include <cstdint>
+#include <system_error>  // for std::std::error_code
+#include <type_traits>   // for std::underlying_type
 
 namespace asap {
 namespace filesystem {
@@ -31,17 +31,17 @@ struct space_info {
 };
 
 enum class file_type : signed char {
-  none = 0,   // file status has not been evaluated yet, or an error
-  // occurred when evaluating it
-      not_found = -1,  // file was not found (this is not considered an error)
-  regular = 1,   // a regular file
+  none = 0,        // file status has not been evaluated yet, or an error
+                   // occurred when evaluating it
+  not_found = -1,  // file was not found (this is not considered an error)
+  regular = 1,     // a regular file
   directory = 2,   // a directory
-  symlink = 3,   // a symbolic link
-  block = 4,   // a block special file
+  symlink = 3,     // a symbolic link
+  block = 4,       // a block special file
   character = 5,   // a character special file
-  fifo = 6,   // a FIFO (also known as pipe) file
-  socket = 7,   // a socket file
-  unknown = 8    // the file exists but its type could not be determined
+  fifo = 6,        // a FIFO (also known as pipe) file
+  socket = 7,      // a socket file
+  unknown = 8      // the file exists but its type could not be determined
 };
 
 // -----------------------------------------------------------------------------
@@ -59,48 +59,40 @@ enum class copy_options : unsigned short {
   create_hard_links = 256
 };
 
-constexpr copy_options
-operator&(copy_options lhs, copy_options rhs) noexcept {
+constexpr copy_options operator&(copy_options lhs, copy_options rhs) noexcept {
   using utype = typename std::underlying_type<copy_options>::type;
-  return static_cast<copy_options>(
-      static_cast<utype>(lhs) & static_cast<utype>(rhs));
+  return static_cast<copy_options>(static_cast<utype>(lhs) &
+                                   static_cast<utype>(rhs));
 }
 
-constexpr copy_options
-operator|(copy_options lhs, copy_options rhs) noexcept {
+constexpr copy_options operator|(copy_options lhs, copy_options rhs) noexcept {
   using utype = typename std::underlying_type<copy_options>::type;
-  return static_cast<copy_options>(
-      static_cast<utype>(lhs) | static_cast<utype>(rhs));
+  return static_cast<copy_options>(static_cast<utype>(lhs) |
+                                   static_cast<utype>(rhs));
 }
 
-constexpr copy_options
-operator^(copy_options lhs, copy_options rhs) noexcept {
+constexpr copy_options operator^(copy_options lhs, copy_options rhs) noexcept {
   using utype = typename std::underlying_type<copy_options>::type;
-  return static_cast<copy_options>(
-      static_cast<utype>(lhs) ^ static_cast<utype>(rhs));
+  return static_cast<copy_options>(static_cast<utype>(lhs) ^
+                                   static_cast<utype>(rhs));
 }
 
-constexpr copy_options
-operator~(copy_options lhs) noexcept {
+constexpr copy_options operator~(copy_options lhs) noexcept {
   using utype = typename std::underlying_type<copy_options>::type;
   return static_cast<copy_options>(~static_cast<utype>(lhs));
 }
 
-inline copy_options &
-operator&=(copy_options &lhs, copy_options rhs) noexcept {
+inline copy_options &operator&=(copy_options &lhs, copy_options rhs) noexcept {
   return lhs = lhs & rhs;
 }
 
-inline copy_options &
-operator|=(copy_options &lhs, copy_options rhs) noexcept {
+inline copy_options &operator|=(copy_options &lhs, copy_options rhs) noexcept {
   return lhs = lhs | rhs;
 }
 
-inline copy_options &
-operator^=(copy_options &lhs, copy_options rhs) noexcept {
+inline copy_options &operator^=(copy_options &lhs, copy_options rhs) noexcept {
   return lhs = lhs ^ rhs;
 }
-
 
 // -----------------------------------------------------------------------------
 
@@ -126,41 +118,37 @@ enum class perms : unsigned {
   unknown = 0xFFFF,
 };
 
-constexpr perms
-operator&(perms lhs, perms rhs) noexcept {
+constexpr perms operator&(perms lhs, perms rhs) noexcept {
   using utype = typename std::underlying_type<perms>::type;
-  return static_cast<perms>(
-      static_cast<utype>(lhs) & static_cast<utype>(rhs));
+  return static_cast<perms>(static_cast<utype>(lhs) & static_cast<utype>(rhs));
 }
 
-constexpr perms
-operator|(perms lhs, perms rhs) noexcept {
+constexpr perms operator|(perms lhs, perms rhs) noexcept {
   using utype = typename std::underlying_type<perms>::type;
-  return static_cast<perms>(
-      static_cast<utype>(lhs) | static_cast<utype>(rhs));
+  return static_cast<perms>(static_cast<utype>(lhs) | static_cast<utype>(rhs));
 }
 
-constexpr perms
-operator^(perms lhs, perms rhs) noexcept {
+constexpr perms operator^(perms lhs, perms rhs) noexcept {
   using utype = typename std::underlying_type<perms>::type;
-  return static_cast<perms>(
-      static_cast<utype>(lhs) ^ static_cast<utype>(rhs));
+  return static_cast<perms>(static_cast<utype>(lhs) ^ static_cast<utype>(rhs));
 }
 
-constexpr perms
-operator~(perms lhs) noexcept {
+constexpr perms operator~(perms lhs) noexcept {
   using utype = typename std::underlying_type<perms>::type;
   return static_cast<perms>(~static_cast<utype>(lhs));
 }
 
-inline perms &
-operator&=(perms &lhs, perms rhs) noexcept { return lhs = lhs & rhs; }
+inline perms &operator&=(perms &lhs, perms rhs) noexcept {
+  return lhs = lhs & rhs;
+}
 
-inline perms &
-operator|=(perms &lhs, perms rhs) noexcept { return lhs = lhs | rhs; }
+inline perms &operator|=(perms &lhs, perms rhs) noexcept {
+  return lhs = lhs | rhs;
+}
 
-inline perms &
-operator^=(perms &lhs, perms rhs) noexcept { return lhs = lhs ^ rhs; }
+inline perms &operator^=(perms &lhs, perms rhs) noexcept {
+  return lhs = lhs ^ rhs;
+}
 
 /// Bitmask type
 enum class perm_options : unsigned {
@@ -170,93 +158,87 @@ enum class perm_options : unsigned {
   nofollow = 0x8
 };
 
-constexpr perm_options
-operator&(perm_options lhs, perm_options rhs) noexcept {
+constexpr perm_options operator&(perm_options lhs, perm_options rhs) noexcept {
   using utype = typename std::underlying_type<perm_options>::type;
-  return static_cast<perm_options>(
-      static_cast<utype>(lhs) & static_cast<utype>(rhs));
+  return static_cast<perm_options>(static_cast<utype>(lhs) &
+                                   static_cast<utype>(rhs));
 }
 
-constexpr perm_options
-operator|(perm_options lhs, perm_options rhs) noexcept {
+constexpr perm_options operator|(perm_options lhs, perm_options rhs) noexcept {
   using utype = typename std::underlying_type<perm_options>::type;
-  return static_cast<perm_options>(
-      static_cast<utype>(lhs) | static_cast<utype>(rhs));
+  return static_cast<perm_options>(static_cast<utype>(lhs) |
+                                   static_cast<utype>(rhs));
 }
 
-constexpr perm_options
-operator^(perm_options lhs, perm_options rhs) noexcept {
+constexpr perm_options operator^(perm_options lhs, perm_options rhs) noexcept {
   using utype = typename std::underlying_type<perm_options>::type;
-  return static_cast<perm_options>(
-      static_cast<utype>(lhs) ^ static_cast<utype>(rhs));
+  return static_cast<perm_options>(static_cast<utype>(lhs) ^
+                                   static_cast<utype>(rhs));
 }
 
-constexpr perm_options
-operator~(perm_options lhs) noexcept {
+constexpr perm_options operator~(perm_options lhs) noexcept {
   using utype = typename std::underlying_type<perm_options>::type;
   return static_cast<perm_options>(~static_cast<utype>(lhs));
 }
 
-inline perm_options &
-operator&=(perm_options &lhs, perm_options rhs) noexcept {
+inline perm_options &operator&=(perm_options &lhs, perm_options rhs) noexcept {
   return lhs = lhs & rhs;
 }
 
-inline perm_options &
-operator|=(perm_options &lhs, perm_options rhs) noexcept {
+inline perm_options &operator|=(perm_options &lhs, perm_options rhs) noexcept {
   return lhs = lhs | rhs;
 }
 
-inline perm_options &
-operator^=(perm_options &lhs, perm_options rhs) noexcept {
+inline perm_options &operator^=(perm_options &lhs, perm_options rhs) noexcept {
   return lhs = lhs ^ rhs;
 }
 
 // -----------------------------------------------------------------------------
 
 enum class directory_options : unsigned char {
-  none = 0, follow_directory_symlink = 1, skip_permission_denied = 2
+  none = 0,
+  follow_directory_symlink = 1,
+  skip_permission_denied = 2
 };
 
-constexpr directory_options
-operator&(directory_options lhs, directory_options rhs) noexcept {
+constexpr directory_options operator&(directory_options lhs,
+                                      directory_options rhs) noexcept {
   using utype = typename std::underlying_type<directory_options>::type;
-  return static_cast<directory_options>(
-      static_cast<utype>(lhs) & static_cast<utype>(rhs));
+  return static_cast<directory_options>(static_cast<utype>(lhs) &
+                                        static_cast<utype>(rhs));
 }
 
-constexpr directory_options
-operator|(directory_options lhs, directory_options rhs) noexcept {
+constexpr directory_options operator|(directory_options lhs,
+                                      directory_options rhs) noexcept {
   using utype = typename std::underlying_type<directory_options>::type;
-  return static_cast<directory_options>(
-      static_cast<utype>(lhs) | static_cast<utype>(rhs));
+  return static_cast<directory_options>(static_cast<utype>(lhs) |
+                                        static_cast<utype>(rhs));
 }
 
-constexpr directory_options
-operator^(directory_options lhs, directory_options rhs) noexcept {
+constexpr directory_options operator^(directory_options lhs,
+                                      directory_options rhs) noexcept {
   using utype = typename std::underlying_type<directory_options>::type;
-  return static_cast<directory_options>(
-      static_cast<utype>(lhs) ^ static_cast<utype>(rhs));
+  return static_cast<directory_options>(static_cast<utype>(lhs) ^
+                                        static_cast<utype>(rhs));
 }
 
-constexpr directory_options
-operator~(directory_options lhs) noexcept {
+constexpr directory_options operator~(directory_options lhs) noexcept {
   using utype = typename std::underlying_type<directory_options>::type;
   return static_cast<directory_options>(~static_cast<utype>(lhs));
 }
 
-inline directory_options &
-operator&=(directory_options &lhs, directory_options rhs) noexcept {
+inline directory_options &operator&=(directory_options &lhs,
+                                     directory_options rhs) noexcept {
   return lhs = lhs & rhs;
 }
 
-inline directory_options &
-operator|=(directory_options &lhs, directory_options rhs) noexcept {
+inline directory_options &operator|=(directory_options &lhs,
+                                     directory_options rhs) noexcept {
   return lhs = lhs | rhs;
 }
 
-inline directory_options &
-operator^=(directory_options &lhs, directory_options rhs) noexcept {
+inline directory_options &operator^=(directory_options &lhs,
+                                     directory_options rhs) noexcept {
   return lhs = lhs ^ rhs;
 }
 
@@ -264,6 +246,5 @@ operator^=(directory_options &lhs, directory_options rhs) noexcept {
 
 using file_time_type = std::chrono::system_clock::time_point;
 
-
-}
-}
+}  // namespace filesystem
+}  // namespace asap
