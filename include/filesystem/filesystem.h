@@ -5,9 +5,11 @@
 
 #pragma once
 
+// clang-format off
 #include <filesystem/filesystem_error.h>
-#include <filesystem/fs_dir.h>
-#include <filesystem/fs_file_status.h>
 #include <filesystem/fs_fwd.h>
+#include <filesystem/fs_file_status.h>
 #include <filesystem/fs_ops.h>
 #include <filesystem/fs_path.h>
+#include <filesystem/fs_dir.h>
+// clang-format on
