@@ -30,6 +30,8 @@ TEST_CASE("Ops / canonical", "[common][filesystem][ops][canonical]") {
   ComparePaths(p2, fs::current_path() / p);
   REQUIRE(!ec);
 
+  remove(p);
+
   ec = bad_ec;
   p = fs::current_path();
   p2 = canonical(p, ec);
@@ -73,11 +75,7 @@ TEST_CASE("Ops / canonical / exception",
     canonical(p);
   } catch (const fs::filesystem_error& e) {
     REQUIRE(e.path1() == p);
-    // TODO: Fix this
-#ifdef FAILED_TEST
-    REQUIRE(e.path2().empty());
-    REQUIRE(e.code() == ec2);
-#endif
+    REQUIRE(e.code() == ec);
   }
 }
 

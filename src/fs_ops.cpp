@@ -12,12 +12,23 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+#include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/statvfs.h>
-#include <sys/types.h>
+#if ASAP_FS_USE_UTIME
+#  include <utime.h>
+#endif
+
+#include <filesystem/config.h>
+
+// Which method to use for copy file
+#if ASAP_FS_USE_SENDFILE
+#  include <sys/sendfile.h>
+#elif ASAP_FS_USE_COPYFILE
+#  include <copyfile.h>
+#endif
 
 #include <common/assert.h>
-#include <common/platform.h>
 
 #include <filesystem/filesystem.h>
 
@@ -49,10 +60,16 @@ typedef struct ::timespec TimeSpec;
 
 #if defined(ASAP_APPLE)
 TimeSpec extract_mtime(StatT const& st) { return st.st_mtimespec; }
-TimeSpec extract_atime(StatT const& st) { return st.st_atimespec; }
 #else
 TimeSpec extract_mtime(StatT const& st) { return st.st_mtim; }
+#endif
+
+#if ASAP_FS_USE_UTIME
+#  if defined(ASAP_APPLE)
+TimeSpec extract_atime(StatT const& st) { return st.st_atimespec; }
+#  else
 TimeSpec extract_atime(StatT const& st) { return st.st_atim; }
+#  endif
 #endif
 
 // -----------------------------------------------------------------------------
@@ -361,7 +378,7 @@ void copy_impl(const path& from, const path& to, copy_options options,
 
 namespace {
 
-#ifdef _LIBCPP_USE_SENDFILE
+#if ASAP_FS_USE_SENDFILE
 // NOTE:
 // The LINUX method using sendfile() has a major problem in that it can not
 // copy files more than 2GB in size!
@@ -386,7 +403,7 @@ bool do_copy_file_sendfile(FileDescriptor& read_fd, FileDescriptor& write_fd,
 
   return true;
 }
-#elif defined(_LIBCPP_USE_COPYFILE)
+#elif ASAP_FS_USE_COPYFILE
 bool do_copy_file_copyfile(FileDescriptor& read_fd, FileDescriptor& write_fd,
                            std::error_code& ec) {
   struct CopyFileState {
@@ -400,7 +417,7 @@ bool do_copy_file_copyfile(FileDescriptor& read_fd, FileDescriptor& write_fd,
   };
 
   CopyFileState cfs;
-  if (fcopyfile(read_fd.fd, write_fd.fd, cfs.state, COPYFILE_DATA) < 0) {
+  if (fcopyfile(read_fd.fd_, write_fd.fd_, cfs.state, COPYFILE_DATA) < 0) {
     ec = capture_errno();
     return false;
   }
@@ -410,8 +427,7 @@ bool do_copy_file_copyfile(FileDescriptor& read_fd, FileDescriptor& write_fd,
 }
 #endif
 
-// Note: This function isn't guarded by ifdef's even though it may be unused
-// in order to assure it still compiles.
+#if !ASAP_FS_USE_SENDFILE && !ASAP_FS_USE_COPYFILE
 bool do_copy_file_default(FileDescriptor& read_fd, FileDescriptor& write_fd,
                           std::error_code& ec) {
   // BUFSIZ defaults to 8192
@@ -436,12 +452,13 @@ bool do_copy_file_default(FileDescriptor& read_fd, FileDescriptor& write_fd,
   ec.clear();
   return true;
 }
+#endif
 
 bool do_copy_file(FileDescriptor& from, FileDescriptor& to,
                   std::error_code& ec) {
-#if defined(_LIBCPP_USE_SENDFILE)
+#if ASAP_FS_USE_SENDFILE
   return do_copy_file_sendfile(from, to, ec);
-#elif defined(_LIBCPP_USE_COPYFILE)
+#elif ASAP_FS_USE_COPYFILE
   return do_copy_file_copyfile(from, to, ec);
 #else
   return do_copy_file_default(from, to, ec);
@@ -648,6 +665,8 @@ void current_path_impl(const path& p, std::error_code* ec) {
 bool equivalent_impl(const path& p1, const path& p2, std::error_code* ec) {
   ErrorHandler<bool> err("equivalent", ec, &p1, &p2);
 
+  // https://cplusplus.github.io/LWG/issue2937
+  // If either p1 or p2 does not exist, an error is reported.
   std::error_code ec1, ec2;
   StatT st1 = {}, st2 = {};
   auto s1 = detail::posix_stat(p1.native(), st1, &ec1);
@@ -696,7 +715,7 @@ uintmax_t hard_link_count_impl(const path& p, std::error_code* ec) {
 //                               fs_is_empty
 // -----------------------------------------------------------------------------
 
-bool fs_is_empty_impl(const path& p, std::error_code* ec) {
+bool is_empty_impl(const path &p, std::error_code *ec) {
   ErrorHandler<bool> err("is_empty", ec, &p);
 
   std::error_code m_ec;
@@ -788,8 +807,8 @@ void last_write_time_impl(const path& p, file_time_type new_time,
 
   auto d = new_time.time_since_epoch();
   auto s = duration_cast<seconds>(d);
-  // TODO: Change this
-#if 1  //_GLIBCXX_USE_UTIMENSAT
+
+#if ASAP_FS_USE_UTIMENSAT
   auto ns = duration_cast<nanoseconds>(d - s);
   if (ns < ns.zero())  // tv_nsec must be non-negative and less than 10e9.
   {
@@ -802,14 +821,18 @@ void last_write_time_impl(const path& p, file_time_type new_time,
   ts[1].tv_sec = static_cast<std::time_t>(s.count());
   ts[1].tv_nsec = static_cast<long>(ns.count());
   if (::utimensat(AT_FDCWD, p.c_str(), ts, 0)) err.report(capture_errno());
-#elif ASAP_HAVE_UTIME_H
-  posix::utimbuf times;
+#elif ASAP_FS_USE_UTIME
+  utimbuf times;
   times.modtime = s.count();
-  times.actime = do_stat(
-      p, ec, [](const auto& st) { return extract_atime(st); }, times.modtime);
-  if (posix::utime(p.c_str(), &times)) err.report(capture_errno());
+  std::error_code m_ec;
+  StatT st;
+  detail::posix_stat(p, st, &m_ec);
+  if (m_ec) return err.report(m_ec);
+  // The utime call allows time resolution of 1 second
+  times.actime = detail::extract_atime(st).tv_sec;
+  if (::utime(p.c_str(), &times)) return err.report(capture_errno());
 #else
-  err.report(std::errc::not_supported);
+  return err.report(std::errc::not_supported);
 #endif
 }
 
@@ -1065,6 +1088,108 @@ path weakly_canonical_impl(const path& p, std::error_code* ec) {
   }
   return result;
 }
+
+
+// -----------------------------------------------------------------------------
+//                           directory entry definitions
+// -----------------------------------------------------------------------------
+
+#ifndef ASAP_WINDOWS
+std::error_code directory_entry::Refresh_impl() noexcept {
+  cached_data_.Reset();
+  std::error_code failure_ec;
+
+  StatT full_st;
+  file_status st = detail::posix_lstat(path_, full_st, &failure_ec);
+  if (!status_known(st)) {
+    cached_data_.Reset();
+    return failure_ec;
+  }
+
+  if (!asap::filesystem::exists(st) || !asap::filesystem::is_symlink(st)) {
+    cached_data_.cache_type = CacheType_::REFRESH_NON_SYMLINK;
+    cached_data_.type = st.type();
+    cached_data_.non_symlink_perms = st.permissions();
+  } else { // we have a symlink
+    cached_data_.symlink_perms = st.permissions();
+    // Get the information about the linked entity.
+    // Ignore errors from stat, since we don't want errors regarding symlink
+    // resolution to be reported to the user.
+    std::error_code ignored_ec;
+    st = detail::posix_stat(path_, full_st, &ignored_ec);
+
+    cached_data_.type = st.type();
+    cached_data_.non_symlink_perms = st.permissions();
+
+    // If we failed to resolve the link, then only partially populate the
+    // cache.
+    if (!status_known(st)) {
+      cached_data_.cache_type = CacheType_::REFRESH_SYMLINK_UNRESOLVED;
+      return std::error_code{};
+    }
+    // Otherwise, we resolved the link, potentially as not existing.
+    // That's OK.
+    cached_data_.cache_type = CacheType_::REFRESH_SYMLINK;
+  }
+
+  if (asap::filesystem::is_regular_file(st))
+    cached_data_.size = static_cast<uintmax_t>(full_st.st_size);
+
+  if (asap::filesystem::exists(st)) {
+    cached_data_.nlink = static_cast<uintmax_t>(full_st.st_nlink);
+
+    // Attempt to extract the mtime, and fail if it's not representable using
+    // file_time_type. For now we ignore the error, as we'll report it when
+    // the value is actually used.
+    std::error_code ignored_ec;
+    cached_data_.write_time =
+        extract_last_write_time(path_, full_st, &ignored_ec);
+  }
+
+  return failure_ec;
+}
+#else
+std::error_code directory_entry::__do_refresh() noexcept {
+  cached_data_.__reset();
+  std::error_code failure_ec;
+
+  file_status st = asap::filesystem::symlink_status(path_, failure_ec);
+  if (!status_known(st)) {
+    cached_data_.__reset();
+    return failure_ec;
+  }
+
+  if (!asap::filesystem::exists(st) || !asap::filesystem::is_symlink(st)) {
+    cached_data_.cache_type = directory_entry::_RefreshNonSymlink;
+    cached_data_.type = st.type();
+    cached_data_.non_symlink_perms = st.permissions();
+  } else { // we have a symlink
+    cached_data_.symlink_perms = st.permissions();
+    // Get the information about the linked entity.
+    // Ignore errors from stat, since we don't want errors regarding symlink
+    // resolution to be reported to the user.
+    std::error_code ignored_ec;
+    st = asap::filesystem::status(path_, ignored_ec);
+
+    cached_data_.type = st.type();
+    cached_data_.non_symlink_perms = st.permissions();
+
+    // If we failed to resolve the link, then only partially populate the
+    // cache.
+    if (!status_known(st)) {
+      cached_data_.cache_type = directory_entry::_RefreshSymlinkUnresolved;
+      return std::error_code{};
+    }
+    cached_data_.cache_type = directory_entry::_RefreshSymlink;
+  }
+
+  // FIXME: This is currently broken, and the implementation only a placeholder.
+  // We need to cache last_write_time, file_size, and hard_link_count here before
+  // the implementation actually works.
+
+  return failure_ec;
+}
+#endif
 
 }  // namespace filesystem
 }  // namespace asap

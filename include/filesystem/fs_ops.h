@@ -59,7 +59,7 @@ uintmax_t file_size_impl(const path &p, std::error_code *ec = nullptr);
 ASAP_FILESYSTEM_API
 uintmax_t hard_link_count_impl(const path &p, std::error_code *ec = nullptr);
 ASAP_FILESYSTEM_API
-bool fs_is_empty_impl(const path &p, std::error_code *ec = nullptr);
+bool is_empty_impl(const path &p, std::error_code *ec = nullptr);
 ASAP_FILESYSTEM_API
 file_time_type last_write_time_impl(const path &p,
                                     std::error_code *ec = nullptr);
@@ -283,10 +283,10 @@ inline bool is_directory(const path &p, std::error_code &ec) noexcept {
   return is_directory(status_impl(p, &ec));
 }
 
-inline bool is_empty(const path &p) { return fs_is_empty_impl(p); }
+inline bool is_empty(const path &p) { return is_empty_impl(p); }
 
 inline bool is_empty(const path &p, std::error_code &ec) {
-  return fs_is_empty_impl(p, &ec);
+  return is_empty_impl(p, &ec);
 }
 
 inline bool is_fifo(file_status status) noexcept {

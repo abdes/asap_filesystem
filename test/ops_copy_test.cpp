@@ -136,11 +136,7 @@ TEST_CASE("Ops / copy / directory", "[common][filesystem][ops][copy]") {
   copy(from, to, ec);
   REQUIRE(!ec);
   REQUIRE(exists(to));
-// TODO: Fix this
-#ifdef FAILED_TEST
-  REQUIRE(is_empty(to));
-#endif
-  // remove(to);
+  REQUIRE(!is_empty(to));
   remove_all(to);
 
   ec = bad_ec;

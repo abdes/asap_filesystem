@@ -14,8 +14,6 @@
 TEST_CASE("Ops / dir_pop / error", "[common][filesystem][ops][dir_pop]") {
   std::error_code ec;
   fs::recursive_directory_iterator dir;
-  // TODO: Check and fix this
-#ifdef FAILED_TEST
   dir.pop(ec);  // This is undefined, but our implementation
   REQUIRE(ec);  // checks and returns an error.
   REQUIRE(dir == end(dir));
@@ -27,7 +25,6 @@ TEST_CASE("Ops / dir_pop / error", "[common][filesystem][ops][dir_pop]") {
     ec2 = ex.code();
   }
   REQUIRE(ec2 == ec);
-#endif
 }
 
 TEST_CASE("Ops / dir_pop / simple", "[common][filesystem][ops][dir_pop]") {

@@ -9,6 +9,14 @@
 
 set(IDE_FOLDER "Libraries")
 
+# Project options
+
+# This module's specific Environment detection
+include(CheckIncludeFileCXX)
+check_include_file_cxx("copyfile.h" ASAP_HAVE_COPYFILE_H)
+check_include_file_cxx("utime.h" ASAP_HAVE_UTIME_H)
+
+
 # ------------------------------------------------------------------------------
 # External dependencies
 # ------------------------------------------------------------------------------
@@ -113,6 +121,16 @@ asap_library(
 if (OPTION_BUILD_TESTS)
   add_subdirectory(test)
 endif()
+
+# ------------------------------------------------------------------------------
+# Code generation
+# ------------------------------------------------------------------------------
+
+# Generate config-header
+configure_file(
+  ${CMAKE_CURRENT_SOURCE_DIR}/include/filesystem/config.h.in
+  ${CMAKE_CURRENT_BINARY_DIR}/include/filesystem/config.h
+)
 
 
 # ------------------------------------------------------------------------------

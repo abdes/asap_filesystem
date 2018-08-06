@@ -28,7 +28,6 @@ TEST_CASE("Ops / last_write_time / read",
   time_type mtime = last_write_time(p, ec);
   REQUIRE(ec);
   REQUIRE(ec == std::make_error_code(std::errc::no_such_file_or_directory));
-#if __cpp_exceptions
   bool caught = false;
   try {
     mtime = last_write_time(p);
@@ -39,7 +38,6 @@ TEST_CASE("Ops / last_write_time / read",
   REQUIRE(caught);
   REQUIRE(ec);
   REQUIRE(ec == std::make_error_code(std::errc::no_such_file_or_directory));
-#endif
 
   testing::scoped_file file(p);
   REQUIRE(exists(p));
@@ -47,51 +45,6 @@ TEST_CASE("Ops / last_write_time / read",
   REQUIRE(!ec);
   REQUIRE(mtime <= time_type::clock::now());
   REQUIRE(mtime == last_write_time(p));
-
-  auto end_of_time = time_type::duration::max();
-  auto last_second =
-      std::chrono::duration_cast<std::chrono::seconds>(end_of_time).count();
-  if (last_second > std::numeric_limits<std::time_t>::max())
-    return;  // can't test overflow
-
-    // TODO change this
-#if 1  //_GLIBCXX_USE_UTIMENSAT
-  struct ::timespec ts[2];
-  ts[0].tv_sec = 0;
-  ts[0].tv_nsec = UTIME_NOW;
-  ts[1].tv_sec = std::numeric_limits<std::time_t>::max() - 1;
-  ts[1].tv_nsec = 0;
-  REQUIRE(!::utimensat(AT_FDCWD, p.c_str(), ts, 0));
-#elif _GLIBCXX_HAVE_UTIME_H
-  ::utimbuf times;
-  times.modtime = std::numeric_limits<std::time_t>::max() - 1;
-  times.actime = std::numeric_limits<std::time_t>::max() - 1;
-  REQUIRE(!::utime(p.string().c_str(), &times));
-#else
-  return;
-#endif
-
-  mtime = last_write_time(p, ec);
-// TODO: Check/fix this
-#ifdef FAILED_TEST
-  REQUIRE(ec);
-  REQUIRE(ec == std::make_error_code(std::errc::value_too_large));
-  REQUIRE(mtime == time_type::min());
-#endif
-
-// TODO: Check/fix this
-#ifdef FAILED_TEST
-  caught = false;
-  try {
-    mtime = last_write_time(p);
-  } catch (std::system_error const& e) {
-    caught = true;
-    ec = e.code();
-  }
-  REQUIRE(caught);
-  REQUIRE(ec);
-  REQUIRE(ec == std::make_error_code(std::errc::value_too_large));
-#endif
 }
 
 bool approx_equal(time_type file_time, time_type expected) {

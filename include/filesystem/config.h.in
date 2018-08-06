@@ -1,0 +1,50 @@
+//        Copyright The Authors 2018.
+//    Distributed under the 3-Clause BSD License.
+//    (See accompanying file LICENSE or copy at
+//   https://opensource.org/licenses/BSD-3-Clause)
+
+#pragma once
+
+#include <asap/asap-features.h>
+#include <common/platform.h>
+
+// Whether we should use utimensat or utime
+#if defined(ASAP_APPLE)
+
+#if defined(__ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__)
+#if __ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__ >= 101300
+#define ASAP_FS_USE_UTIMENSAT 1
+#endif
+#elif defined(__ENVIRONMENT_IPHONE_OS_VERSION_MIN_REQUIRED__)
+#if __ENVIRONMENT_IPHONE_OS_VERSION_MIN_REQUIRED__ >= 110000
+#define ASAP_FS_USE_UTIMENSAT 1
+#endif
+#elif defined(__ENVIRONMENT_TV_OS_VERSION_MIN_REQUIRED__)
+#if __ENVIRONMENT_TV_OS_VERSION_MIN_REQUIRED__ >= 110000
+#define ASAP_FS_USE_UTIMENSAT 1
+#endif
+#elif defined(__ENVIRONMENT_WATCH_OS_VERSION_MIN_REQUIRED__)
+#if __ENVIRONMENT_WATCH_OS_VERSION_MIN_REQUIRED__ >= 40000
+#define ASAP_FS_USE_UTIMENSAT 1
+#endif
+#endif // __ENVIRONMENT_.*_VERSION_MIN_REQUIRED__
+
+#elif defined(ASAP_LINUX) && (_POSIX_C_SOURCE >= 200809L)
+#  define ASAP_FS_USE_UTIMENSAT 1
+#endif
+
+#if !ASAP_FS_USE_UTIMENSAT && ASAP_HAVE_UTIME_H
+#  define ASAP_FS_USE_UTIME 1
+#endif
+
+
+// Which method to use to copy files
+#cmakedefine ASAP_HAVE_COPYFILE_H
+#if defined(ASAP_LINUX)
+#  include <linux/version.h>
+#  if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 33)
+#    define ASAP_FS_USE_SENDFILE 1
+#  endif
+#elif defined(ASAP_HAVE_COPYFILE_H)
+#  define ASAP_FS_USE_COPYFILE 1
+#endif

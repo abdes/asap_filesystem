@@ -18,7 +18,6 @@ namespace asap {
 namespace filesystem {
 
 namespace detail {
-namespace {
 
 // -----------------------------------------------------------------------------
 //                        detail: error handling
@@ -33,25 +32,25 @@ template <class T>
 T error_value();
 
 template <>
-constexpr void error_value<void>() {}
+inline constexpr void error_value<void>() {}
 
 template <>
-bool error_value<bool>() {
+inline bool error_value<bool>() {
   return false;
 }
 
 template <>
-uintmax_t error_value<uintmax_t>() {
+inline uintmax_t error_value<uintmax_t>() {
   return uintmax_t(-1);
 }
 
 template <>
-constexpr file_time_type error_value<file_time_type>() {
+inline constexpr file_time_type error_value<file_time_type>() {
   return file_time_type::min();
 }
 
 template <>
-path error_value<path>() {
+inline path error_value<path>() {
   return {};
 }
 
@@ -145,7 +144,6 @@ struct ErrorHandler {
   }
 };
 
-}  // namespace
 }  // namespace detail
 }  // namespace filesystem
 }  // namespace asap

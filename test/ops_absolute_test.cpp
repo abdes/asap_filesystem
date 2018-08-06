@@ -28,11 +28,10 @@ TEST_CASE("Ops / absolute / special cases",
   REQUIRE(absolute(root) == root);
   REQUIRE(absolute(root, ec) == root);
   REQUIRE(!ec);
-  // TODO: check the standard to see if this is correct behavior
-#ifdef FAILED_TEST
-  REQUIRE(absolute(path{}, ec).empty());
-  REQUIRE(ec);
-#endif
+  // For POSIX-based operating systems, std::filesystem::absolute(p) is
+  // equivalent to std::filesystem::current_path() / p
+  REQUIRE(absolute(path{}, ec) == fs::current_path() / "");
+  REQUIRE(!ec);
 
 #if defined(ASAP_WINDOWS)
   path p1("/");

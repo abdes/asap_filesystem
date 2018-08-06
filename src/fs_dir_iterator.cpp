@@ -20,7 +20,7 @@
 #else
 #include <dirent.h>
 #endif
-#include <errno.h>
+#include <cerrno>
 
 #include <common/platform.h>
 
@@ -35,39 +35,26 @@ namespace detail {
 namespace {
 
 #if !defined(ASAP_WINDOWS)
-template <class DirEntT, class = decltype(DirEntT::d_type)>
-static file_type get_file_type(DirEntT *ent, int) {
+template<class DirEntT, class = decltype(DirEntT::d_type)>
+file_type get_file_type(DirEntT *ent) {
   switch (ent->d_type) {
-    case DT_BLK:
-      return file_type::block;
-    case DT_CHR:
-      return file_type::character;
-    case DT_DIR:
-      return file_type::directory;
-    case DT_FIFO:
-      return file_type::fifo;
-    case DT_LNK:
-      return file_type::symlink;
-    case DT_REG:
-      return file_type::regular;
-    case DT_SOCK:
-      return file_type::socket;
+    case DT_BLK:return file_type::block;
+    case DT_CHR:return file_type::character;
+    case DT_DIR:return file_type::directory;
+    case DT_FIFO:return file_type::fifo;
+    case DT_LNK:return file_type::symlink;
+    case DT_REG:return file_type::regular;
+    case DT_SOCK:return file_type::socket;
       // Unlike in lstat, hitting "unknown" here simply means that the
       // underlying filesystem doesn't support d_type. Report is as 'none' so we
       // correctly set the cache to empty.
-    case DT_UNKNOWN:
-      break;
+    case DT_UNKNOWN:break;
   }
   return file_type::none;
 }
 
-template <class DirEntT>
-static file_type get_file_type(DirEntT *ent, long) {
-  return file_type::none;
-}
-
-static std::pair<std::string, file_type> posix_readdir(DIR *dir_stream,
-                                                       std::error_code &ec) {
+std::pair<std::string, file_type> posix_readdir(DIR *dir_stream,
+                                                std::error_code &ec) {
   struct dirent *dir_entry_ptr = nullptr;
   errno = 0;  // zero errno in order to detect errors
   ec.clear();
@@ -75,14 +62,14 @@ static std::pair<std::string, file_type> posix_readdir(DIR *dir_stream,
     if (errno) ec = detail::capture_errno();
     return {};
   } else {
-    return {dir_entry_ptr->d_name, get_file_type(dir_entry_ptr, 0)};
+    return {dir_entry_ptr->d_name, get_file_type(dir_entry_ptr)};
   }
 }
 #else
 
 static file_type get_file_type(const WIN32_FIND_DATA &data) {
   // auto attrs = data.dwFileAttributes;
-  // FIXME(EricWF)
+  // FIXME Windows implementation of get_file_type()
   return file_type::unknown;
 }
 static uintmax_t get_file_size(const WIN32_FIND_DATA &data) {
@@ -104,21 +91,21 @@ static file_time_type get_write_time(const WIN32_FIND_DATA &data) {
 using detail::ErrorHandler;
 
 #if defined(ASAP_WINDOWS)
-class __dir_stream {
+class DirectoryStream {
  public:
-  __dir_stream() = delete;
-  __dir_stream &operator=(const __dir_stream &) = delete;
+  DirectoryStream() = delete;
+  DirectoryStream &operator=(const DirectoryStream &) = delete;
 
-  __dir_stream(__dir_stream &&__ds) noexcept
+  DirectoryStream(DirectoryStream &&__ds) noexcept
       : __stream_(__ds.__stream_),
         __root_(move(__ds.__root_)),
         __entry_(move(__ds.__entry_)) {
     __ds.__stream_ = INVALID_HANDLE_VALUE;
   }
 
-  __dir_stream(const path &root, directory_options opts, std::error_code &ec)
+  DirectoryStream(const path &root, directory_options opts, std::error_code &ec)
       : __stream_(INVALID_HANDLE_VALUE), __root_(root) {
-    __stream_ = ::FindFirstFileEx(root.c_str(), &__data_);
+    __stream_ = ::FindFirstFileEx(root.c_str(), &cached_data_);
     if (__stream_ == INVALID_HANDLE_VALUE) {
       ec = std::error_code(::GetLastError(), generic_category());
       const bool ignore_permission_denied =
@@ -129,7 +116,7 @@ class __dir_stream {
     }
   }
 
-  ~__dir_stream() noexcept {
+  ~DirectoryStream() noexcept {
     if (__stream_ == INVALID_HANDLE_VALUE) return;
     close();
   }
@@ -137,16 +124,16 @@ class __dir_stream {
   bool good() const noexcept { return __stream_ != INVALID_HANDLE_VALUE; }
 
   bool advance(error_code &ec) {
-    while (::FindNextFile(__stream_, &__data_)) {
-      if (!strcmp(__data_.cFileName, ".") || strcmp(__data_.cFileName, ".."))
+    while (::FindNextFile(__stream_, &cached_data_)) {
+      if (!strcmp(cached_data_.cFileName, ".") || strcmp(cached_data_.cFileName, ".."))
         continue;
       // FIXME: Cache more of this
-      // directory_entry::__cached_data cdata;
-      // cdata.__type_ = get_file_type(__data_);
-      // cdata.__size_ = get_file_size(__data_);
-      // cdata.__write_time_ = get_write_time(__data_);
+      // directory_entry::CachedData_ cdata;
+      // cdata.type = get_file_type(cached_data_);
+      // cdata.size = get_file_size(cached_data_);
+      // cdata.write_time = get_write_time(cached_data_);
       __entry_.__assign_iter_entry(
-          __root_ / __data_.cFileName,
+          __root_ / cached_data_.cFileName,
           directory_entry::__create_iter_result(get_file_type(__data)));
       return true;
     }
@@ -165,30 +152,30 @@ class __dir_stream {
   }
 
   HANDLE __stream_{INVALID_HANDLE_VALUE};
-  WIN32_FIND_DATA __data_;
+  WIN32_FIND_DATA cached_data_;
 
  public:
   path __root_;
   directory_entry __entry_;
 };
 #else
-class __dir_stream {
+class DirectoryStream {
  public:
-  __dir_stream() = delete;
-  __dir_stream &operator=(const __dir_stream &) = delete;
+  DirectoryStream() = delete;
+  DirectoryStream &operator=(const DirectoryStream &) = delete;
 
-  __dir_stream(__dir_stream &&other) noexcept
+  DirectoryStream(DirectoryStream &&other) noexcept
       : __stream_(other.__stream_),
         __root_(std::move(other.__root_)),
         __entry_(std::move(other.__entry_)) {
     other.__stream_ = nullptr;
   }
 
-  __dir_stream(const path &root, directory_options opts, std::error_code &ec)
+  DirectoryStream(const path &root, directory_options opts, std::error_code &ec)
       : __stream_(nullptr), __root_(root) {
     if ((__stream_ = ::opendir(root.c_str())) == nullptr) {
       ec = detail::capture_errno();
-      const bool allow_eacess =
+      const auto allow_eacess =
           bool(opts & directory_options::skip_permission_denied);
       if (allow_eacess && ec.value() == EACCES) ec.clear();
       return;
@@ -196,7 +183,7 @@ class __dir_stream {
     advance(ec);
   }
 
-  ~__dir_stream() noexcept {
+  ~DirectoryStream() noexcept {
     if (__stream_) close();
   }
 
@@ -212,9 +199,9 @@ class __dir_stream {
         close();
         return false;
       } else {
-        __entry_.__assign_iter_entry(
+        __entry_.AssignIterEntry(
             __root_ / str,
-            directory_entry::__create_iter_result(str_type_pair.second));
+            directory_entry::CreateIterResult(str_type_pair.second));
         return true;
       }
     }
@@ -243,94 +230,105 @@ directory_iterator::directory_iterator(const path &p, std::error_code *ec,
   ErrorHandler<void> err("directory_iterator::directory_iterator(...)", ec, &p);
 
   std::error_code m_ec;
-  __imp_ = std::make_shared<__dir_stream>(p, opts, m_ec);
+  impl_ = std::make_shared<DirectoryStream>(p, opts, m_ec);
   if (ec) *ec = m_ec;
-  if (!__imp_->good()) {
-    __imp_.reset();
+  if (!impl_->good()) {
+    impl_.reset();
     if (m_ec) err.report(m_ec);
   }
 }
 
-directory_iterator &directory_iterator::__increment(std::error_code *ec) {
-  ASAP_ASSERT(__imp_ && "Attempting to increment an invalid iterator");
+directory_iterator &directory_iterator::do_increment(std::error_code *ec) {
   ErrorHandler<void> err("directory_iterator::operator++()", ec);
-
-  std::error_code m_ec;
-  if (!__imp_->advance(m_ec)) {
-    path root = std::move(__imp_->__root_);
-    __imp_.reset();
-    if (m_ec) err.report(m_ec, "at root \"{}\"", root.string());
+  if (impl_) {
+    std::error_code m_ec;
+    if (!impl_->advance(m_ec)) {
+      path root = std::move(impl_->__root_);
+      impl_.reset();
+      if (m_ec) err.report(m_ec, "at root \"{}\"", root.string());
+    }
+  } else {
+    err.report(std::errc::invalid_argument, "invalid iterator");
   }
   return *this;
 }
 
-directory_entry const &directory_iterator::__dereference() const {
-  ASAP_ASSERT(__imp_ && "Attempting to dereference an invalid iterator");
-  return __imp_->__entry_;
+directory_entry const &directory_iterator::dereference() const {
+  ASAP_ASSERT(impl_ && "attempt to dereference an invalid iterator");
+  return impl_->__entry_;
 }
 
 // recursive_directory_iterator
 
-struct recursive_directory_iterator::__shared_imp {
-  std::stack<__dir_stream> __stack_;
-  directory_options __options_;
+struct recursive_directory_iterator::SharedImpl {
+  std::stack<DirectoryStream> __stack_;
+  directory_options __options_{directory_options::none};
 };
 
 recursive_directory_iterator::recursive_directory_iterator(
     const path &p, directory_options opt, std::error_code *ec)
-    : __imp_(nullptr), __rec_(true) {
+    : impl_(nullptr), recursion_(true) {
   ErrorHandler<void> err("recursive_directory_iterator", ec, &p);
 
   std::error_code m_ec;
-  __dir_stream new_s(p, opt, m_ec);
+  DirectoryStream new_s(p, opt, m_ec);
   if (m_ec) err.report(m_ec);
   if (m_ec || !new_s.good()) return;
 
-  __imp_ = std::make_shared<__shared_imp>();
-  __imp_->__options_ = opt;
-  __imp_->__stack_.push(std::move(new_s));
+  impl_ = std::make_shared<SharedImpl>();
+  impl_->__options_ = opt;
+  impl_->__stack_.push(std::move(new_s));
 }
 
-void recursive_directory_iterator::__pop(std::error_code *ec) {
-  ASAP_ASSERT(__imp_ && "Popping the end iterator");
-  if (ec) ec->clear();
-  __imp_->__stack_.pop();
-  if (__imp_->__stack_.size() == 0)
-    __imp_.reset();
-  else
-    __advance(ec);
+void recursive_directory_iterator::pop_impl(std::error_code *ec) {
+  ErrorHandler<void> err("directory_iterator::pop()", ec);
+  if (impl_) {
+    impl_->__stack_.pop();
+    if (impl_->__stack_.empty())
+      impl_.reset();
+    else
+      Advance(ec);
+  } else {
+    err.report(std::errc::invalid_argument, "invalid iterator");
+  }
 }
 
 directory_options recursive_directory_iterator::options() const {
-  return __imp_->__options_;
+  ASAP_ASSERT(impl_ && "attempt to dereference an invalid iterator");
+  return impl_->__options_;
 }
 
 int recursive_directory_iterator::depth() const {
-  return __imp_->__stack_.size() - 1;
+  ErrorHandler<uintmax_t> err("recursive_directory_iterator::depth()", nullptr);
+  if (!impl_) return err.report(std::errc::invalid_argument, "invalid iterator");
+
+  return static_cast<int>(impl_->__stack_.size() - 1);
 }
 
-const directory_entry &recursive_directory_iterator::__dereference() const {
-  return __imp_->__stack_.top().__entry_;
+const directory_entry &recursive_directory_iterator::dereference() const {
+  ASAP_ASSERT(impl_ && "attempt to dereference an invalid iterator");
+  return impl_->__stack_.top().__entry_;
 }
 
-recursive_directory_iterator &recursive_directory_iterator::__increment(
+recursive_directory_iterator &recursive_directory_iterator::do_increment(
     std::error_code *ec) {
   if (ec) ec->clear();
   if (recursion_pending()) {
-    if (__try_recursion(ec) || (ec && *ec)) return *this;
+    if (TryRecursion(ec) || (ec && *ec)) return *this;
   }
-  __rec_ = true;
-  __advance(ec);
+  recursion_ = true;
+  Advance(ec);
   return *this;
 }
 
-void recursive_directory_iterator::__advance(std::error_code *ec) {
-  ErrorHandler<void> err("recursive_directory_iterator::operator++()", ec);
+void recursive_directory_iterator::Advance(std::error_code *ec) {
+  ErrorHandler<void> err("recursive_directory_iterator::Advance()", ec);
+  if (!impl_) return err.report(std::errc::invalid_argument, "invalid iterator");
 
   const directory_iterator end_it;
-  auto &stack = __imp_->__stack_;
+  auto &stack = impl_->__stack_;
   std::error_code m_ec;
-  while (stack.size() > 0) {
+  while (!stack.empty()) {
     if (stack.top().advance(m_ec)) return;
     if (m_ec) break;
     stack.pop();
@@ -338,47 +336,48 @@ void recursive_directory_iterator::__advance(std::error_code *ec) {
 
   if (m_ec) {
     path root = std::move(stack.top().__root_);
-    __imp_.reset();
+    impl_.reset();
     err.report(m_ec, "at root \"{}\"", root.string());
   } else {
-    __imp_.reset();
+    impl_.reset();
   }
 }
 
-bool recursive_directory_iterator::__try_recursion(std::error_code *ec) {
-  ErrorHandler<void> err("recursive_directory_iterator::operator++()", ec);
+bool recursive_directory_iterator::TryRecursion(std::error_code *ec) {
+  ErrorHandler<bool> err("recursive_directory_iterator::TryRecursion()", ec);
+  if (!impl_) return err.report(make_error_code(std::errc::invalid_argument), "invalid iterator");
 
-  bool rec_sym = bool(options() & directory_options::follow_directory_symlink);
+  auto rec_sym = bool(options() & directory_options::follow_directory_symlink);
 
-  auto &curr_it = __imp_->__stack_.top();
+  auto &curr_it = impl_->__stack_.top();
 
   bool skip_rec = false;
   std::error_code m_ec;
   if (!rec_sym) {
-    file_status st(curr_it.__entry_.__get_sym_ft(&m_ec));
+    file_status st(curr_it.__entry_.GetSymLinkFileType(&m_ec));
     if (m_ec && status_known(st)) m_ec.clear();
     if (m_ec || is_symlink(st) || !is_directory(st)) skip_rec = true;
   } else {
-    file_status st(curr_it.__entry_.__get_ft(&m_ec));
+    file_status st(curr_it.__entry_.GetFileType(&m_ec));
     if (m_ec && status_known(st)) m_ec.clear();
     if (m_ec || !is_directory(st)) skip_rec = true;
   }
 
   if (!skip_rec) {
-    __dir_stream new_it(curr_it.__entry_.path(), __imp_->__options_, m_ec);
+    DirectoryStream new_it(curr_it.__entry_.path(), impl_->__options_, m_ec);
     if (new_it.good()) {
-      __imp_->__stack_.push(std::move(new_it));
+      impl_->__stack_.push(std::move(new_it));
       return true;
     }
   }
   if (m_ec) {
-    const bool allow_eacess =
-        bool(__imp_->__options_ & directory_options::skip_permission_denied);
+    const auto allow_eacess =
+        bool(impl_->__options_ & directory_options::skip_permission_denied);
     if (m_ec.value() == EACCES && allow_eacess) {
       if (ec) ec->clear();
     } else {
-      path at_ent = std::move(curr_it.__entry_.__p_);
-      __imp_.reset();
+      path at_ent = std::move(curr_it.__entry_.path_);
+      impl_.reset();
       err.report(m_ec, "attempting recursion into \"{}\"", at_ent.string());
     }
   }

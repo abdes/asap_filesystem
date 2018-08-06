@@ -27,16 +27,13 @@ TEST_CASE("Ops / equivalent", "[common][filesystem][ops][equivalent]") {
   REQUIRE(!result);
 
   testing::scoped_file f1(p1);
-  ec = bad_ec;
+  ec.clear();
   result = equivalent(p1, p2, ec);
-  // TODO: Check/fix this
-#ifdef FAILED_TEST
-  REQUIRE(!ec);
-#endif
+  REQUIRE(ec); // https://cplusplus.github.io/LWG/issue2937
   REQUIRE(!result);
 
   testing::scoped_file f2(p2);
-  ec = bad_ec;
+  ec.clear();
   result = equivalent(p1, p2, ec);
   REQUIRE(!ec);
   REQUIRE(!result);
