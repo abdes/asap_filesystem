@@ -4,6 +4,7 @@
 
 #include <memory>  // for std::shared_ptr
 
+#include <common/assert.h>
 #include <filesystem/asap_filesystem_api.h>
 #include <filesystem/filesystem.h>
 
@@ -232,7 +233,7 @@ class ASAP_FILESYSTEM_API directory_entry {
     __data_ = __dt;
   }
 
-  _LIBCPP_FUNC_VIS
+  ASAP_FILESYSTEM_API
   std::error_code __do_refresh() noexcept;
 
   static bool __is_dne_error(std::error_code const& __ec) {
@@ -280,7 +281,7 @@ class ASAP_FILESYSTEM_API directory_entry {
           __ec->clear();
         return __data_.__type_;
     }
-    _LIBCPP_UNREACHABLE();
+    ASAP_UNREACHABLE();
   }
 
   file_type __get_ft(std::error_code* __ec = nullptr) const {
@@ -300,7 +301,7 @@ class ASAP_FILESYSTEM_API directory_entry {
         return __data_.__type_;
       }
     }
-    _LIBCPP_UNREACHABLE();
+    ASAP_UNREACHABLE();
   }
 
   file_status __get_status(std::error_code* __ec = nullptr) const {
@@ -314,7 +315,7 @@ class ASAP_FILESYSTEM_API directory_entry {
       case _RefreshSymlink:
         return file_status(__get_ft(__ec), __data_.__non_sym_perms_);
     }
-    _LIBCPP_UNREACHABLE();
+    ASAP_UNREACHABLE();
   }
 
   file_status __get_symlink_status(std::error_code* __ec = nullptr) const {
@@ -329,7 +330,7 @@ class ASAP_FILESYSTEM_API directory_entry {
       case _RefreshSymlinkUnresolved:
         return file_status(__get_sym_ft(__ec), __data_.__sym_perms_);
     }
-    _LIBCPP_UNREACHABLE();
+    ASAP_UNREACHABLE();
   }
 
   uintmax_t __get_size(std::error_code* __ec = nullptr) const {
@@ -355,7 +356,7 @@ class ASAP_FILESYSTEM_API directory_entry {
         return __data_.__size_;
       }
     }
-    _LIBCPP_UNREACHABLE();
+    ASAP_UNREACHABLE();
   }
 
   uintmax_t __get_nlink(std::error_code* __ec = nullptr) const {
@@ -373,7 +374,7 @@ class ASAP_FILESYSTEM_API directory_entry {
         return __data_.__nlink_;
       }
     }
-    _LIBCPP_UNREACHABLE();
+    ASAP_UNREACHABLE();
   }
 
   file_time_type __get_write_time(std::error_code* __ec = nullptr) const {
@@ -395,7 +396,7 @@ class ASAP_FILESYSTEM_API directory_entry {
         return __data_.__write_time_;
       }
     }
-    _LIBCPP_UNREACHABLE();
+    ASAP_UNREACHABLE();
   }
 
  private:
@@ -405,14 +406,14 @@ class ASAP_FILESYSTEM_API directory_entry {
 
 class __dir_element_proxy {
  public:
-  inline directory_entry operator*() { return _VSTD::move(__elem_); }
+  inline directory_entry operator*() { return std::move(__elem_); }
 
  private:
   friend class directory_iterator;
   friend class recursive_directory_iterator;
   explicit __dir_element_proxy(directory_entry const& __e) : __elem_(__e) {}
   __dir_element_proxy(__dir_element_proxy&& __o)
-      : __elem_(_VSTD::move(__o.__elem_)) {}
+      : __elem_(std::move(__o.__elem_)) {}
   directory_entry __elem_;
 };
 
@@ -448,7 +449,7 @@ class ASAP_FILESYSTEM_API directory_iterator {
   directory_iterator& operator=(directory_iterator&& __o) noexcept {
     // non-default implementation provided to support self-move assign.
     if (this != &__o) {
-      __imp_ = _VSTD::move(__o.__imp_);
+      __imp_ = std::move(__o.__imp_);
     }
     return *this;
   }
@@ -456,7 +457,7 @@ class ASAP_FILESYSTEM_API directory_iterator {
   ~directory_iterator() = default;
 
   const directory_entry& operator*() const {
-    _LIBCPP_ASSERT(__imp_, "The end iterator cannot be dereferenced");
+    ASAP_ASSERT(__imp_ && "The end iterator cannot be dereferenced");
     return __dereference();
   }
 
@@ -479,14 +480,14 @@ class ASAP_FILESYSTEM_API directory_iterator {
                                 const directory_iterator& __rhs) noexcept;
 
   // construct the dir_stream
-  _LIBCPP_FUNC_VIS
+  ASAP_FILESYSTEM_API
   directory_iterator(const path&, std::error_code*,
                      directory_options = directory_options::none);
 
-  _LIBCPP_FUNC_VIS
+  ASAP_FILESYSTEM_API
   directory_iterator& __increment(std::error_code* __ec = nullptr);
 
-  _LIBCPP_FUNC_VIS
+  ASAP_FILESYSTEM_API
   const directory_entry& __dereference() const;
 
  private:
@@ -546,7 +547,7 @@ class ASAP_FILESYSTEM_API recursive_directory_iterator {
       recursive_directory_iterator&& __o) noexcept {
     // non-default implementation provided to support self-move assign.
     if (this != &__o) {
-      __imp_ = _VSTD::move(__o.__imp_);
+      __imp_ = std::move(__o.__imp_);
       __rec_ = __o.__rec_;
     }
     return *this;
@@ -570,8 +571,8 @@ class ASAP_FILESYSTEM_API recursive_directory_iterator {
     return __increment(&__ec);
   }
 
-  _LIBCPP_FUNC_VIS directory_options options() const;
-  _LIBCPP_FUNC_VIS int depth() const;
+  ASAP_FILESYSTEM_API directory_options options() const;
+  ASAP_FILESYSTEM_API int depth() const;
 
   void pop() { __pop(); }
 
@@ -585,19 +586,19 @@ class ASAP_FILESYSTEM_API recursive_directory_iterator {
   recursive_directory_iterator(const path& __p, directory_options __opt,
                                std::error_code* __ec);
 
-  _LIBCPP_FUNC_VIS
+  ASAP_FILESYSTEM_API
   const directory_entry& __dereference() const;
 
-  _LIBCPP_FUNC_VIS
+  ASAP_FILESYSTEM_API
   bool __try_recursion(std::error_code* __ec);
 
-  _LIBCPP_FUNC_VIS
+  ASAP_FILESYSTEM_API
   void __advance(std::error_code* __ec = nullptr);
 
-  _LIBCPP_FUNC_VIS
+  ASAP_FILESYSTEM_API
   recursive_directory_iterator& __increment(std::error_code* __ec = nullptr);
 
-  _LIBCPP_FUNC_VIS
+  ASAP_FILESYSTEM_API
   void __pop(std::error_code* __ec = nullptr);
 
   inline friend bool operator==(const recursive_directory_iterator&,

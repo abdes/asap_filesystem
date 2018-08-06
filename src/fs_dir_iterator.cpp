@@ -252,7 +252,7 @@ directory_iterator::directory_iterator(const path &p, std::error_code *ec,
 }
 
 directory_iterator &directory_iterator::__increment(std::error_code *ec) {
-  _LIBCPP_ASSERT(__imp_, "Attempting to increment an invalid iterator");
+  ASAP_ASSERT(__imp_ && "Attempting to increment an invalid iterator");
   ErrorHandler<void> err("directory_iterator::operator++()", ec);
 
   std::error_code m_ec;
@@ -265,7 +265,7 @@ directory_iterator &directory_iterator::__increment(std::error_code *ec) {
 }
 
 directory_entry const &directory_iterator::__dereference() const {
-  _LIBCPP_ASSERT(__imp_, "Attempting to dereference an invalid iterator");
+  ASAP_ASSERT(__imp_ && "Attempting to dereference an invalid iterator");
   return __imp_->__entry_;
 }
 
@@ -292,7 +292,7 @@ recursive_directory_iterator::recursive_directory_iterator(
 }
 
 void recursive_directory_iterator::__pop(std::error_code *ec) {
-  _LIBCPP_ASSERT(__imp_, "Popping the end iterator");
+  ASAP_ASSERT(__imp_ && "Popping the end iterator");
   if (ec) ec->clear();
   __imp_->__stack_.pop();
   if (__imp_->__stack_.size() == 0)
