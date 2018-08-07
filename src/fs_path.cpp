@@ -19,7 +19,7 @@ namespace asap {
 namespace filesystem {
 
 namespace {
-static constexpr path::value_type dot = '.';
+constexpr path::value_type dot = '.';
 }
 
 // -----------------------------------------------------------------------------
@@ -585,7 +585,7 @@ path path::lexically_normal() const {
   for (auto &p : *this) {
 #ifdef ASAP_WINDOWS
     // Replace each slash character in the root-name
-    if (p._M_type == _Type::_Root_name) {
+    if (p.type_ == Type::ROOT_NAME) {
       string_type s = p.native();
       std::replace(s.begin(), s.end(), L'/', L'\\');
       ret /= s;
@@ -647,10 +647,10 @@ path path::lexically_relative(const path &base) const {
   else {
     int n = 0;
     for (; b != base.end(); ++b) {
-      const path &p = *b;
-      if (is_dotdot(p))
+      const path &bp = *b;
+      if (is_dotdot(bp))
         --n;
-      else if (!is_dot(p))
+      else if (!is_dot(bp))
         ++n;
     }
     if (n >= 0) {

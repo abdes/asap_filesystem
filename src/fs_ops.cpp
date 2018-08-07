@@ -3,23 +3,26 @@
 //    (See accompanying file LICENSE or copy at
 //   https://opensource.org/licenses/BSD-3-Clause)
 
-#include <fcntl.h>  // for ‘O_RDONLY’, ‘O_NONBLOCK’
-#include <time.h>   // for struct timespec
+// clang-format off
+#include <filesystem/config.h>
+
+#include <fcntl.h> // for ‘O_RDONLY’, ‘O_NONBLOCK’
+#include <ctime>   // for struct timespec
 #include <array>
 #include <cstdio>  // for BUFSIZ
 
-#include <limits.h>
-#include <stdlib.h>
-#include <unistd.h>
-
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/statvfs.h>
-#if ASAP_FS_USE_UTIME
-#  include <utime.h>
+#include <climits>
+#include <cstdlib>
+#if defined(ASAP_POSIX)
+# include <unistd.h>
+# include <sys/types.h>
+# include <sys/stat.h>
+# include <sys/statvfs.h>
 #endif
 
-#include <filesystem/config.h>
+#if ASAP_FS_USE_UTIME
+# include <utime.h>
+#endif
 
 // Which method to use for copy file
 #if ASAP_FS_USE_SENDFILE
@@ -29,10 +32,9 @@
 #endif
 
 #include <common/assert.h>
-
 #include <filesystem/filesystem.h>
-
 #include "fs_error.h"
+// clang-format on
 
 namespace asap {
 namespace filesystem {
@@ -314,7 +316,7 @@ void copy_impl(const path& from, const path& to, copy_options options,
   use_lstat = create_symlinks || skip_symlinks;
   const file_status t = use_lstat ? detail::posix_lstat(to, t_st, &m_ec1)
                                   : detail::posix_stat(to, t_st, &m_ec1);
-  if (not status_known(t)) return err.report(m_ec1);
+  if (!status_known(t)) return err.report(m_ec1);
 
   if (!exists(f) || is_other(f) || is_other(t) ||
       (is_directory(f) && is_regular_file(t)) ||
@@ -327,7 +329,7 @@ void copy_impl(const path& from, const path& to, copy_options options,
   if (is_symlink(f)) {
     if (skip_symlinks) {
       // do nothing
-    } else if (not exists(t)) {
+    } else if (!exists(t)) {
       copy_symlink_impl(from, to, ec);
     } else {
       return err.report(std::errc::file_exists);
@@ -482,7 +484,7 @@ bool copy_file_impl(const path& from, const path& to, copy_options options,
   auto from_st = from_fd.get_status();
   StatT const& from_stat = from_fd.get_stat();
   if (!is_regular_file(from_st)) {
-    if (not m_ec) m_ec = make_error_code(std::errc::not_supported);
+    if (!m_ec) m_ec = make_error_code(std::errc::not_supported);
     return err.report(m_ec);
   }
 
@@ -578,8 +580,8 @@ bool create_directories_impl(const path& p, std::error_code* ec) {
   const path parent = p.parent_path();
   if (!parent.empty()) {
     const file_status parent_st = status(parent, m_ec);
-    if (not status_known(parent_st)) return err.report(m_ec);
-    if (not exists(parent_st)) {
+    if (!status_known(parent_st)) return err.report(m_ec);
+    if (!exists(parent_st)) {
       create_directories_impl(parent, ec);
       if (ec && *ec) {
         return false;
@@ -879,7 +881,7 @@ void permissions_impl(const path& p, perms prms, perm_options opts,
     return err.report(capture_errno());
   }
 #else
-  if (set_sym_perms) return err.report(errc::operation_not_supported);
+  if (set_sym_perms) return err.report(std::errc::operation_not_supported);
   if (::chmod(p.c_str(), real_perms) == -1) {
     return err.report(capture_errno());
   }
@@ -1152,18 +1154,18 @@ std::error_code directory_entry::Refresh_impl() noexcept {
   return failure_ec;
 }
 #else
-std::error_code directory_entry::__do_refresh() noexcept {
-  cached_data_.__reset();
+std::error_code directory_entry::Refresh_impl() noexcept {
+  cached_data_.Reset();
   std::error_code failure_ec;
 
   file_status st = asap::filesystem::symlink_status(path_, failure_ec);
   if (!status_known(st)) {
-    cached_data_.__reset();
+    cached_data_.Reset();
     return failure_ec;
   }
 
   if (!asap::filesystem::exists(st) || !asap::filesystem::is_symlink(st)) {
-    cached_data_.cache_type = directory_entry::_RefreshNonSymlink;
+    cached_data_.cache_type = CacheType_::REFRESH_NON_SYMLINK;
     cached_data_.type = st.type();
     cached_data_.non_symlink_perms = st.permissions();
   } else { // we have a symlink
@@ -1180,10 +1182,10 @@ std::error_code directory_entry::__do_refresh() noexcept {
     // If we failed to resolve the link, then only partially populate the
     // cache.
     if (!status_known(st)) {
-      cached_data_.cache_type = directory_entry::_RefreshSymlinkUnresolved;
+      cached_data_.cache_type = CacheType_::REFRESH_SYMLINK_UNRESOLVED;
       return std::error_code{};
     }
-    cached_data_.cache_type = directory_entry::_RefreshSymlink;
+    cached_data_.cache_type = CacheType_::REFRESH_SYMLINK;
   }
 
   // FIXME: This is currently broken, and the implementation only a placeholder.

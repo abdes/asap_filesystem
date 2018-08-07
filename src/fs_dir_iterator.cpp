@@ -12,20 +12,18 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include <stack>
+#include <common/config.h>
 
 #if defined(ASAP_WINDOWS)
-#define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 #else
 #include <dirent.h>
 #endif
-#include <cerrno>
 
-#include <common/platform.h>
+#include <cerrno>
+#include <stack>
 
 #include <filesystem/filesystem.h>
-
 #include "fs_error.h"
 
 namespace asap {
@@ -67,20 +65,20 @@ std::pair<std::string, file_type> posix_readdir(DIR *dir_stream,
 }
 #else
 
-static file_type get_file_type(const WIN32_FIND_DATA &data) {
+file_type get_file_type(const WIN32_FIND_DATA &data) {
   // auto attrs = data.dwFileAttributes;
   // FIXME Windows implementation of get_file_type()
   return file_type::unknown;
 }
-static uintmax_t get_file_size(const WIN32_FIND_DATA &data) {
-  return (data.nFileSizeHight * (MAXDWORD + 1)) + data.nFileSizeLow;
+uintmax_t get_file_size(const WIN32_FIND_DATA &data) {
+  return (data.nFileSizeHigh * (MAXDWORD + 1)) + data.nFileSizeLow;
 }
-static file_time_type get_write_time(const WIN32_FIND_DATA &data) {
+file_time_type get_write_time(const WIN32_FIND_DATA &data) {
   ULARGE_INTEGER tmp;
-  FILETIME &time = data.ftLastWriteTime;
+  auto &time = data.ftLastWriteTime;
   tmp.u.LowPart = time.dwLowDateTime;
   tmp.u.HighPart = time.dwHighDateTime;
-  return file_time_type(file_time_type::duration(time.QuadPart));
+  return file_time_type(file_time_type::duration(tmp.QuadPart));
 }
 
 #endif
@@ -98,8 +96,8 @@ class DirectoryStream {
 
   DirectoryStream(DirectoryStream &&__ds) noexcept
       : __stream_(__ds.__stream_),
-        __root_(move(__ds.__root_)),
-        __entry_(move(__ds.__entry_)) {
+        __root_(std::move(__ds.__root_)),
+        __entry_(std::move(__ds.__entry_)) {
     __ds.__stream_ = INVALID_HANDLE_VALUE;
   }
 
@@ -107,7 +105,7 @@ class DirectoryStream {
       : __stream_(INVALID_HANDLE_VALUE), __root_(root) {
     __stream_ = ::FindFirstFileEx(root.c_str(), &cached_data_);
     if (__stream_ == INVALID_HANDLE_VALUE) {
-      ec = std::error_code(::GetLastError(), generic_category());
+      ec = std::error_code(::GetLastError(), std::generic_category());
       const bool ignore_permission_denied =
           bool(opts & directory_options::skip_permission_denied);
       if (ignore_permission_denied && ec.value() == ERROR_ACCESS_DENIED)
@@ -123,7 +121,7 @@ class DirectoryStream {
 
   bool good() const noexcept { return __stream_ != INVALID_HANDLE_VALUE; }
 
-  bool advance(error_code &ec) {
+  bool advance(std::error_code &ec) {
     while (::FindNextFile(__stream_, &cached_data_)) {
       if (!strcmp(cached_data_.cFileName, ".") || strcmp(cached_data_.cFileName, ".."))
         continue;
@@ -132,12 +130,12 @@ class DirectoryStream {
       // cdata.type = get_file_type(cached_data_);
       // cdata.size = get_file_size(cached_data_);
       // cdata.write_time = get_write_time(cached_data_);
-      __entry_.__assign_iter_entry(
+      __entry_.AssignIterEntry(
           __root_ / cached_data_.cFileName,
-          directory_entry::__create_iter_result(get_file_type(__data)));
+          directory_entry::CreateIterResult(detail::get_file_type(cached_data_)));
       return true;
     }
-    ec = std::error_code(::GetLastError(), generic_category());
+    ec = std::error_code(::GetLastError(), std::generic_category());
     close();
     return false;
   }
@@ -146,7 +144,7 @@ class DirectoryStream {
   std::error_code close() noexcept {
     std::error_code ec;
     if (!::FindClose(__stream_))
-      ec = std::error_code(::GetLastError(), generic_category());
+      ec = std::error_code(::GetLastError(), std::generic_category());
     __stream_ = INVALID_HANDLE_VALUE;
     return ec;
   }
@@ -299,7 +297,7 @@ directory_options recursive_directory_iterator::options() const {
 }
 
 int recursive_directory_iterator::depth() const {
-  ErrorHandler<uintmax_t> err("recursive_directory_iterator::depth()", nullptr);
+  ErrorHandler<int> err("recursive_directory_iterator::depth()", nullptr);
   if (!impl_) return err.report(std::errc::invalid_argument, "invalid iterator");
 
   return static_cast<int>(impl_->__stack_.size() - 1);
