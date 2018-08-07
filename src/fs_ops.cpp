@@ -390,9 +390,10 @@ namespace {
 bool do_copy_file_sendfile(FileDescriptor& read_fd, FileDescriptor& write_fd,
                            std::error_code& ec) {
   size_t count = read_fd.get_stat().st_size;
+  if (count > 0x7ffff000) return false;
   do {
     ssize_t res;
-    if ((res = ::sendfile(write_fd.fd, read_fd.fd, nullptr, count)) == -1) {
+    if ((res = ::sendfile(write_fd.fd_, read_fd.fd_, nullptr, count)) == -1) {
       ec = capture_errno();
       return false;
     }
@@ -427,7 +428,6 @@ bool do_copy_file_copyfile(FileDescriptor& read_fd, FileDescriptor& write_fd,
 }
 #endif
 
-#if !ASAP_FS_USE_SENDFILE && !ASAP_FS_USE_COPYFILE
 bool do_copy_file_default(FileDescriptor& read_fd, FileDescriptor& write_fd,
                           std::error_code& ec) {
   // BUFSIZ defaults to 8192
@@ -452,17 +452,20 @@ bool do_copy_file_default(FileDescriptor& read_fd, FileDescriptor& write_fd,
   ec.clear();
   return true;
 }
-#endif
+
 
 bool do_copy_file(FileDescriptor& from, FileDescriptor& to,
                   std::error_code& ec) {
 #if ASAP_FS_USE_SENDFILE
-  return do_copy_file_sendfile(from, to, ec);
-#elif ASAP_FS_USE_COPYFILE
-  return do_copy_file_copyfile(from, to, ec);
-#else
-  return do_copy_file_default(from, to, ec);
+  // Prefer to use sendfile when it is available.
+  // Check if sendfile cannot handle the large files and if so, fallback to
+  // copyfile() or default implementation.
+  if (do_copy_file_sendfile(from, to, ec)) return true;
 #endif
+#if ASAP_FS_USE_COPYFILE
+  if (do_copy_file_copyfile(from, to, ec)) return true;
+#endif
+  return do_copy_file_default(from, to, ec);
 }
 
 }  // namespace
