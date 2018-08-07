@@ -12,6 +12,7 @@
 #include <common/platform.h>
 #include <fmt/format.h>
 
+#include <filesystem/fs_fwd.h>
 #include <filesystem/fs_path.h>
 
 namespace asap {
@@ -41,7 +42,12 @@ inline bool error_value<bool>() {
 
 template <>
 inline uintmax_t error_value<uintmax_t>() {
-  return uintmax_t(-1);
+	return uintmax_t(-1);
+}
+
+template <>
+inline int error_value<int>() {
+	return -1;
 }
 
 template <>
@@ -84,22 +90,8 @@ struct ErrorHandler {
         throw filesystem_error(what, *p1, *p2, m_ec);
     }
     // Unreachable
-    ASAP_ASSERT_FAIL();
-#if ASAP_COMPILER_IS_Clang || ASAP_COMPILER_IS_AppleClang
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wreturn-type"
-#endif
-#if ASAP_COMPILER_IS_GNU
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wreturn-type"
-#endif
+    ASAP_UNREACHABLE();
   }
-#if ASAP_COMPILER_IS_Clang || ASAP_COMPILER_IS_AppleClang
-#pragma clang diagnostic pop
-#endif
-#if ASAP_COMPILER_IS_GNU
-#pragma GCC diagnostic pop
-#endif
 
   template <class... Args>
   T report(const std::error_code &m_ec, const char *msg,
@@ -119,22 +111,8 @@ struct ErrorHandler {
         throw filesystem_error(what, *p1, *p2, m_ec);
     }
     // Unreachable
-    ASAP_ASSERT_FAIL();
-#if ASAP_COMPILER_IS_Clang || ASAP_COMPILER_IS_AppleClang
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wreturn-type"
-#endif
-#if ASAP_COMPILER_IS_GNU
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wreturn-type"
-#endif
+    ASAP_UNREACHABLE();
   }
-#if ASAP_COMPILER_IS_Clang || ASAP_COMPILER_IS_AppleClang
-#pragma clang diagnostic pop
-#endif
-#if ASAP_COMPILER_IS_GNU
-#pragma GCC diagnostic pop
-#endif
 
   T report(std::errc const &err) const { return report(make_error_code(err)); }
 
