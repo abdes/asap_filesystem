@@ -19,7 +19,7 @@ namespace filesystem {
 //                          class filesystem_error
 // -----------------------------------------------------------------------------
 
-class ASAP_FILESYSTEM_API filesystem_error : public std::system_error {
+class filesystem_error : public std::system_error {
  public:
   filesystem_error(const std::string& what, std::error_code ec)
       : std::system_error(ec, what),
@@ -38,14 +38,14 @@ class ASAP_FILESYSTEM_API filesystem_error : public std::system_error {
     create_what(2);
   }
 
-  ~filesystem_error() override;
+  ~filesystem_error() override = default;
 
   const path& path1() const noexcept { return data_->path1_; }
   const path& path2() const noexcept { return data_->path2_; }
   const char* what() const noexcept override { return data_->what_.c_str(); }
 
  private:
-  void create_what(int num_paths);
+  ASAP_FILESYSTEM_API void create_what(int num_paths);
 
   struct Data {
     Data(const path& p1, const path& p2) : path1_(p1), path2_(p2) {}
