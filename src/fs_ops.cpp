@@ -820,6 +820,8 @@ void last_write_time_impl(const path& p, file_time_type new_time,
     --s;
     ns += seconds(1);
   }
+  if (s < s.zero()) return err.report(std::errc::invalid_argument,
+      "negative number of seconds since epoch");
   detail::TimeSpec ts[2];
   ts[0].tv_sec = 0;
   ts[0].tv_nsec = UTIME_OMIT;
@@ -827,6 +829,8 @@ void last_write_time_impl(const path& p, file_time_type new_time,
   ts[1].tv_nsec = static_cast<long>(ns.count());
   if (::utimensat(AT_FDCWD, p.c_str(), ts, 0)) err.report(capture_errno());
 #elif ASAP_FS_USE_UTIME
+  if (s < s.zero()) return err.report(std::errc::invalid_argument,
+      "negative number of seconds since epoch");
   utimbuf times;
   times.modtime = s.count();
   std::error_code m_ec;

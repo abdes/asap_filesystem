@@ -56,9 +56,10 @@ bool approx_equal(time_type file_time, time_type expected) {
 TEST_CASE("Ops / last_write_time / write",
           "[common][filesystem][ops][last_write_time]") {
   // write times
+  auto p = testing::nonexistent_path();
 
   const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
-  testing::scoped_file f;
+  testing::scoped_file f(p);
   std::error_code ec;
   time_type time;
 
@@ -89,6 +90,6 @@ TEST_CASE("Ops / last_write_time / write",
   ec = bad_ec;
   time -= std::chrono::milliseconds(1000 * 60 * 10 + 15);
   last_write_time(f.path_, time, ec);
-  REQUIRE(!ec);
-  REQUIRE(approx_equal(last_write_time(f.path_), time));
+  REQUIRE(ec); // negative seconds since epoch is invalid
+  REQUIRE(approx_equal(last_write_time(f.path_), time_type()));
 }
