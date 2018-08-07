@@ -9,10 +9,8 @@
 namespace asap {
 namespace filesystem {
 
-filesystem_error::~filesystem_error() {}
-
 void filesystem_error::create_what(int num_paths) {
-  const char *base_what = system_error::what();
+  const char *base_what = std::system_error::what();
   data_->what_ = [&]() -> std::string {
     std::string rv("filesystem error: ");
     rv.append(base_what);
