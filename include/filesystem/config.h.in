@@ -40,11 +40,12 @@
 
 // Which method to use to copy files
 #cmakedefine ASAP_HAVE_COPYFILE_H
+#if defined(ASAP_HAVE_COPYFILE_H)
+#  define ASAP_FS_USE_COPYFILE 1
+#endif
 #if defined(ASAP_LINUX)
 #  include <linux/version.h>
 #  if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 33)
 #    define ASAP_FS_USE_SENDFILE 1
 #  endif
-#elif defined(ASAP_HAVE_COPYFILE_H)
-#  define ASAP_FS_USE_COPYFILE 1
 #endif
