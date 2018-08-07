@@ -3,18 +3,25 @@
 //    (See accompanying file LICENSE or copy at
 //   https://opensource.org/licenses/BSD-3-Clause)
 
+#include <common/platform.h>
+
+#if defined(ASAP_WINDOWS)
+# include <Windows.h>
+#endif
+
+#if defined(ASAP_POSIX)
+# include <unistd.h>
+#endif
+
 #include <cstdio>
 #include <fstream>
 
-#include <unistd.h>
-
-#include <common/platform.h>
 #include <filesystem/filesystem.h>
 
 namespace fs = asap::filesystem;
 using asap::filesystem::path;
 
-#define PATH_CHK(p1, p2, fn) REQUIRE(p1.fn() == p2.fn())
+#define PATH_CHK(p1, p2, fn) REQUIRE((p1).fn() == (p2).fn())
 
 namespace testing {
 
@@ -66,8 +73,14 @@ inline path nonexistent_path() {
 #else
   char buf[64];
   static int counter;
-  std::snprintf(buf, 64, "filesystem-test.%d.%lu", counter++,
-                (unsigned long)::getpid());
+#if defined(ASAP_WINDOWS)
+  unsigned long pid = static_cast<unsigned long>(GetCurrentProcessId());
+#elif defined(ASAP_POSIX)
+  unsigned long pid = static_cast<unsigned long>(::getpid());
+#else
+  ASAP_ASSERT_FAIL("")
+#endif
+  std::snprintf(buf, 64, "filesystem-test.%d.%lu", counter++, pid);
   p = buf;
 #endif
   return p;
@@ -87,7 +100,7 @@ struct scoped_file {
     if (!path_.empty()) fs::remove(path_);
   }
 
-  path path_;
+  path path_{};
 };
 
 }  // namespace testing
