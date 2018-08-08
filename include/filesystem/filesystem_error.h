@@ -1,3 +1,7 @@
+#include <utility>
+
+#include <utility>
+
 //        Copyright The Authors 2018.
 //    Distributed under the 3-Clause BSD License.
 //    (See accompanying file LICENSE or copy at
@@ -12,6 +16,8 @@
 #include <filesystem/asap_filesystem_api.h>
 #include <filesystem/fs_path.h>
 
+#include <iostream>
+
 namespace asap {
 namespace filesystem {
 
@@ -19,7 +25,11 @@ namespace filesystem {
 //                          class filesystem_error
 // -----------------------------------------------------------------------------
 
-class filesystem_error : public std::system_error {
+class
+#if !ASAP_COMPILER_IS_MSVC
+ASAP_FILESYSTEM_API
+#endif
+filesystem_error : public std::system_error {
  public:
   filesystem_error(const std::string& what, std::error_code ec)
       : std::system_error(ec, what),
@@ -48,7 +58,7 @@ class filesystem_error : public std::system_error {
   ASAP_FILESYSTEM_API void create_what(int num_paths);
 
   struct Data {
-    Data(const path& p1, const path& p2) : path1_(p1), path2_(p2) {}
+    Data(path p1, path p2) : path1_(std::move(p1)), path2_(std::move(p2)) {}
     path path1_;
     path path2_;
     std::string what_;
