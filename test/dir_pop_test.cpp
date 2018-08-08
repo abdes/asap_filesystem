@@ -11,7 +11,7 @@
 //  dir_pop
 // -----------------------------------------------------------------------------
 
-TEST_CASE("Ops / dir_pop / error", "[common][filesystem][ops][dir_pop]") {
+TEST_CASE("Dir / dir_pop / error", "[common][filesystem][ops][dir_pop]") {
   std::error_code ec;
   fs::recursive_directory_iterator dir;
   dir.pop(ec);  // This is undefined, but our implementation
@@ -27,7 +27,7 @@ TEST_CASE("Ops / dir_pop / error", "[common][filesystem][ops][dir_pop]") {
   REQUIRE(ec2 == ec);
 }
 
-TEST_CASE("Ops / dir_pop / simple", "[common][filesystem][ops][dir_pop]") {
+TEST_CASE("Dir / dir_pop / simple", "[common][filesystem][ops][dir_pop]") {
   const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
   std::error_code ec;
   const auto p = testing::nonexistent_path();
@@ -53,7 +53,7 @@ TEST_CASE("Ops / dir_pop / simple", "[common][filesystem][ops][dir_pop]") {
   remove_all(p, ec);
 }
 
-TEST_CASE("Ops / dir_pop / complex", "[common][filesystem][ops][dir_pop]") {
+TEST_CASE("Dir / dir_pop / complex", "[common][filesystem][ops][dir_pop]") {
   const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
   std::error_code ec;
   const auto p = testing::nonexistent_path();

@@ -11,7 +11,7 @@
 //  dir_iterator
 // -----------------------------------------------------------------------------
 
-TEST_CASE("Ops / dir_iterator", "[common][filesystem][ops][dir_iterator]") {
+TEST_CASE("Dir / dir_iterator", "[common][filesystem][ops][dir_iterator]") {
   const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
   std::error_code ec;
 
@@ -62,7 +62,7 @@ TEST_CASE("Ops / dir_iterator", "[common][filesystem][ops][dir_iterator]") {
   remove_all(p, ec);
 }
 
-TEST_CASE("Ops / dir_iterator / ++",
+TEST_CASE("Dir / dir_iterator / ++",
           "[common][filesystem][ops][dir_iterator]") {
   const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
   std::error_code ec;
@@ -86,7 +86,7 @@ TEST_CASE("Ops / dir_iterator / ++",
   remove_all(p, ec);
 }
 
-TEST_CASE("Ops / dir_iterator / noexcept",
+TEST_CASE("Dir / dir_iterator / noexcept",
           "[common][filesystem][ops][dir_iterator]") {
   auto p = testing::nonexistent_path();
   create_directory(p);
