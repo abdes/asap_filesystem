@@ -62,6 +62,9 @@ TEST_CASE("Ops / temp_dir / TMPDIR", "[common][filesystem][ops][temp_dir]") {
   REQUIRE(ec);
   REQUIRE(p == fs::path());
 
+  REQUIRE_THROWS_MATCHES(fs::temp_directory_path(), fs::filesystem_error,
+                         testing::FilesystemErrorDetail(ec));
+
   std::error_code ec2;
   try {
     p = fs::temp_directory_path();

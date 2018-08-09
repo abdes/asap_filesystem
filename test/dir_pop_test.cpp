@@ -14,17 +14,12 @@
 TEST_CASE("Dir / dir_pop / error", "[common][filesystem][ops][dir_pop]") {
   std::error_code ec;
   fs::recursive_directory_iterator dir;
-  dir.pop(ec);  // This is undefined, but our implementation
-  REQUIRE(ec);  // checks and returns an error.
+  dir.pop(ec);  // This is undefined, but this implementation returns an error
+  REQUIRE(ec);
   REQUIRE(dir == end(dir));
 
-  std::error_code ec2;
-  try {
-    dir.pop();
-  } catch (const fs::filesystem_error& ex) {
-    ec2 = ex.code();
-  }
-  REQUIRE(ec2 == ec);
+  REQUIRE_THROWS_MATCHES(dir.pop(), fs::filesystem_error,
+                         testing::FilesystemErrorDetail(ec));
 }
 
 TEST_CASE("Dir / dir_pop / simple", "[common][filesystem][ops][dir_pop]") {

@@ -28,16 +28,11 @@ TEST_CASE("Ops / last_write_time / read",
   time_type mtime = last_write_time(p, ec);
   REQUIRE(ec);
   REQUIRE(ec == std::make_error_code(std::errc::no_such_file_or_directory));
-  bool caught = false;
-  try {
-    mtime = last_write_time(p);
-  } catch (std::system_error const& e) {
-    caught = true;
-    ec = e.code();
-  }
-  REQUIRE(caught);
-  REQUIRE(ec);
-  REQUIRE(ec == std::make_error_code(std::errc::no_such_file_or_directory));
+
+  REQUIRE_THROWS_MATCHES(
+      last_write_time(p), fs::filesystem_error,
+      testing::FilesystemErrorDetail(
+          std::make_error_code(std::errc::no_such_file_or_directory), p));
 
   testing::scoped_file file(p);
   REQUIRE(exists(p));
@@ -90,6 +85,6 @@ TEST_CASE("Ops / last_write_time / write",
   ec = bad_ec;
   time -= std::chrono::milliseconds(1000 * 60 * 10 + 15);
   last_write_time(f.path_, time, ec);
-  REQUIRE(ec); // negative seconds since epoch is invalid
+  REQUIRE(ec);  // negative seconds since epoch is invalid
   REQUIRE(approx_equal(last_write_time(f.path_), time_type()));
 }

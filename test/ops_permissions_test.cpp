@@ -126,14 +126,9 @@ TEST_CASE("Ops / permissions / error",
   std::error_code ec = make_error_code(std::errc::no_such_file_or_directory);
   permissions(p, perms::owner_all, ec);
   REQUIRE(ec);
-  std::error_code ec2;
-  try {
-    permissions(p, perms::owner_all);
-  } catch (const fs::filesystem_error& ex) {
-    ec2 = ex.code();
-    REQUIRE(ex.path1() == p);
-  }
-  REQUIRE(ec == ec2);
+
+  REQUIRE_THROWS_MATCHES(permissions(p, perms::owner_all), fs::filesystem_error,
+                         testing::FilesystemErrorDetail(ec, p));
 
   remove(p);
 }

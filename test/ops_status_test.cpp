@@ -47,21 +47,8 @@ TEST_CASE("Ops / status", "[common][filesystem][ops][status]") {
   REQUIRE(ec.value() == (int)std::errc::permission_denied);
   REQUIRE(st.type() == fs::file_type::none);
 
-  bool caught = false;
-  std::error_code ec2;
-  fs::path p, p2;
-  try {
-    fs::symlink_status(f.path_);
-  } catch (const fs::filesystem_error& e) {
-    caught = true;
-    p = e.path1();
-    p2 = e.path2();
-    ec2 = e.code();
-  }
-  REQUIRE(caught);
-  REQUIRE(ec2 == ec);
-  REQUIRE(p == f.path_);
-  REQUIRE(p2.empty());
+  REQUIRE_THROWS_MATCHES(fs::symlink_status(f.path_), fs::filesystem_error,
+                         testing::FilesystemErrorDetail(ec, f.path_));
 
   fs::permissions(dir, fs::perms::owner_all, ec);
 }

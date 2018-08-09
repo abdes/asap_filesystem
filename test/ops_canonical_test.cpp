@@ -66,22 +66,18 @@ TEST_CASE("Ops / canonical", "[common][filesystem][ops][canonical]") {
 TEST_CASE("Ops / canonical / exception",
           "[common][filesystem][ops][canonical]") {
   const fs::path p = testing::nonexistent_path();
-  std::error_code ec, ec2;
+  std::error_code ec;
   const fs::path res = canonical(p, ec);
   REQUIRE(ec);
   REQUIRE(res.empty());
 
-  try {
-    canonical(p);
-  } catch (const fs::filesystem_error& e) {
-    REQUIRE(e.path1() == p);
-    REQUIRE(e.code() == ec);
-  }
+  REQUIRE_THROWS_MATCHES(
+      canonical(p), fs::filesystem_error,
+      testing::FilesystemErrorDetail(ec, p, fs::current_path()));
 }
 
 TEST_CASE("Ops / canonical / real use",
           "[common][filesystem][ops][canonical]") {
-  std::error_code ec;
   auto dir = testing::nonexistent_path();
   fs::create_directory(dir);
   fs::path foo = dir / "foo", bar = dir / "bar";

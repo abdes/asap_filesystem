@@ -21,14 +21,10 @@ TEST_CASE("Ops / file_size / special", "[common][filesystem][ops][file_size]") {
   REQUIRE(ec == std::errc::is_a_directory);
   REQUIRE(size == -1);
 
-  try {
-    size = fs::file_size(".");
-    ec.clear();
-  } catch (const fs::filesystem_error& e) {
-    ec = e.code();
-  }
-  REQUIRE(ec == std::errc::is_a_directory);
-  REQUIRE(size == -1);
+  REQUIRE_THROWS_MATCHES(
+      fs::file_size("."), fs::filesystem_error,
+      testing::FilesystemErrorDetail(
+          std::make_error_code(std::errc::is_a_directory), "."));
 }
 
 TEST_CASE("Ops / file_size / not existing",

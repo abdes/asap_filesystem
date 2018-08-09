@@ -15,11 +15,12 @@
 // clang-format on
 
 #if defined(ASAP_WINDOWS)
-# include <Windows.h>
+#include <Windows.h>
 #endif
 
 #include <cstdio>
 #include <fstream>
+#include <sstream>
 
 #include <filesystem/filesystem.h>
 
@@ -29,6 +30,51 @@ using asap::filesystem::path;
 #define PATH_CHK(p1, p2, fn) REQUIRE((p1).fn() == (p2).fn())
 
 namespace testing {
+
+// Catch2 matcher for filesystem_error
+class FilesystemErrorMatcher : public Catch::MatcherBase<fs::filesystem_error> {
+  std::error_code ec_;
+  path p1_;
+  path p2_;
+
+ public:
+  FilesystemErrorMatcher(std::error_code ec) : ec_(std::move(ec)) {}
+  FilesystemErrorMatcher(std::error_code ec, path p1)
+      : ec_(std::move(ec)), p1_(std::move(p1)) {}
+  FilesystemErrorMatcher(std::error_code ec, path p1, path p2)
+      : ec_(std::move(ec)), p1_(std::move(p1)), p2_(std::move(p2)) {}
+
+  // Performs the test for this matcher
+  virtual bool match(fs::filesystem_error const &error) const override {
+    return (error.code() == ec_) && (error.path1() == p1_) &&
+           (error.path2() == p2_);
+  }
+
+  // Produces a string describing what this matcher does. It should
+  // include any provided data (the begin/ end in this case) and
+  // be written as if it were stating a fact (in the output it will be
+  // preceded by the value under test).
+  virtual std::string describe() const override {
+    std::ostringstream ss;
+    ss << "error code " << ec_;
+    if (!p1_.empty()) ss << ", path1 '" << p1_.string() << "'";
+    if (!p2_.empty()) ss << ", path2 '" << p2_.string() << "'";
+    return ss.str();
+  }
+};
+
+// The builder functions
+inline FilesystemErrorMatcher FilesystemErrorDetail(std::error_code ec) {
+  return FilesystemErrorMatcher(std::move(ec));
+}
+inline FilesystemErrorMatcher FilesystemErrorDetail(std::error_code ec,
+                                                    path p1) {
+  return FilesystemErrorMatcher(std::move(ec), std::move(p1));
+}
+inline FilesystemErrorMatcher FilesystemErrorDetail(std::error_code ec, path p1,
+                                                    path p2) {
+  return FilesystemErrorMatcher(std::move(ec), std::move(p1), std::move(p2));
+}
 
 inline void ComparePaths(const path &p1, const path &p2) {
   PATH_CHK(p1, p2, native);

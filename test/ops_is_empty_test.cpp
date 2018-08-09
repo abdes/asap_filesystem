@@ -26,23 +26,15 @@ TEST_CASE("Ops / is_empty / permissions",
   REQUIRE(ec == std::make_error_code(std::errc::permission_denied));
   REQUIRE(!result);
 
-  try {
-    fs::is_empty(p);
-  } catch (const fs::filesystem_error& e) {
-    ec2 = e.code();
-  }
-  REQUIRE(ec2 == ec);
+  REQUIRE_THROWS_MATCHES(fs::is_empty(p), fs::filesystem_error,
+                         testing::FilesystemErrorDetail(ec, p));
 
   result = fs::is_empty(p / "f", ec);
   REQUIRE(ec == std::make_error_code(std::errc::permission_denied));
   REQUIRE(!result);
 
-  try {
-    fs::is_empty(p / "f");
-  } catch (const fs::filesystem_error& e) {
-    ec2 = e.code();
-  }
-  REQUIRE(ec2 == ec);
+  REQUIRE_THROWS_MATCHES(fs::is_empty(p / "f"), fs::filesystem_error,
+                         testing::FilesystemErrorDetail(ec, p / "f"));
 
   permissions(p, fs::perms::owner_all, ec);
   remove_all(p, ec);

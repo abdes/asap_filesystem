@@ -67,21 +67,10 @@ TEST_CASE("Ops / symlink_status", "[common][filesystem][ops][symlink_status]") {
   REQUIRE(!ec);
   REQUIRE(st.type() == fs::file_type::symlink);
 
-  bool caught = false;
-  std::error_code ec2;
-  fs::path p, p2;
-  try {
-    fs::symlink_status(f.path_);
-  } catch (const fs::filesystem_error& e) {
-    caught = true;
-    p = e.path1();
-    p2 = e.path2();
-    ec2 = e.code();
-  }
-  REQUIRE(caught);
-  REQUIRE(ec2.value() == (int)std::errc::permission_denied);
-  REQUIRE(p == f.path_);
-  REQUIRE(p2.empty());
+  REQUIRE_THROWS_MATCHES(
+      fs::symlink_status(f.path_), fs::filesystem_error,
+      testing::FilesystemErrorDetail(
+          std::make_error_code(std::errc::permission_denied), f.path_));
 
   fs::file_status st2 = symlink_status(link);
   REQUIRE(st2.type() == fs::file_type::symlink);

@@ -74,13 +74,11 @@ TEST_CASE("Ops / exists / permissions", "[common][filesystem][ops][exists]") {
   REQUIRE(!exists(unr, ec));
   REQUIRE(ec == std::errc::permission_denied);
   ec.clear();
-  try {
-    exists(unr);
-  } catch (const fs::filesystem_error &ex) {
-    ec = ex.code();
-    REQUIRE(ex.path1() == unr);
-  }
-  REQUIRE(ec == std::errc::permission_denied);
+
+  REQUIRE_THROWS_MATCHES(
+      exists(unr), fs::filesystem_error,
+      testing::FilesystemErrorDetail(
+          std::make_error_code(std::errc::permission_denied), unr));
 
   permissions(p, perms::owner_all);
   remove(p);

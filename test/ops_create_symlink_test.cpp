@@ -17,7 +17,7 @@ using testing::ComparePaths;
 
 TEST_CASE("Ops / create_symlink / empty",
           "[common][filesystem][ops][create_symlink]") {
-  std::error_code ec, ec2;
+  std::error_code ec;
   testing::scoped_file f;
   auto tgt = f.path_;
 
@@ -25,14 +25,8 @@ TEST_CASE("Ops / create_symlink / empty",
   fs::path p;
   create_symlink(tgt, p, ec);
   REQUIRE(ec);
-  try {
-    create_symlink(tgt, p);
-  } catch (const fs::filesystem_error& ex) {
-    ec2 = ex.code();
-    REQUIRE(ex.path1() == tgt);
-    REQUIRE(ex.path2() == p);
-  }
-  REQUIRE(ec2 == ec);
+  REQUIRE_THROWS_MATCHES(create_symlink(tgt, p), fs::filesystem_error,
+                         testing::FilesystemErrorDetail(ec, tgt, p));
 }
 
 TEST_CASE("Ops / create_symlink", "[common][filesystem][ops][create_symlink]") {
