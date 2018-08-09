@@ -4,12 +4,13 @@
 //   https://opensource.org/licenses/BSD-3-Clause)
 
 #include <common/platform.h>
+#include <common/config.h>
 
 #if defined(ASAP_WINDOWS)
 # include <Windows.h>
 #endif
 
-#if defined(ASAP_POSIX)
+#if defined(ASAP_POSIX_200809L)
 # include <unistd.h>
 #endif
 
@@ -61,7 +62,7 @@ inline path root_path() {
 // We just need a path that doesn't exist for testing purposes.
 inline path nonexistent_path() {
   path p;
-#if defined(_GNU_SOURCE) || _XOPEN_SOURCE >= 500 || _POSIX_C_SOURCE >= 200112L
+#if defined(ASAP_POSIX_200809L)
   char tmp[] = "filesystem-test.XXXXXX";
   int fd = ::mkstemp(tmp);
   if (fd == -1)
@@ -75,7 +76,7 @@ inline path nonexistent_path() {
   static int counter;
 #if defined(ASAP_WINDOWS)
   unsigned long pid = static_cast<unsigned long>(GetCurrentProcessId());
-#elif defined(ASAP_POSIX)
+#elif defined(ASAP_POSIX_200809L)
   unsigned long pid = static_cast<unsigned long>(::getpid());
 #else
   ASAP_ASSERT_FAIL("")

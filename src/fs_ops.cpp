@@ -4,16 +4,17 @@
 //   https://opensource.org/licenses/BSD-3-Clause)
 
 // clang-format off
+#define _POSIX_C_SOURCE 200809L  // Request POSIX apis if available
 #include <filesystem/config.h>
 
-#include <fcntl.h> // for ‘O_RDONLY’, ‘O_NONBLOCK’
-#include <ctime>   // for struct timespec
+#include <fcntl.h>  // for ‘O_RDONLY’, ‘O_NONBLOCK’
+#include <ctime>    // for struct timespec
 #include <array>
-#include <cstdio>  // for BUFSIZ
+#include <cstdio>   // for BUFSIZ
 
 #include <climits>
 #include <cstdlib>
-#if defined(ASAP_POSIX)
+#if defined(ASAP_POSIX_200809L)
 # include <unistd.h>
 # include <sys/types.h>
 # include <sys/stat.h>
