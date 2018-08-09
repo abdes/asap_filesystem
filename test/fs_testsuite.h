@@ -3,15 +3,19 @@
 //    (See accompanying file LICENSE or copy at
 //   https://opensource.org/licenses/BSD-3-Clause)
 
+// clang-format off
 #include <common/platform.h>
 #include <common/config.h>
+#if defined(ASAP_POSIX)
+# if !defined(ASAP_APPLE)
+#  define _POSIX_C_SOURCE ASAP_POSIX_LEVEL  // Request POSIX api
+# endif
+# include <unistd.h>
+#endif
+// clang-format on
 
 #if defined(ASAP_WINDOWS)
 # include <Windows.h>
-#endif
-
-#if defined(ASAP_POSIX_200809L)
-# include <unistd.h>
 #endif
 
 #include <cstdio>
@@ -62,7 +66,7 @@ inline path root_path() {
 // We just need a path that doesn't exist for testing purposes.
 inline path nonexistent_path() {
   path p;
-#if defined(ASAP_POSIX_200809L)
+#if defined(ASAP_POSIX)
   char tmp[] = "filesystem-test.XXXXXX";
   int fd = ::mkstemp(tmp);
   if (fd == -1)
@@ -76,10 +80,8 @@ inline path nonexistent_path() {
   static int counter;
 #if defined(ASAP_WINDOWS)
   unsigned long pid = static_cast<unsigned long>(GetCurrentProcessId());
-#elif defined(ASAP_POSIX_200809L)
-  unsigned long pid = static_cast<unsigned long>(::getpid());
 #else
-  ASAP_ASSERT_FAIL("")
+  unsigned long pid = static_cast<unsigned long>(::getpid());
 #endif
   std::snprintf(buf, 64, "filesystem-test.%d.%lu", counter++, pid);
   p = buf;

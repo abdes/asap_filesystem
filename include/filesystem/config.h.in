@@ -30,7 +30,7 @@
 #endif
 #endif // __ENVIRONMENT_.*_VERSION_MIN_REQUIRED__
 
-#elif defined(ASAP_LINUX) && defined(ASAP_POSIX_200809L)
+#elif defined(ASAP_LINUX) && defined(ASAP_POSIX)
 #  define ASAP_FS_USE_UTIMENSAT 1
 #endif
 
