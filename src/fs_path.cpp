@@ -514,7 +514,8 @@ path &path::remove_filename() {
         auto prev = std::prev(cmpt);
         if (prev->type_ == Type::ROOT_DIR || prev->type_ == Type::ROOT_NAME) {
           components_.erase(cmpt);
-          Trim();
+          // Don't trim, leave the root directory as-is
+          //Trim();
         } else
           cmpt->clear();
       }
