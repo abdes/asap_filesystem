@@ -6,7 +6,7 @@
 // clang-format off
 #include <filesystem/config.h>
 #if defined(ASAP_POSIX)
-# if !defined(ASAP_APPLE)
+# if !defined(ASAP_APPLE) && !defined(_POSIX_C_SOURCE)
 #  define _POSIX_C_SOURCE ASAP_POSIX_LEVEL  // Request POSIX api
 # endif
 # include <unistd.h>
