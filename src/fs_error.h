@@ -25,8 +25,14 @@ namespace detail {
 // -----------------------------------------------------------------------------
 
 inline std::error_code capture_errno() {
-  ASAP_ASSERT(errno != 0);
-  return {errno, std::generic_category()};
+  int error;
+#if defined(ASAP_WINDOWS)
+  error = GetLastError();
+#else
+  error = errno;
+#endif
+  ASAP_ASSERT(error != 0);
+  return {error, std::generic_category()};
 }
 
 template <class T>

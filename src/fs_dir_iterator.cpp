@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include <common/platform.h>
 #include <common/config.h>
 
 #if defined(ASAP_WINDOWS)
@@ -65,15 +66,15 @@ std::pair<std::string, file_type> posix_readdir(DIR *dir_stream,
 }
 #else
 
-file_type get_file_type(const WIN32_FIND_DATA &data) {
+file_type get_file_type(const WIN32_FIND_DATAW &data) {
   // auto attrs = data.dwFileAttributes;
   // FIXME Windows implementation of get_file_type()
   return file_type::unknown;
 }
-uintmax_t get_file_size(const WIN32_FIND_DATA &data) {
+uintmax_t get_file_size(const WIN32_FIND_DATAW &data) {
   return (data.nFileSizeHigh * (MAXDWORD + 1)) + data.nFileSizeLow;
 }
-file_time_type get_write_time(const WIN32_FIND_DATA &data) {
+file_time_type get_write_time(const WIN32_FIND_DATAW &data) {
   ULARGE_INTEGER tmp;
   auto &time = data.ftLastWriteTime;
   tmp.u.LowPart = time.dwLowDateTime;
@@ -103,7 +104,7 @@ class DirectoryStream {
 
   DirectoryStream(const path &root, directory_options opts, std::error_code &ec)
       : __stream_(INVALID_HANDLE_VALUE), __root_(root) {
-    __stream_ = ::FindFirstFileEx(root.c_str(), &cached_data_);
+    __stream_ = ::FindFirstFileW(root.wstring().c_str(), &cached_data_);
     if (__stream_ == INVALID_HANDLE_VALUE) {
       ec = std::error_code(::GetLastError(), std::generic_category());
       const bool ignore_permission_denied =
@@ -122,8 +123,8 @@ class DirectoryStream {
   bool good() const noexcept { return __stream_ != INVALID_HANDLE_VALUE; }
 
   bool advance(std::error_code &ec) {
-    while (::FindNextFile(__stream_, &cached_data_)) {
-      if (!strcmp(cached_data_.cFileName, ".") || strcmp(cached_data_.cFileName, ".."))
+    while (::FindNextFileW(__stream_, &cached_data_)) {
+      if (!wcscmp(cached_data_.cFileName, L".") || wcscmp(cached_data_.cFileName, L".."))
         continue;
       // FIXME: Cache more of this
       // directory_entry::CachedData_ cdata;
@@ -150,7 +151,7 @@ class DirectoryStream {
   }
 
   HANDLE __stream_{INVALID_HANDLE_VALUE};
-  WIN32_FIND_DATA cached_data_;
+  WIN32_FIND_DATAW cached_data_;
 
  public:
   path __root_;
