@@ -15,6 +15,19 @@ using testing::ComparePaths;
 //  create_symlink
 // -----------------------------------------------------------------------------
 
+#if defined(ASAP_WINDOWS)
+TEST_CASE("Ops / create_symlink / unsupported",
+          "[common][filesystem][ops][create_symlink]") {
+  testing::scoped_file f;
+  auto tgt = f.path_;
+  auto p = testing::nonexistent_path();
+  REQUIRE_THROWS_MATCHES(
+      create_symlink(tgt, p), fs::filesystem_error,
+      testing::FilesystemErrorDetail(
+          std::make_error_code(std::errc::not_supported), tgt, p));
+}
+#else
+
 TEST_CASE("Ops / create_symlink / empty",
           "[common][filesystem][ops][create_symlink]") {
   std::error_code ec;
@@ -52,14 +65,10 @@ TEST_CASE("Ops / create_symlink", "[common][filesystem][ops][create_symlink]") {
   ec.clear();
   create_symlink(tgt, p, ec);  // Try to create existing symlink
   REQUIRE(ec);
-  try {
-    create_symlink(tgt, p);
-  } catch (const fs::filesystem_error& ex) {
-    ec2 = ex.code();
-    REQUIRE(ex.path1() == tgt);
-    REQUIRE(ex.path2() == p);
-  }
-  REQUIRE(ec2 == ec);
+  REQUIRE_THROWS_MATCHES(create_symlink(tgt, p), fs::filesystem_error,
+                         testing::FilesystemErrorDetail(ec, tgt, p));
 
   remove(p);
 }
+
+#endif  // ASAP_WINDOWS

@@ -133,13 +133,27 @@ TEST_CASE("Path / decompose / root_directory special cases",
   path p2 = "/foo/bar";
   REQUIRE(p2.root_directory() == path("/"));
   path p3 = "//foo";
+#if !defined(ASAP_WINDOWS)
   REQUIRE(p3.root_directory() == path("/"));
+#else
+  REQUIRE(p3.root_directory() == path());
+#endif
   path p4 = "///foo";
   REQUIRE(p4.root_directory() == path("/"));
   path p5 = "//";
   REQUIRE(p5.root_directory() == path("/"));
   path p6 = "/";
   REQUIRE(p6.root_directory() == path("/"));
+
+#if defined(ASAP_WINDOWS)
+  REQUIRE(path("c:/").root_directory() == path("/"));
+  REQUIRE(path("c:/foo//").root_directory() == path("/"));
+  REQUIRE(path("c:foo").root_directory() == path(""));
+  REQUIRE(path("c:foo/").root_directory() == path(""));
+  REQUIRE(path("c:foo/bar//").root_directory() == path(""));
+  REQUIRE(path("//host/").root_directory() == path("/"));
+  REQUIRE(path("//host/foo").root_directory() == path("/"));
+#endif
 }
 
 TEST_CASE("Path / decompose / root_directory",
@@ -190,7 +204,7 @@ TEST_CASE("Path / decompose / root_path basic",
 #endif
 #ifdef ASAP_WINDOWS
   path p4 = "c:/foo/bar";
-  REQUIRE(p3.root_path() == path("c:/"));
+  REQUIRE(p4.root_path() == path("c:/"));
 #endif
 }
 

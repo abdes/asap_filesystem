@@ -24,11 +24,7 @@ fs::path append(fs::path l, const fs::path& r) {
 TEST_CASE("Path / append / path", "[common][filesystem][path][append]") {
   ComparePaths(append("/foo/bar", "/foo/"), "/foo/");
 
-#ifndef ASAP_WINDOWS_API
   ComparePaths(append("baz", "baz"), "baz/baz");
-#else
-  ComparePaths(append("baz", "baz"), "baz\\baz");
-#endif
   ComparePaths(append("baz/", "baz"), "baz/baz");
   ComparePaths(append("baz", "/foo/bar"), "/foo/bar");
   ComparePaths(append("baz/", "/foo/bar"), "/foo/bar");
@@ -39,14 +35,10 @@ TEST_CASE("Path / append / path", "[common][filesystem][path][append]") {
   ComparePaths(append("dir/", "/file"), "/file");
   ComparePaths(append("dir/", "file"), "dir/file");
 
-#ifdef ASAP_WINDOWS_API
-  ComparePaths(append("c:/foo", "/bar"), "c:/bar");
-#endif
-  // C++17 [fs.path.append] p4
-#ifndef ASAP_WINDOWS_API
   ComparePaths(append("//host", "foo"), "//host/foo");
-
   ComparePaths(append("//host/", "foo"), "//host/foo");
+
+#if !defined(ASAP_WINDOWS)
 
   // path("foo") / ""; // yields "foo/"
   ComparePaths(append("foo", ""), "foo/");
@@ -54,12 +46,10 @@ TEST_CASE("Path / append / path", "[common][filesystem][path][append]") {
   // path("foo") / "/bar"; // yields "/bar"
   ComparePaths(append("foo", "/bar"), "/bar");
 #else
-  ComparePaths(append("//host", "foo"), "//host\\foo");
-
-  ComparePaths(append("//host/", "foo"), "//host/foo");
+  ComparePaths(append("c:/foo", "/bar"), "c:/bar");
 
   // path("foo") / ""; // yields "foo/"
-  ComparePaths(append("foo", ""), "foo\\");
+  ComparePaths(append("foo", ""), "foo/");
 
   // path("foo") / "/bar"; // yields "/bar"
   ComparePaths(append("foo", "/bar"), "/bar");

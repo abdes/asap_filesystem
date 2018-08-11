@@ -241,7 +241,8 @@ struct FileDescriptor {
     ec.clear();
     fd_type fd{invalid_value};
 #if defined(ASAP_WINDOWS)
-    fd = win32::CreateFileW(p->wstring().c_str(), args...);
+    auto wpath = p->wstring();
+    fd = win32::CreateFileW(wpath.c_str(), args...);
 #else
     fd = posix::open(p->c_str(), args...);
 #endif
@@ -455,8 +456,9 @@ namespace {
 #if defined(ASAP_WINDOWS)
 bool do_copy_file_win32(FileDescriptor &read_fd, FileDescriptor &write_fd,
                         std::error_code &ec) {
-  if (detail::win32::CopyFileW(read_fd.name_.wstring().c_str(),
-                               write_fd.name_.wstring().c_str(), true)) {
+  auto read_wpath = read_fd.name_.wstring();
+  auto write_wpath = write_fd.name_.wstring();
+  if (detail::win32::CopyFileW(read_wpath.c_str(), write_wpath.c_str(), true)) {
     ec = capture_errno();
     return false;
   }
@@ -694,8 +696,8 @@ bool create_directories_impl(const path &p, std::error_code *ec) {
 bool create_directory_impl(const path &p, std::error_code *ec) {
   ErrorHandler<bool> err("create_directory", ec, &p);
 #if defined(ASAP_WINDOWS)
-  if (detail::win32::CreateDirectoryW(p.wstring().c_str(), nullptr))
-    return true;
+  auto wpath = p.wstring();
+  if (detail::win32::CreateDirectoryW(wpath.c_str(), nullptr)) return true;
   if (detail::win32::GetLastError() != ERROR_ALREADY_EXISTS)
     err.report(capture_errno());
 #else
@@ -711,8 +713,10 @@ bool create_directory_impl(path const &p, path const &existing_template,
                            std::error_code *ec) {
   ErrorHandler<bool> err("create_directory", ec, &p, &existing_template);
 #if defined(ASAP_WINDOWS)
-  if (detail::win32::CreateDirectoryExW(existing_template.wstring().c_str(),
-                                        p.wstring().c_str(), nullptr) == 0)
+  auto wpath = p.wstring();
+  auto template_wpath = existing_template.wstring();
+  if (detail::win32::CreateDirectoryExW(template_wpath.c_str(), wpath.c_str(),
+                                        nullptr) == 0)
     return true;
   if (detail::win32::GetLastError() != ERROR_ALREADY_EXISTS)
     err.report(capture_errno());
@@ -751,8 +755,10 @@ void create_hard_link_impl(const path &target, const path &link,
                            std::error_code *ec) {
   ErrorHandler<void> err("create_hard_link", ec, &target, &link);
 #if defined(ASAP_WINDOWS)
-  if (!detail::win32::CreateHardLinkW(link.wstring().c_str(),
-                                      target.wstring().c_str(), nullptr))
+  auto link_wpath = link.wstring();
+  auto target_wpath = target.wstring();
+  if (!detail::win32::CreateHardLinkW(link_wpath.c_str(), target_wpath.c_str(),
+                                      nullptr))
     return err.report(capture_errno());
 #else
   if (detail::posix::link(target.c_str(), link.c_str()) == -1)
@@ -797,7 +803,8 @@ path current_path_impl(std::error_code *ec) {
 void current_path_impl(const path &p, std::error_code *ec) {
   ErrorHandler<void> err("current_path", ec, &p);
 #if defined(ASAP_WINDOWS)
-  if (!detail::win32::SetCurrentDirectoryW(p.wstring().c_str()))
+  auto wpath = p.wstring();
+  if (!detail::win32::SetCurrentDirectoryW(wpath.c_str()))
     err.report(capture_errno());
 #else
   if (detail::posix::chdir(p.c_str()) == -1) err.report(capture_errno());
@@ -878,14 +885,14 @@ uintmax_t file_size_impl(const path &p, std::error_code *ec) {
   ErrorHandler<uintmax_t> err("file_size", ec, &p);
 #if defined(ASAP_WINDOWS)
   WIN32_FILE_ATTRIBUTE_DATA fad;
-
-  if (!detail::win32::GetFileAttributesExW(p.wstring().c_str(),
+  auto wpath = p.wstring();
+  if (!detail::win32::GetFileAttributesExW(wpath.c_str(),
                                            ::GetFileExInfoStandard, &fad)) {
     return err.report(capture_errno());
   }
 
   if ((fad.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0) {
-    return err.report(std::errc::not_supported,
+    return err.report(std::errc::is_a_directory,
                       "directory size is not supported");
   }
 
@@ -954,7 +961,8 @@ bool is_empty_impl(const path &p, std::error_code *ec) {
 
 #if defined(ASAP_WINDOWS)
   WIN32_FILE_ATTRIBUTE_DATA fad;
-  if (!detail::win32::GetFileAttributesExW(p.wstring().c_str(),
+  auto wpath = p.wstring();
+  if (!detail::win32::GetFileAttributesExW(wpath.c_str(),
                                            ::GetFileExInfoStandard, &fad)) {
     return err.report(capture_errno());
   }
@@ -1209,13 +1217,14 @@ path read_symlink_impl(const path &p, std::error_code *ec) {
 bool remove_impl(const path &p, std::error_code *ec) {
   ErrorHandler<bool> err("remove", ec, &p);
 #if defined(ASAP_WINDOWS)
+  auto wpath = p.wstring();
   if (is_directory(p)) {
-    if (!detail::win32::RemoveDirectoryW(p.wstring().c_str())) {
+    if (!detail::win32::RemoveDirectoryW(wpath.c_str())) {
       err.report(capture_errno());
       return false;
     }
   } else {
-    if (!detail::win32::DeleteFileW(p.wstring().c_str())) {
+    if (!detail::win32::DeleteFileW(wpath.c_str())) {
       err.report(capture_errno());
       return false;
     }
@@ -1313,13 +1322,17 @@ space_info space_impl(const path &p, std::error_code *ec) {
 #if defined(ASAP_WINDOWS)
   path dir = absolute(p);
   dir.remove_filename();
-  auto pathname = dir.wstring().c_str();
+  auto pathname = dir.wstring();
+  ;
   ULARGE_INTEGER bytes_avail = {}, bytes_total = {}, bytes_free = {};
-  if (detail::win32::GetDiskFreeSpaceExW(pathname, &bytes_avail, &bytes_total,
-                                         &bytes_free)) {
+  if (detail::win32::GetDiskFreeSpaceExW(pathname.c_str(), &bytes_avail,
+                                         &bytes_total, &bytes_free)) {
     if (bytes_total.QuadPart != 0) si.capacity = bytes_total.QuadPart;
     if (bytes_free.QuadPart != 0) si.free = bytes_free.QuadPart;
     if (bytes_avail.QuadPart != 0) si.available = bytes_avail.QuadPart;
+    return si;
+  } else {
+    err.report(capture_errno());
     return si;
   }
 #else
@@ -1335,11 +1348,11 @@ space_info space_impl(const path &p, std::error_code *ec) {
     do_mult(si.free, m_svfs.f_bfree);
     do_mult(si.available, m_svfs.f_bavail);
     return si;
+  } else {
+    err.report(capture_errno());
+    return si;
   }
 #endif
-
-  err.report(capture_errno());
-  return si;
 }
 
 // -----------------------------------------------------------------------------

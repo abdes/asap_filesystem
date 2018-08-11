@@ -76,7 +76,19 @@ bool path::has_parent_path() const {
 bool path::has_filename() const { return !filename().empty(); }
 
 bool path::is_absolute() const {
-  return (has_root_directory() || (has_root_name() && has_root_directory()));
+// NOTE: //foo is absolute because we can't express relative paths on top of it
+// without appending a separator.
+#if defined(ASAP_WINDOWS)
+  if (has_root_name()) {
+    auto rn = root_name().pathname_;
+    return (IsDirSeparator(rn[0]) && IsDirSeparator(rn[1])) ||
+           has_root_directory();
+  }
+#else
+  // //foo is absolute because we can't express relative paths on top of it
+  // without appending a separator.
+  return (has_root_directory() || has_root_name());
+#endif
 }
 
 // End Query -------------------------------------------------------------------
@@ -109,8 +121,6 @@ path path::root_directory() const {
     // Check for windows special case of drive letter
     if (pathname_[1] == ':')
       ret = path("");
-    else
-      ret = path("/");
   } else if (!components_.empty()) {
     auto it = components_.begin();
     if (it->type_ == Type::ROOT_NAME) ++it;
@@ -128,7 +138,7 @@ path path::root_path() const {
     if (it->type_ == Type::ROOT_NAME) {
       ret = *it++;
       if (it != components_.end() && it->type_ == Type::ROOT_DIR) {
-        ret.pathname_ += preferred_separator;
+        ret.pathname_ += slash;
         ret.SplitComponents();
       }
     } else if (it->type_ == Type::ROOT_DIR)
@@ -438,6 +448,62 @@ int path::compare(const value_type *other) const {
 //
 
 path &path::operator/=(const path &p) {
+// FIXME: not conforming to the standard
+// 1) If p.is_absolute() || (p.has_root_name() && p.root_name() !=
+// root_name()), then replaces the current path with p as if by operator=(p)
+// and finishes.
+//	* Otherwise, if p.has_root_directory(), then removes any root directory
+// and the entire relative path from the generic format pathname of *this
+//	* Otherwise, if has_filename() || (!has_root_directory() &&
+// is_absolute()), then appends path::preferred_separator to the generic format
+// of *this
+//	* Either way, then appends the native format pathname of p, omitting any
+// root - name from its generic format, to the native format of *this.
+
+#if defined(ASAP_WINDOWS)
+  if (p.is_absolute() || (p.has_root_name() && p.root_name() != root_name()))
+    return operator=(p);
+
+  auto lhs = pathname_;
+  bool add_sep = false;
+
+  if (p.has_root_directory()) {
+    // Remove any root directory and relative path
+    if (type_ != Type::ROOT_NAME) {
+      if (!components_.empty() && components_.front().type_ == Type::ROOT_NAME)
+        lhs = components_.front().pathname_;
+      else
+        lhs = {};
+    }
+  } else if (has_filename() || (!has_root_directory() && is_absolute()))
+    add_sep = true;
+
+  auto rhs = p.pathname_;
+  // Omit any root-name from the generic format pathname:
+  if (p.type_ == Type::ROOT_NAME)
+    rhs = {};
+  else if (!p.components_.empty() &&
+           p.components_.front().type_ == Type::ROOT_NAME)
+    rhs.erase(0, p.components_.front().pathname_.size());
+
+  const size_t len = lhs.size() + (int)add_sep + rhs.size();
+  const size_t maxcmpts = components_.size() + p.components_.size();
+  if (pathname_.capacity() < len || components_.capacity() < maxcmpts) {
+    // Construct new path and swap (strong exception-safety guarantee).
+    string_type tmp;
+    tmp.reserve(len);
+    tmp = lhs;
+    if (add_sep) tmp += slash;
+    tmp += rhs;
+    path newp = std::move(tmp);
+    swap(newp);
+  } else {
+    pathname_ = lhs;
+    if (add_sep) pathname_ += slash;
+    pathname_ += rhs;
+    SplitComponents();
+  }
+#else
   if (p.is_absolute())
     operator=(p);
   else {
@@ -452,16 +518,18 @@ path &path::operator/=(const path &p) {
     }
     SplitComponents();
   }
+#endif  // ASAP_WINDOWS
   return *this;
 }
 
 path &path::Append(path p) {
-  if (p.is_absolute())
+  if (p.is_absolute()) operator=(std::move(p));
+#if defined(ASAP_WINDOWS)
+  else if (p.has_root_name() && p.root_name() != root_name())
     operator=(std::move(p));
+#endif
   else {
-    AppendSeparatorIfNeeded();
-    pathname_.append(p.pathname_);
-    SplitComponents();
+    operator/=(const_cast<const path &>(p));
   }
   return *this;
 }
@@ -515,7 +583,7 @@ path &path::remove_filename() {
         if (prev->type_ == Type::ROOT_DIR || prev->type_ == Type::ROOT_NAME) {
           components_.erase(cmpt);
           // Don't trim, leave the root directory as-is
-          //Trim();
+          // Trim();
         } else
           cmpt->clear();
       }

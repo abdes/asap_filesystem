@@ -26,7 +26,7 @@ TEST_CASE("Path / modifiers / clear", "[common][filesystem][path][modifiers]") {
 TEST_CASE("Path / modifiers / make_preferred",
           "[common][filesystem][path][modifiers]") {
 #ifdef ASAP_WINDOWS
-  REQUIRE(path("foo/bar").make_preferred() == "foo\bar");
+  REQUIRE(path("foo/bar").make_preferred() == "foo\\bar");
 #else
   REQUIRE(path("foo/bar").make_preferred() == "foo/bar");
 #endif

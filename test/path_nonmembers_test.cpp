@@ -51,7 +51,9 @@ TEST_CASE("Path / nonmembers / '/' / special",
 TEST_CASE("Path / nonmembers / '/' / suite",
           "[common][filesystem][path][nonmembers]") {
   for (path p : TEST_PATHS) {
+    CAPTURE(p);
     for (path q : TEST_PATHS) {
+      CAPTURE(q);
       test(p, q);
     }
   }

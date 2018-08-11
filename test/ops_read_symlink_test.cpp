@@ -11,6 +11,17 @@
 //  read_symlink
 // -----------------------------------------------------------------------------
 
+#if defined(ASAP_WINDOWS)
+TEST_CASE("Ops / read_symlink/ unsupported",
+          "[common][filesystem][ops][read_symlink]") {
+  auto p = testing::nonexistent_path();
+  REQUIRE_THROWS_MATCHES(
+      read_symlink(p), fs::filesystem_error,
+      testing::FilesystemErrorDetail(
+          std::make_error_code(std::errc::not_supported), p));
+}
+#else
+
 TEST_CASE("Ops / read_symlink", "[common][filesystem][ops][read_symlink]") {
   auto p = testing::nonexistent_path();
   std::error_code ec;
@@ -27,3 +38,5 @@ TEST_CASE("Ops / read_symlink", "[common][filesystem][ops][read_symlink]") {
 
   fs::remove(p);
 }
+
+#endif
