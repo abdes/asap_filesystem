@@ -75,6 +75,7 @@ uintmax_t get_file_size(const WIN32_FIND_DATAW &data) {
   return (data.nFileSizeHigh * (MAXDWORD + 1)) + data.nFileSizeLow;
 }
 file_time_type get_write_time(const WIN32_FIND_DATAW &data) {
+  // FIXME: wrong conversion to file_time_type
   ULARGE_INTEGER tmp;
   auto &time = data.ftLastWriteTime;
   tmp.u.LowPart = time.dwLowDateTime;
