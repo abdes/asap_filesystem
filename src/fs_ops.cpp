@@ -227,7 +227,7 @@ bool do_copy_file_copyfile(FileDescriptor &read_fd, FileDescriptor &write_fd,
   };
 
   CopyFileState cfs;
-  if (detail::appple::fcopyfile(read_fd.fd_, write_fd.fd_, cfs.state,
+  if (detail::apple::fcopyfile(read_fd.fd_, write_fd.fd_, cfs.state,
                                 COPYFILE_DATA) < 0) {
     ec = capture_errno();
     return false;
