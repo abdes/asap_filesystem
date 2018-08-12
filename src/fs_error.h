@@ -23,6 +23,8 @@
 
 #include <filesystem/fs_fwd.h>
 #include <filesystem/fs_path.h>
+#include <filesystem/filesystem_error.h>
+
 
 namespace asap {
 namespace filesystem {
