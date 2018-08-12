@@ -15,6 +15,7 @@
 # include <sys/types.h>
 # include <sys/stat.h>
 # include <sys/statvfs.h>
+# include <dirent.h>
 #endif
 
 #include <ctime>    // for struct timespec
@@ -77,6 +78,7 @@ using ::mkdir;
 using ::open;
 using ::pathconf;
 using ::read;
+using ::readdir;
 using ::readlink;
 using ::remove;
 using ::stat;

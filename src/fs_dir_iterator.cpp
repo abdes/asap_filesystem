@@ -26,6 +26,7 @@
 
 #include <filesystem/filesystem.h>
 #include "fs_error.h"
+#include "fs_portability.h"
 
 namespace asap {
 namespace filesystem {
@@ -57,7 +58,7 @@ std::pair<std::string, file_type> posix_readdir(DIR *dir_stream,
   struct dirent *dir_entry_ptr = nullptr;
   errno = 0;  // zero errno in order to detect errors
   ec.clear();
-  if ((dir_entry_ptr = ::readdir(dir_stream)) == nullptr) {
+  if ((dir_entry_ptr = posix::readdir(dir_stream)) == nullptr) {
     if (errno) ec = detail::capture_errno();
     return {};
   } else {
