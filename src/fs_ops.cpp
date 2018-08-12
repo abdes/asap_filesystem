@@ -3,108 +3,15 @@
 //    (See accompanying file LICENSE or copy at
 //   https://opensource.org/licenses/BSD-3-Clause)
 
-// clang-format off
-#include <filesystem/config.h>
-
-#if defined(ASAP_POSIX)
-# if !defined(ASAP_APPLE) && !defined(_POSIX_C_SOURCE)
-#  define _POSIX_C_SOURCE ASAP_POSIX_LEVEL  // Request POSIX api
-# endif
-# include <unistd.h>
-# include <sys/types.h>
-# include <sys/stat.h>
-# include <sys/statvfs.h>
-#endif
-
-#include <fcntl.h>  // for �O_RDONLY�, �O_NONBLOCK�
-#include <ctime>    // for struct timespec
-#include <array>
-#include <cstdio>   // for BUFSIZ
-
-#include <climits>
-#include <cstdlib>
-
-#if ASAP_FS_USE_UTIME
-# include <utime.h>
-#endif
-
-// Which method to use for copy file
-#if ASAP_FS_USE_SENDFILE
-# include <sys/sendfile.h>
-#elif ASAP_FS_USE_COPYFILE
-# include <copyfile.h>
-#endif
-
-#if defined(ASAP_WINDOWS)
-# include <windows.h>
-#endif
 
 #include <array>
 
-#include <filesystem/filesystem.h>
-#include "fs_error.h"
-// clang-format on
+#include "fs_portability.h"
 
 namespace asap {
 namespace filesystem {
 
 namespace detail {
-#if ASAP_FS_USE_SENDFILE
-namespace linux {
-using ::sendfile;
-}  // namespace linux
-#endif
-
-#if defined(ASAP_POSIX)
-namespace posix {
-const int invalid_fd_value = -1;
-
-using ::chdir;
-using ::close;
-using ::fchmod;
-using ::fstat;
-using ::ftruncate;
-using ::getcwd;
-using ::link;
-using ::mkdir;
-using ::open;
-using ::pathconf;
-using ::read;
-using ::readlink;
-using ::remove;
-using ::stat;
-using ::symlink;
-using ::truncate;
-using ::write;
-}  // namespace posix
-#endif  // ASAP_POSIX
-
-#if defined(ASAP_WINDOWS)
-namespace win32 {
-typedef ULONG_PTR ulong_ptr;
-typedef HANDLE handle;
-const handle invalid_handle_value = (handle)((ulong_ptr)-1);
-
-using ::CloseHandle;
-using ::CopyFileW;
-using ::CreateDirectoryExW;
-using ::CreateDirectoryW;
-using ::CreateFileW;
-using ::CreateHardLinkW;
-using ::DeleteFileW;
-using ::GetCurrentDirectoryW;
-using ::GetDiskFreeSpaceExW;
-using ::GetFileAttributesExW;
-using ::GetFileInformationByHandle;
-using ::GetFileTime;
-using ::GetLastError;
-using ::RemoveDirectoryW;
-using ::SetCurrentDirectoryW;
-using ::SetEndOfFile;
-using ::SetFilePointerEx;
-}  // namespace win32
-#endif  // ASAP_WINDOWS
-
 // -----------------------------------------------------------------------------
 //                          detail: options bitset
 // -----------------------------------------------------------------------------
@@ -112,202 +19,6 @@ using ::SetFilePointerEx;
 template <typename Bitmask>
 inline bool is_set(Bitmask obj, Bitmask bits) {
   return (obj & bits) != Bitmask::none;
-}
-
-// -----------------------------------------------------------------------------
-//                           detail: struct ::stat
-// -----------------------------------------------------------------------------
-
-typedef struct ::timespec TimeSpec;
-
-#if !defined(ASAP_WINDOWS)
-namespace posix {
-
-// Use typedef instead of using to avoid gcc warning on struct ::stat not
-// declaring anything. (alternative is: "using StatT = struct ::stat;" )
-typedef struct ::stat StatT;
-
-#if defined(ASAP_APPLE)
-TimeSpec extract_mtime(StatT const &st) { return st.st_mtimespec; }
-#else
-TimeSpec extract_mtime(StatT const &st) { return st.st_mtim; }
-#endif
-
-#if ASAP_FS_USE_UTIME
-#if defined(ASAP_APPLE)
-TimeSpec extract_atime(StatT const &st) { return st.st_atimespec; }
-#else
-TimeSpec extract_atime(StatT const &st) { return st.st_atim; }
-#endif
-#endif  // ASAP_FS_USE_UTIME
-
-// -----------------------------------------------------------------------------
-//                            detail: posix stat
-// -----------------------------------------------------------------------------
-
-file_status create_file_status(std::error_code &m_ec, path const &p,
-                               const posix::StatT &path_stat,
-                               std::error_code *ec) {
-  if (ec) *ec = m_ec;
-  if (m_ec && (m_ec.value() == ENOENT || m_ec.value() == ENOTDIR)) {
-    return file_status(file_type::not_found);
-  } else if (m_ec) {
-    ErrorHandler<void> err("file_stat", ec, &p);
-    err.report(m_ec, "failed to determine attributes for the specified path");
-    return file_status(file_type::none);
-  }
-  // else
-
-  file_status fs_tmp;
-  auto const mode = path_stat.st_mode;
-  if (S_ISLNK(mode))
-    fs_tmp.type(file_type::symlink);
-  else if (S_ISREG(mode))
-    fs_tmp.type(file_type::regular);
-  else if (S_ISDIR(mode))
-    fs_tmp.type(file_type::directory);
-  else if (S_ISBLK(mode))
-    fs_tmp.type(file_type::block);
-  else if (S_ISCHR(mode))
-    fs_tmp.type(file_type::character);
-  else if (S_ISFIFO(mode))
-    fs_tmp.type(file_type::fifo);
-  else if (S_ISSOCK(mode))
-    fs_tmp.type(file_type::socket);
-  else
-    fs_tmp.type(file_type::unknown);
-
-  fs_tmp.permissions(static_cast<perms>(path_stat.st_mode) & perms::mask);
-  return fs_tmp;
-}
-
-file_status file_stat(path const &p, posix::StatT &path_stat,
-                      std::error_code *ec) {
-  std::error_code m_ec;
-  if (::stat(p.c_str(), &path_stat) == -1) m_ec = capture_errno();
-  return create_file_status(m_ec, p, path_stat, ec);
-}
-
-file_status link_stat(path const &p, posix::StatT &path_stat,
-                      std::error_code *ec) {
-  std::error_code m_ec;
-  if (::lstat(p.c_str(), &path_stat) == -1) m_ec = capture_errno();
-  return create_file_status(m_ec, p, path_stat, ec);
-}
-
-bool stat_equivalent(const posix::StatT &st1, const posix::StatT &st2) {
-  return (st1.st_dev == st2.st_dev && st1.st_ino == st2.st_ino);
-}
-
-}  // namespace posix
-#endif  // ASAP_WINDOWS
-
-// -----------------------------------------------------------------------------
-//                            detail: FileDescriptor
-// -----------------------------------------------------------------------------
-
-struct FileDescriptor {
-  const path &name_;
-#if defined(ASAP_WINDOWS)
-  using fd_type = win32::handle;
-#else
-  using fd_type = int;
-  detail::posix::StatT stat_;
-#endif
-  static const fd_type invalid_value;
-  fd_type fd_{invalid_value};
-  file_status status_;
-
-  FileDescriptor(FileDescriptor &&other) noexcept
-      : name_(other.name_),
-#if defined(ASAP_POSIX)
-        stat_(other.stat_),
-#endif
-        fd_(other.fd_),
-        status_(other.status_) {
-    other.fd_ = invalid_value;
-    other.status_ = file_status{};
-  }
-
-  ~FileDescriptor() { close(); }
-
-  FileDescriptor() = delete;
-  FileDescriptor(FileDescriptor const &) = delete;
-  FileDescriptor &operator=(FileDescriptor const &) = delete;
-
-  template <class... Args>
-  static FileDescriptor create(const path *p, std::error_code &ec,
-                               Args... args) {
-    ec.clear();
-    fd_type fd{invalid_value};
-#if defined(ASAP_WINDOWS)
-    auto wpath = p->wstring();
-    fd = win32::CreateFileW(wpath.c_str(), args...);
-#else
-    fd = posix::open(p->c_str(), args...);
-#endif
-    if (fd == invalid_value) {
-      ec = capture_errno();
-      return FileDescriptor{p};
-    }
-    return FileDescriptor(p, fd);
-  }
-
-  template <class... Args>
-  static FileDescriptor create_with_status(const path *p, std::error_code &ec,
-                                           Args... args) {
-    FileDescriptor fd = create(p, ec, args...);
-    if (!ec) fd.refresh_status(ec);
-
-    return fd;
-  }
-
-  file_status get_status() const { return status_; }
-#if defined(ASAP_POSIX)
-  posix::StatT const &get_stat() const { return stat_; }
-#endif
-
-  file_status refresh_status(std::error_code &ec);
-
-  void close() noexcept {
-    if (fd_ != invalid_value) {
-#if defined(ASAP_WINDOWS)
-      win32::CloseHandle(fd_);
-#else
-      posix::close(fd_);
-#endif
-    }
-    fd_ = invalid_value;
-  }
-
- private:
-  explicit FileDescriptor(const path *p,
-                          fd_type fd = FileDescriptor::invalid_value)
-      : name_(*p), fd_(fd) {}
-};
-
-#if defined(ASAP_WINDOWS)
-const FileDescriptor::fd_type FileDescriptor::invalid_value =
-    win32::invalid_handle_value;
-#else
-const FileDescriptor::fd_type FileDescriptor::invalid_value =
-    posix::invalid_fd_value;
-#endif
-
-file_status FileDescriptor::refresh_status(std::error_code &ec) {
-  // FD must be open and good.
-  status_ = file_status{};
-
-#if defined(ASAP_WINDOWS)
-  // TODO: implement status refresh for windows
-#else
-  stat_ = {};
-  std::error_code m_ec;
-  if (posix::fstat(fd_, &stat_) == -1) m_ec = capture_errno();
-  status_ = detail::posix::create_file_status(m_ec, name_, stat_, &ec);
-#endif
-
-  return status_;
 }
 
 }  // namespace detail
@@ -363,6 +74,14 @@ path canonical_impl(path const &orig_p, std::error_code *ec) {
 //                             copy
 // -----------------------------------------------------------------------------
 
+#if defined(ASAP_POSIX)
+namespace {
+bool stat_equivalent(const StatT &st1, const StatT &st2) {
+  return (st1.st_dev == st2.st_dev && st1.st_ino == st2.st_ino);
+}
+}  // namespace
+#endif // ASAP_POSIX
+
 void copy_impl(const path &from, const path &to, copy_options options,
                std::error_code *ec) {
   ErrorHandler<void> err("copy", ec, &from, &to);
@@ -395,7 +114,7 @@ void copy_impl(const path &from, const path &to, copy_options options,
 
   if (!exists(f) || is_other(f) || is_other(t) ||
       (is_directory(f) && is_regular_file(t)) ||
-      detail::posix::stat_equivalent(f_st, t_st)) {
+      stat_equivalent(f_st, t_st)) {
     return err.report(std::errc::function_not_supported);
   }
 #endif  // ASAP_WINDOWS
@@ -598,7 +317,7 @@ bool copy_file_impl(const path &from, const path &to, copy_options options,
   if (to_exists && !is_regular_file(to_st))
     return err.report(std::errc::not_supported);
 
-  if (to_exists && detail::posix::stat_equivalent(from_stat, to_stat_path))
+  if (to_exists && stat_equivalent(from_stat, to_stat_path))
     return err.report(std::errc::file_exists);
 
   if (to_exists && skip_existing) return false;
@@ -630,7 +349,7 @@ bool copy_file_impl(const path &from, const path &to, copy_options options,
     // Check that the file we initially stat'ed is equivalent to the one
     // we opened.
     // FIXME: report this better.
-    if (!detail::posix::stat_equivalent(to_stat_path, to_fd.get_stat()))
+    if (!stat_equivalent(to_stat_path, to_fd.get_stat()))
       return err.report(std::errc::bad_file_descriptor);
 
     // Set the permissions and truncate the file we opened.
@@ -873,7 +592,7 @@ bool equivalent_impl(const path &p1, const path &p2, std::error_code *ec) {
   auto s2 = detail::posix::file_stat(p2.native(), st2, &ec2);
   if (!exists(s2)) return err.report(std::errc::not_supported);
 
-  return detail::posix::stat_equivalent(st1, st2);
+  return stat_equivalent(st1, st2);
 #endif
 }
 
@@ -990,84 +709,6 @@ bool is_empty_impl(const path &p, std::error_code *ec) {
 // -----------------------------------------------------------------------------
 //                               last_write_time
 // -----------------------------------------------------------------------------
-
-namespace detail {
-
-bool ft_is_representable(TimeSpec tm) {
-  using namespace std::chrono;
-  if (tm.tv_sec >= 0) {
-    return tm.tv_sec < seconds::max().count() ||
-           (tm.tv_sec == seconds::max().count() &&
-            tm.tv_nsec <= nanoseconds::max().count());
-  } else if (tm.tv_sec == (seconds::min().count() - 1)) {
-    return tm.tv_nsec >= nanoseconds::min().count();
-  } else {
-    return tm.tv_sec >= seconds::min().count();
-  }
-}
-
-file_time_type ft_convert_from_timespec(TimeSpec tm) {
-  using namespace std::chrono;
-  using rep = typename file_time_type::rep;
-  using fs_duration = typename file_time_type::duration;
-  using fs_seconds = duration<rep>;
-  using fs_nanoseconds = duration<rep, std::nano>;
-
-  if (tm.tv_sec >= 0 || tm.tv_nsec == 0) {
-    return file_time_type(
-        fs_seconds(tm.tv_sec) +
-        duration_cast<fs_duration>(fs_nanoseconds(tm.tv_nsec)));
-  } else {  // tm.tv_sec < 0
-    auto adj_subsec =
-        duration_cast<fs_duration>(fs_seconds(1) - fs_nanoseconds(tm.tv_nsec));
-    auto Dur = fs_seconds(tm.tv_sec + 1) - adj_subsec;
-    return file_time_type(Dur);
-  }
-}
-
-#if !defined(ASAP_WINDOWS)
-namespace posix {
-file_time_type extract_last_write_time(const path &p, const StatT &st,
-                                       std::error_code *ec) {
-  ErrorHandler<file_time_type> err("last_write_time", ec, &p);
-
-  auto ts = detail::posix::extract_mtime(st);
-  if (!detail::ft_is_representable(ts))
-    return err.report(std::errc::value_too_large);
-  return detail::ft_convert_from_timespec(ts);
-}
-}  // namespace posix
-
-#elif defined(ASAP_WINDOWS)
-
-namespace win32 {
-file_time_type ft_convert_from_filetime(const FILETIME &ft) {
-  // Contains a 64-bit value representing the number of 100-nanosecond intervals
-  // since January 1, 1601 (UTC).
-  constexpr auto EPOCH_DIFF = 116444736000000000LL;
-  ULARGE_INTEGER ulft;
-  ulft.HighPart = ft.dwHighDateTime;
-  ulft.LowPart = ft.dwLowDateTime;
-
-  using namespace std::chrono;
-  using rep = typename file_time_type::rep;
-  using fs_duration = typename file_time_type::duration;
-  using fs_seconds = duration<rep>;
-  using fs_nanoseconds = duration<rep, std::nano>;
-
-  // Convert to EPOCH
-  ulft.QuadPart -= EPOCH_DIFF;
-
-  auto secs = ulft.QuadPart / 10000000LL;
-  auto nsecs = ulft.QuadPart - secs * 1000000000LL;
-  return file_time_type(
-      duration_cast<fs_duration>(fs_seconds(secs) + fs_nanoseconds(nsecs)));
-}
-}  // namespace win32
-
-#endif  // ASAP_WINDOWS
-
-}  // namespace detail
 
 file_time_type last_write_time_impl(const path &p, std::error_code *ec) {
   ErrorHandler<file_time_type> err("last_write_time", ec, &p);

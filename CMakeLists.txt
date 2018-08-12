@@ -55,6 +55,9 @@ set(public_headers
 set(sources
   "src/fs_path.cpp"
   "src/fs_error.h"
+  "src/fs_portability.h"
+  "src/fs_portability_posix.cpp"
+  "src/fs_portability_windows.cpp"
   "src/fs_dir_iterator.cpp"
   "src/fs_ops.cpp"
   "src/filesystem_error.cpp"

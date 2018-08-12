@@ -448,17 +448,16 @@ int path::compare(const value_type *other) const {
 //
 
 path &path::operator/=(const path &p) {
-// FIXME: not conforming to the standard
-// 1) If p.is_absolute() || (p.has_root_name() && p.root_name() !=
-// root_name()), then replaces the current path with p as if by operator=(p)
-// and finishes.
-//	* Otherwise, if p.has_root_directory(), then removes any root directory
-// and the entire relative path from the generic format pathname of *this
-//	* Otherwise, if has_filename() || (!has_root_directory() &&
-// is_absolute()), then appends path::preferred_separator to the generic format
-// of *this
-//	* Either way, then appends the native format pathname of p, omitting any
-// root - name from its generic format, to the native format of *this.
+// TODO: double check conformance to c++ standard
+
+// 1) If p.is_absolute() || (p.has_root_name() && p.root_name() != root_name()),
+// then replaces the current path with p as if by operator=(p) and finishes.
+//   * Otherwise, if p.has_root_directory(), then removes any root directory
+//     and the entire relative path from the generic format pathname of *this
+//   * Otherwise, if has_filename() || (!has_root_directory() && is_absolute()),
+//     then appends path::preferred_separator to the generic format of *this
+//   * Either way, then appends the native format pathname of p, omitting any
+//     root-name from its generic format, to the native format of *this.
 
 #if defined(ASAP_WINDOWS)
   if (p.is_absolute() || (p.has_root_name() && p.root_name() != root_name()))
