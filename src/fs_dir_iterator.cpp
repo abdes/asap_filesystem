@@ -12,20 +12,9 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include <common/platform.h>
-#include <common/config.h>
-
-#if defined(ASAP_WINDOWS)
-#include <Windows.h>
-#else
-#include <dirent.h>
-#endif
-
-#include <cerrno>
 #include <stack>
 
 #include <filesystem/filesystem.h>
-#include "fs_error.h"
 #include "fs_portability.h"
 
 namespace asap {
