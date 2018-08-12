@@ -17,7 +17,6 @@
 
 namespace asap {
 namespace filesystem {
-
 namespace detail {
 
 // -----------------------------------------------------------------------------
@@ -48,12 +47,12 @@ inline bool error_value<bool>() {
 
 template <>
 inline uintmax_t error_value<uintmax_t>() {
-	return uintmax_t(-1);
+  return uintmax_t(-1);
 }
 
 template <>
 inline int error_value<int>() {
-	return -1;
+  return -1;
 }
 
 template <>
