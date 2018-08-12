@@ -10,7 +10,16 @@
 
 #include <common/assert.h>
 #include <common/platform.h>
+// Silence this warning as fmt lib checks properly for the compiler support of
+// string literal operator template before enabling it
+#if ASAP_COMPILER_IS_AppleClang || ASAP_COMPILER_IS_AppleClang
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wgnu-string-literal-operator-template"
+#endif
 #include <fmt/format.h>
+#if ASAP_COMPILER_IS_AppleClang || ASAP_COMPILER_IS_AppleClang
+#pragma clang diagnostic pop
+#endif
 
 #include <filesystem/fs_fwd.h>
 #include <filesystem/fs_path.h>
