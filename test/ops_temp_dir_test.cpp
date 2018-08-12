@@ -51,10 +51,10 @@ TEST_CASE("Ops / temp_dir / default (/tmp)",
   REQUIRE(p1 == p2);
 }
 
-TEST_CASE("Ops / temp_dir / TMPDIR", "[common][filesystem][ops][temp_dir]") {
+TEST_CASE("Ops / temp_dir / TMP", "[common][filesystem][ops][temp_dir]") {
   clean_env();
 
-  if (!set_env("TMPDIR", testing::nonexistent_path().string()))
+  if (!set_env("TMP", testing::nonexistent_path().string()))
     return;  // just give up
 
   std::error_code ec;
@@ -100,7 +100,7 @@ TEST_CASE("Ops / temp_dir / permission",
 TEST_CASE("Ops / temp_dir / not a directory",
           "[common][filesystem][ops][temp_dir]") {
   testing::scoped_file f;
-  set_env("TMPDIR", f.path_.string());
+  set_env("TMP", f.path_.string());
   std::error_code ec;
   auto r = fs::temp_directory_path(ec);
   REQUIRE(ec == std::make_error_code(std::errc::not_a_directory));

@@ -3,6 +3,8 @@
 //    (See accompanying file LICENSE or copy at
 //   https://opensource.org/licenses/BSD-3-Clause)
 
+#pragma once
+
 // clang-format off
 #include <filesystem/config.h>
 
@@ -74,6 +76,7 @@ using ::fstat;
 using ::ftruncate;
 using ::getcwd;
 using ::link;
+using ::lstat;
 using ::mkdir;
 using ::open;
 using ::pathconf;
@@ -82,7 +85,6 @@ using ::readdir;
 using ::readlink;
 using ::remove;
 using ::stat;
-using ::lstat;
 using ::symlink;
 using ::truncate;
 #if (ASAP_FS_USE_UTIME)
@@ -103,18 +105,39 @@ using ::CopyFileW;
 using ::CreateDirectoryExW;
 using ::CreateDirectoryW;
 using ::CreateFileW;
-using ::CreateHardLinkW;
 using ::DeleteFileW;
+using ::DeviceIoControl;
 using ::GetCurrentDirectoryW;
 using ::GetDiskFreeSpaceExW;
 using ::GetFileAttributesExW;
+using ::GetFileAttributesW;
 using ::GetFileInformationByHandle;
 using ::GetFileTime;
 using ::GetLastError;
+using ::GetTempPathW;
 using ::RemoveDirectoryW;
 using ::SetCurrentDirectoryW;
 using ::SetEndOfFile;
+using ::SetFileAttributesW;
 using ::SetFilePointerEx;
+
+//  Windows kernel32.dll functions that may or may not be present
+//  must be accessed through pointers
+
+typedef BOOL(WINAPI *PtrCreateHardLinkW)(
+    /*__in*/ LPCWSTR lpFileName,
+    /*__in*/ LPCWSTR lpExistingFileName,
+    /*__reserved*/ LPSECURITY_ATTRIBUTES lpSecurityAttributes);
+
+extern PtrCreateHardLinkW CreateHardLinkW_api;
+
+typedef BOOLEAN(WINAPI *PtrCreateSymbolicLinkW)(
+    /*__in*/ LPCWSTR lpSymlinkFileName,
+    /*__in*/ LPCWSTR lpTargetFileName,
+    /*__in*/ DWORD dwFlags);
+
+extern PtrCreateSymbolicLinkW CreateSymbolicLinkW_api;
+
 }  // namespace win32
 #endif  // ASAP_WINDOWS
 
@@ -177,6 +200,21 @@ file_time_type extract_last_write_time(const path &p, const StatT &st,
 }  // namespace posix
 #endif  // ASAP_POSIX
 
+// -----------------------------------------------------------------------------
+//                           detail: windows stat
+// -----------------------------------------------------------------------------
+
+#if defined(ASAP_WINDOWS)
+namespace win32 {
+bool not_found_error(int errval);
+
+bool is_reparse_point_a_symlink(const path &p, std::error_code *ec);
+
+file_status process_status_failure(std::error_code &m_ec, const path &p, std::error_code *ec);
+
+perms make_permissions(const path &p, DWORD attr);
+}  // namespace win32
+#endif  // ASAP_WINDOWS
 
 // -----------------------------------------------------------------------------
 //                            detail: FileDescriptor
@@ -261,7 +299,6 @@ struct FileDescriptor {
                           fd_type fd = FileDescriptor::invalid_value)
       : name_(*p), fd_(fd) {}
 };
-
 
 }  // namespace detail
 }  // namespace filesystem

@@ -42,6 +42,10 @@ enum class file_type : signed char {
   fifo = 6,        // a FIFO (also known as pipe) file
   socket = 7,      // a socket file
   unknown = 8      // the file exists but its type could not be determined
+#if defined(ASAP_WINDOWS)
+  ,
+  reparse_file = 100
+#endif
 };
 
 // -----------------------------------------------------------------------------

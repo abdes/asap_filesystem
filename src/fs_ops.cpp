@@ -3,7 +3,6 @@
 //    (See accompanying file LICENSE or copy at
 //   https://opensource.org/licenses/BSD-3-Clause)
 
-
 #include <array>
 
 #include "fs_portability.h"
@@ -70,9 +69,9 @@ path canonical_impl(path const &orig_p, std::error_code *ec) {
 #endif
 }
 
-// -----------------------------------------------------------------------------
-//                             copy
-// -----------------------------------------------------------------------------
+  // -----------------------------------------------------------------------------
+  //                             copy
+  // -----------------------------------------------------------------------------
 
 #if defined(ASAP_POSIX)
 namespace {
@@ -80,7 +79,7 @@ bool stat_equivalent(const StatT &st1, const StatT &st2) {
   return (st1.st_dev == st2.st_dev && st1.st_ino == st2.st_ino);
 }
 }  // namespace
-#endif // ASAP_POSIX
+#endif  // ASAP_POSIX
 
 void copy_impl(const path &from, const path &to, copy_options options,
                std::error_code *ec) {
@@ -113,8 +112,7 @@ void copy_impl(const path &from, const path &to, copy_options options,
   if (!status_known(t)) return err.report(m_ec1);
 
   if (!exists(f) || is_other(f) || is_other(t) ||
-      (is_directory(f) && is_regular_file(t)) ||
-      stat_equivalent(f_st, t_st)) {
+      (is_directory(f) && is_regular_file(t)) || stat_equivalent(f_st, t_st)) {
     return err.report(std::errc::function_not_supported);
   }
 #endif  // ASAP_WINDOWS
@@ -228,7 +226,7 @@ bool do_copy_file_copyfile(FileDescriptor &read_fd, FileDescriptor &write_fd,
 
   CopyFileState cfs;
   if (detail::apple::fcopyfile(read_fd.fd_, write_fd.fd_, cfs.state,
-                                COPYFILE_DATA) < 0) {
+                               COPYFILE_DATA) < 0) {
     ec = capture_errno();
     return false;
   }
@@ -476,8 +474,8 @@ void create_hard_link_impl(const path &target, const path &link,
 #if defined(ASAP_WINDOWS)
   auto link_wpath = link.wstring();
   auto target_wpath = target.wstring();
-  if (!detail::win32::CreateHardLinkW(link_wpath.c_str(), target_wpath.c_str(),
-                                      nullptr))
+  if (!detail::win32::CreateHardLinkW_api(link_wpath.c_str(),
+                                          target_wpath.c_str(), nullptr))
     return err.report(capture_errno());
 #else
   if (detail::posix::link(target.c_str(), link.c_str()) == -1)
@@ -809,7 +807,32 @@ void permissions_impl(const path &p, perms prms, perm_options opts,
   }
 
 #if defined(ASAP_WINDOWS)
-    // TODO: implemet permissions setting on windows
+  // TODO: check permissions setting on windows
+  // if not going to alter FILE_ATTRIBUTE_READONLY, just return
+  if (!(!(add_perms | remove_perms) ||
+        (detail::is_set(prms, perms::owner_write) ||
+         detail::is_set(prms, perms::group_write) ||
+         detail::is_set(prms, perms::others_write))))
+    return;
+
+  auto wpath = p.wstring();
+  DWORD attr = detail::win32::GetFileAttributesW(wpath.c_str());
+  if (attr == INVALID_FILE_ATTRIBUTES) return err.report(capture_errno());
+
+  if (add_perms)
+    attr &= ~FILE_ATTRIBUTE_READONLY;
+  else if (remove_perms)
+    attr |= FILE_ATTRIBUTE_READONLY;
+  else if (detail::is_set(prms, perms::owner_write) ||
+           detail::is_set(prms, perms::group_write) ||
+           detail::is_set(prms, perms::others_write))
+    attr &= ~FILE_ATTRIBUTE_READONLY;
+  else
+    attr |= FILE_ATTRIBUTE_READONLY;
+
+  attr = detail::win32::SetFileAttributesW(wpath.c_str(), attr);
+  if (attr == INVALID_FILE_ATTRIBUTES) return err.report(capture_errno());
+
 #else  // ASAP_WINDOWS
   const auto real_perms = static_cast< ::mode_t>(prms & perms::mask);
 
@@ -856,10 +879,13 @@ path read_symlink_impl(const path &p, std::error_code *ec) {
 // -----------------------------------------------------------------------------
 
 bool remove_impl(const path &p, std::error_code *ec) {
+  // If the path is empty, nothing is deleted but no error is reported.
+  if (p.empty()) return false;
+
   ErrorHandler<bool> err("remove", ec, &p);
 #if defined(ASAP_WINDOWS)
   auto wpath = p.wstring();
-  if (is_directory(p)) {
+  if (ec ? is_directory(p, *ec) : is_directory(p)) {
     if (!detail::win32::RemoveDirectoryW(wpath.c_str())) {
       err.report(capture_errno());
       return false;
@@ -1002,10 +1028,35 @@ space_info space_impl(const path &p, std::error_code *ec) {
 
 file_status status_impl(const path &p, std::error_code *ec) {
 #if defined(ASAP_WINDOWS)
-  // TODO: add implementation
   ErrorHandler<void> err("status_impl", ec, &p);
-  err.report(std::errc::not_supported);
-  return file_status(file_type::none);
+
+  auto wpath = p.wstring();
+  auto attrs = detail::win32::GetFileAttributesW(wpath.c_str());
+  if (attrs == INVALID_FILE_ATTRIBUTES) {
+	  return detail::win32::process_status_failure(capture_errno(), p, ec);
+  }
+
+  // Handle the case of reparse point.
+  // Since GetFileAttributesW does not resolve symlinks, try to open the file
+  // handle to discover if it exists.
+  if (attrs & FILE_ATTRIBUTE_REPARSE_POINT) {
+    std::error_code m_ec;
+    auto file1 = detail::FileDescriptor::create(
+        &p, m_ec, 0, FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
+        nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, nullptr);
+    if (m_ec) {
+      return detail::win32::process_status_failure(m_ec, p, ec);
+    }
+    if (!detail::win32::is_reparse_point_a_symlink(p, ec))
+      return file_status(file_type::reparse_file,
+                         detail::win32::make_permissions(p, attrs));
+  }
+
+  return (attrs & FILE_ATTRIBUTE_DIRECTORY)
+             ? file_status(file_type::directory,
+                           detail::win32::make_permissions(p, attrs))
+             : file_status(file_type::regular,
+                           detail::win32::make_permissions(p, attrs));
 #else
   StatT path_stat;
   return detail::posix::file_stat(p, path_stat, ec);
@@ -1033,10 +1084,11 @@ path temp_directory_path_impl(std::error_code *ec) {
 
   path p;
 #ifdef ASAP_WINDOWS
-  // TODO: Windows implementation of temp_directory_path_impl
-  // GetTempPathW
-  // GetLastError
-  return err.report(std::errc::not_supported);
+  auto buff = std::unique_ptr<WCHAR[]>(new WCHAR[MAX_PATH + 1]);
+  if (detail::win32::GetTempPathW(static_cast<DWORD>(MAX_PATH),
+                                  reinterpret_cast<LPWSTR>(buff.get())) == 0)
+    return err.report(capture_errno(), "call to GetTempPathW failed");
+  p = path(buff.get());
 #else
   const char *env_paths[] = {"TMPDIR", "TMP", "TEMP", "TEMPDIR"};
   const char *ret = nullptr;
@@ -1045,6 +1097,7 @@ path temp_directory_path_impl(std::error_code *ec) {
     if ((ret = ::getenv(ep))) break;
   if (ret == nullptr) ret = "/tmp";
   p = path(ret);
+#endif
 
   std::error_code status_ec;
   file_status st = status(p, status_ec);
@@ -1056,7 +1109,6 @@ path temp_directory_path_impl(std::error_code *ec) {
                       "path \"{}\" is not a directory", p.string());
 
   return p;
-#endif
 }
 
 // -----------------------------------------------------------------------------

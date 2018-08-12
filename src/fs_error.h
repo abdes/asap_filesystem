@@ -5,11 +5,17 @@
 
 #pragma once
 
+// clang-format off
 #include <string>
 #include <system_error>
 
-#include <common/assert.h>
 #include <common/platform.h>
+#include <common/assert.h>
+
+#if defined(ASAP_WINDOWS)
+#include <Windows.h>
+#endif
+
 // Silence this warning as fmt lib checks properly for the compiler support of
 // string literal operator template before enabling it
 #if ASAP_COMPILER_IS_AppleClang || ASAP_COMPILER_IS_AppleClang
@@ -24,7 +30,7 @@
 #include <filesystem/fs_fwd.h>
 #include <filesystem/fs_path.h>
 #include <filesystem/filesystem_error.h>
-
+// clang-format on
 
 namespace asap {
 namespace filesystem {
@@ -37,7 +43,7 @@ namespace detail {
 inline std::error_code capture_errno() {
   int error;
 #if defined(ASAP_WINDOWS)
-  error = GetLastError();
+  error = ::GetLastError();
 #else
   error = errno;
 #endif

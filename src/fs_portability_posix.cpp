@@ -5,14 +5,12 @@
 
 #include <chrono>
 
-#include "fs_portability.h"
 #include "fs_error.h"
-
+#include "fs_portability.h"
 
 namespace asap {
 namespace filesystem {
 namespace detail {
-
 
 // -----------------------------------------------------------------------------
 //                          detail: file time utils
@@ -41,8 +39,7 @@ file_time_type ft_convert_from_timespec(TimeSpec tm) {
 }
 
 }  // namespace posix
-#endif // ASAP_POSIX
-
+#endif  // ASAP_POSIX
 
 // -----------------------------------------------------------------------------
 //                            detail: posix stat
@@ -128,8 +125,8 @@ file_time_type extract_last_write_time(const path &p, const StatT &st,
   return detail::posix::ft_convert_from_timespec(ts);
 }
 
-} // namespace posix
-#endif // ASAP_POSIX
+}  // namespace posix
+#endif  // ASAP_POSIX
 
 
 // -----------------------------------------------------------------------------
@@ -139,8 +136,7 @@ file_time_type extract_last_write_time(const path &p, const StatT &st,
 #if defined(ASAP_POSIX)
 
 const FileDescriptor::fd_type FileDescriptor::invalid_value =
-  posix::invalid_fd_value;
-
+    posix::invalid_fd_value;
 
 file_status FileDescriptor::refresh_status(std::error_code &ec) {
   // FD must be open and good.
@@ -152,8 +148,7 @@ file_status FileDescriptor::refresh_status(std::error_code &ec) {
   return status_;
 }
 
-#endif // ASAP_POSIX
-
+#endif  // ASAP_POSIX
 
 }  // namespace detail
 }  // namespace filesystem
