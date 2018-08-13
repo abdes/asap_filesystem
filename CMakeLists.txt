@@ -3,6 +3,8 @@
 #    (See accompanying file LICENSE or copy at
 #   https://opensource.org/licenses/BSD-3-Clause)
 
+message("=> [module: filesystem]")
+
 # ------------------------------------------------------------------------------
 # Configuration
 # ------------------------------------------------------------------------------
@@ -33,7 +35,6 @@ set(target asap_filesystem)
 set(target_export filesystem)
 
 # Exit here if required dependencies are not met
-message(STATUS "Lib ${target}")
 
 
 # ------------------------------------------------------------------------------

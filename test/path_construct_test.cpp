@@ -86,7 +86,7 @@ TEST_CASE("Path / construct / path(const Source&, format)",
   }
   SECTION("Source = path::wstring") {
     // path(const Source&, format)
-    const std::wstring s = L"foo/bar";
+    const std::wstring s = L"要らない.txt";
     path p0(s);
     path p1(s, path::auto_format);
     REQUIRE(p1 == p0);
