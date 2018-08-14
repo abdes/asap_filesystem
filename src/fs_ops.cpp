@@ -22,9 +22,9 @@ inline bool is_set(Bitmask obj, Bitmask bits) {
 
 }  // namespace detail
 
+using detail::capture_errno;
 using detail::ErrorHandler;
 using detail::FileDescriptor;
-using detail::capture_errno;
 #if defined(ASAP_POSIX)
 using detail::posix::StatT;
 #endif
@@ -64,14 +64,66 @@ path canonical_impl(path const &orig_p, std::error_code *ec) {
     return err.report(capture_errno());
   return {ret};
 #else
-  // TODO: windows implementation of canonical()
-  return err.report(std::errc::not_supported);
+
+  std::error_code m_ec;
+  if (!exists(pa, m_ec)) {
+    if (!m_ec) return err.report(std::errc::no_such_file_or_directory);
+  }
+  // else: we know there are (currently) no unresolvable symlink loops
+
+  path result = pa.root_path();
+
+  deque<path> cmpts;
+  for (auto &f : pa.relative_path()) cmpts.push_back(f);
+
+  int max_allowed_symlinks = 40;
+
+  while (!cmpts.empty() && !m_ec) {
+    path f = std::move(cmpts.front());
+    cmpts.pop_front();
+
+    if (f.empty()) {
+      // ignore
+    } else if (is_dot(f)) {
+      if (!is_directory(result, m_ec) && !m_ec)
+        err.report(std::errc::not_a_directory);
+    } else if (is_dotdot(f)) {
+      auto parent = result.parent_path();
+      if (parent.empty())
+        result = pa.root_path();
+      else
+        result.swap(parent);
+    } else {
+      result /= f;
+
+      if (is_symlink(result, m_ec)) {
+        path link = read_symlink(result, m_ec);
+        if (!m_ec) {
+          if (--max_allowed_symlinks == 0)
+            err.report(std::errc::too_many_symbolic_link_levels);
+          else {
+            if (link.is_absolute()) {
+              result = link.root_path();
+              link = link.relative_path();
+            } else
+              result = result.parent_path();
+
+            cmpts.insert(cmpts.begin(), link.begin(), link.end());
+          }
+        }
+      }
+    }
+  }
+
+  if (m_ec || !exists(result, m_ec)) result.clear();
+
+  return result;
 #endif
 }
 
-  // -----------------------------------------------------------------------------
-  //                             copy
-  // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+//                             copy
+// -----------------------------------------------------------------------------
 
 #if defined(ASAP_POSIX)
 namespace {
@@ -98,8 +150,8 @@ void copy_impl(const path &from, const path &to, copy_options options,
 #else
   std::error_code m_ec1;
   StatT f_st = {};
-  // For the souce file, if it's a symlink and the copy_options require to act
-  // on the symlink rather than the file pointed to, then use lstat
+  // For the souce file, if it's a symlink and the copy_options require to
+  // act on the symlink rather than the file pointed to, then use lstat
   bool use_lstat = create_symlinks || skip_symlinks || copy_symlinks;
   f = use_lstat ? detail::posix::link_stat(from, f_st, &m_ec1)
                 : detail::posix::file_stat(from, f_st, &m_ec1);
@@ -186,8 +238,8 @@ bool do_copy_file_win32(FileDescriptor &read_fd, FileDescriptor &write_fd,
 #else  // ASAP_WINDOWS
 #if ASAP_FS_USE_SENDFILE
 // NOTE:
-// The LINUX method using sendfile() has a major problem in that it can not
-// copy files more than 2GB in size!
+// The LINUX method using sendfile() has a major problem in that it can
+// not copy files more than 2GB in size!
 // http://man7.org/linux/man-pages/man2/sendfile.2.html
 //
 //    sendfile() will transfer at most 0x7ffff000 (2,147,479,552) bytes,
@@ -270,8 +322,8 @@ bool do_copy_file(FileDescriptor &from, FileDescriptor &to,
 #else  // ASAP_WINDOWS
 #if ASAP_FS_USE_SENDFILE
   // Prefer to use sendfile when it is available.
-  // Check if sendfile cannot handle the large files and if so, fallback to
-  // copyfile() or default implementation.
+  // Check if sendfile cannot handle the large files and if so, fallback
+  // to copyfile() or default implementation.
   if (do_copy_file_sendfile(from, to, ec)) return true;
 #elif ASAP_FS_USE_COPYFILE
   if (do_copy_file_copyfile(from, to, ec)) return true;
@@ -335,8 +387,8 @@ bool copy_file_impl(const path &from, const path &to, copy_options options,
   }();
   if (!ShouldCopy) return false;
 
-  // Don't truncate right away. We may not be opening the file we originally
-  // looked at; we'll check this later.
+  // Don't truncate right away. We may not be opening the file we
+  // originally looked at; we'll check this later.
   int to_open_flags = O_WRONLY;
   if (!to_exists) to_open_flags |= O_CREAT;
   FileDescriptor to_fd = FileDescriptor::create_with_status(
@@ -358,7 +410,8 @@ bool copy_file_impl(const path &from, const path &to, copy_options options,
   }
 
   if (!do_copy_file(from_fd, to_fd, m_ec)) {
-    // FIXME: Remove the dest file if we failed, and it didn't exist previously.
+    // FIXME: Remove the dest file if we failed, and it didn't exist
+    // previously.
     return err.report(m_ec);
   }
 
@@ -1026,6 +1079,8 @@ space_info space_impl(const path &p, std::error_code *ec) {
 //                               status
 // -----------------------------------------------------------------------------
 
+// https://docs.microsoft.com/en-us/windows/desktop/FileIO/symbolic-link-effects-on-file-systems-functions
+
 file_status status_impl(const path &p, std::error_code *ec) {
 #if defined(ASAP_WINDOWS)
   ErrorHandler<void> err("status_impl", ec, &p);
@@ -1033,12 +1088,13 @@ file_status status_impl(const path &p, std::error_code *ec) {
   auto wpath = p.wstring();
   auto attrs = detail::win32::GetFileAttributesW(wpath.c_str());
   if (attrs == INVALID_FILE_ATTRIBUTES) {
-	  return detail::win32::process_status_failure(capture_errno(), p, ec);
+    return detail::win32::process_status_failure(capture_errno(), p, ec);
   }
 
   // Handle the case of reparse point.
   // Since GetFileAttributesW does not resolve symlinks, try to open the file
   // handle to discover if it exists.
+  // TODO: must follow through symlinks
   if (attrs & FILE_ATTRIBUTE_REPARSE_POINT) {
     std::error_code m_ec;
     auto file1 = detail::FileDescriptor::create(
@@ -1065,10 +1121,21 @@ file_status status_impl(const path &p, std::error_code *ec) {
 
 file_status symlink_status_impl(const path &p, std::error_code *ec) {
 #if defined(ASAP_WINDOWS)
-  // TODO: add implementation
-  ErrorHandler<void> err("status_impl", ec, &p);
-  err.report(std::errc::not_supported);
-  return file_status(file_type::none);
+  DWORD attr(detail::win32::GetFileAttributesW(p.c_str()));
+  if (attr == INVALID_iFILE_ATTRIBUTES) {
+    return detail::win32::process_status_failure(capture_errno(), p, ec);
+  }
+
+  if (attr & FILE_ATTRIBUTE_REPARSE_POINT)
+    return is_reparse_point_a_symlink(p) ?
+      file_status(file_type::symlink_file,
+          detail::win32::make_permissions(p, attr)) :
+      file_status(reparse_file, make_permissions(p, attr));
+
+  return (attr & FILE_ATTRIBUTE_DIRECTORY)
+          ? file_status(file_type::directory_file, detail::win32::make_permissions(p, attr))
+                    : file_status(file_type::regular_file, detail::win32::make_permissions(p, attr));
+
 #else
   StatT path_stat;
   return detail::posix::link_stat(p, path_stat, ec);
@@ -1156,9 +1223,9 @@ path weakly_canonical_impl(const path &p, std::error_code *ec) {
   return result;
 }
 
-  // -----------------------------------------------------------------------------
-  //                           directory entry definitions
-  // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+//                           directory entry definitions
+// -----------------------------------------------------------------------------
 
 #ifndef ASAP_WINDOWS
 std::error_code directory_entry::Refresh_impl() noexcept {
@@ -1232,8 +1299,8 @@ std::error_code directory_entry::Refresh_impl() noexcept {
   } else {  // we have a symlink
     cached_data_.symlink_perms = st.permissions();
     // Get the information about the linked entity.
-    // Ignore errors from stat, since we don't want errors regarding symlink
-    // resolution to be reported to the user.
+    // Ignore errors from stat, since we don't want errors regarding
+    // symlink resolution to be reported to the user.
     std::error_code ignored_ec;
     st = asap::filesystem::status(path_, ignored_ec);
 
@@ -1249,9 +1316,9 @@ std::error_code directory_entry::Refresh_impl() noexcept {
     cached_data_.cache_type = CacheType_::REFRESH_SYMLINK;
   }
 
-  // FIXME: This is currently broken, and the implementation only a placeholder.
-  // We need to cache last_write_time, file_size, and hard_link_count here
-  // before the implementation actually works.
+  // FIXME: This is currently broken, and the implementation only a
+  // placeholder. We need to cache last_write_time, file_size, and
+  // hard_link_count here before the implementation actually works.
 
   return failure_ec;
 }
