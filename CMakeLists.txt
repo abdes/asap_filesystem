@@ -156,6 +156,8 @@ configure_doxyfile(${target}
 
 add_doxygen_target(${target})
 
+add_sphinx_target(${target} "Module filesystem API")
+
 install(
   DIRECTORY ${dox_root}/${target}
   DESTINATION ${INSTALL_DOC}
