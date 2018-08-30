@@ -159,7 +159,7 @@ add_doxygen_target(${target})
 add_sphinx_target(${target} "Module filesystem API")
 
 install(
-  DIRECTORY ${dox_root}/${target}
+  DIRECTORY ${DOXYGEN_BUILD_DIR}/${target}
   DESTINATION ${INSTALL_DOC}
   COMPONENT docs
 )
