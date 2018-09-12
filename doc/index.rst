@@ -1,18 +1,19 @@
-.. ASAP documentation master file, created by
-   sphinx-quickstart on Tue Aug 28 14:10:44 2018.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
-
-Welcome to ASAP's documentation!
-================================
+Welcome to asap_filesystem's documentation!
+===========================================
 
 .. toctree::
    :maxdepth: 2
+   :hidden:
+   
+   Usage <usage>
+   API <api>
+   License <license>
+   Version <version>
 
-   api/library_root
-
+Blah blah
 
 Indices and tables
 ==================
 
 * :ref:`genindex`
+* :ref:`search`

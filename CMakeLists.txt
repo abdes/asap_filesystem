@@ -2,8 +2,19 @@
 #    Distributed under the 3-Clause BSD License.
 #    (See accompanying file LICENSE or copy at
 #   https://opensource.org/licenses/BSD-3-Clause)
+ 
 
-message("=> [module: filesystem]")
+# Meta information about the project
+set(META_MODULE_NAME                "filesystem")
+set(META_MODULE_DESCRIPTION         "A module to provide the functionality of std::filesystem from C++ 17")
+set(META_MODULE_GITHUB_REPO         "asap_filesystem")
+set(META_MODULE_VERSION_MAJOR       "0")
+set(META_MODULE_VERSION_MINOR       "1")
+set(META_MODULE_VERSION_PATCH       "1")
+set(META_MODULE_VERSION_REVISION    "${MODULE_GIT_REV}")
+set(META_MODULE_VERSION             "${META_MODULE_VERSION_MAJOR}.${META_MODULE_VERSION_MINOR}.${META_MODULE_VERSION_PATCH}")
+set(META_MODULE_NAME_VERSION        "${META_MODULE_PROJECT_NAME} v${META_MODULE_VERSION}")
+message("=> [module: filesystem ${META_MODULE_VERSION}]")
 
 # ------------------------------------------------------------------------------
 # Configuration
@@ -156,7 +167,7 @@ configure_doxyfile(${target}
 
 add_doxygen_target(${target})
 
-add_sphinx_target(${target} "Module filesystem API")
+add_sphinx_target(${target})
 
 install(
   DIRECTORY ${DOXYGEN_BUILD_DIR}/${target}
