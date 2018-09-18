@@ -43,22 +43,19 @@ TEST_CASE("Path / concat / path", "[common][filesystem][path][compare]") {
 TEST_CASE("Path / concat / strings", "[common][filesystem][path][assign]") {
   path p("/");
   p += "foo";
-  REQUIRE(p.filename().string() == "foo");
+  REQUIRE(p.filename().generic_string() == "foo");
   p += "bar";
-  REQUIRE(p.filename().string() == "foobar");
+  REQUIRE(p.filename().generic_string() == "foobar");
   p += '/';
-  REQUIRE(p.parent_path().string() == "/foobar");
-  REQUIRE(p.filename().string() == "");
-  REQUIRE(p.parent_path().wstring() == L"/foobar");
-  REQUIRE(p.filename().wstring() == L"");
+  REQUIRE(p.parent_path().generic_string() == "/foobar");
+  REQUIRE(p.filename().generic_string() == "");
   p += "baz.txt";
-  REQUIRE(p.filename().string() == "baz.txt");
+  REQUIRE(p.filename().generic_string() == "baz.txt");
   p.concat("/dir/");
-  // N.B. on Windows p.parent_path() is "/foobar\\baz.txt\\dir"
   REQUIRE(p.parent_path() == path("/foobar/baz.txt/dir"));
-  REQUIRE(p.filename().string() == "");
+  REQUIRE(p.filename().generic_string() == "");
   const char file[] = "file";
   std::vector<char> input(file, file + 4);
   p.concat(input.begin(), input.end());
-  REQUIRE(p.filename().string() == file);
+  REQUIRE(p.filename().generic_string() == file);
 }

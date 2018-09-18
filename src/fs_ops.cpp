@@ -51,20 +51,21 @@ path absolute_impl(const path &p, std::error_code *ec) {
 //                               canonical
 // -----------------------------------------------------------------------------
 
+// TODO: refactor to make this available in one single place
 namespace {
-	constexpr path::value_type dot = '.';
+constexpr path::value_type dot = '.';
 
-	inline bool is_dot(path::value_type c) { return c == dot; }
+inline bool is_dot(path::value_type c) { return c == dot; }
 
-	inline bool is_dot(const path &path) {
-		const auto &filename = path.native();
-		return filename.size() == 1 && is_dot(filename[0]);
-	}
+inline bool is_dot(const path &path) {
+  const auto &filename = path.native();
+  return filename.size() == 1 && is_dot(filename[0]);
+}
 
-	inline bool is_dotdot(const path &path) {
-		const auto &filename = path.native();
-		return filename.size() == 2 && is_dot(filename[0]) && is_dot(filename[1]);
-	}
+inline bool is_dotdot(const path &path) {
+  const auto &filename = path.native();
+  return filename.size() == 2 && is_dot(filename[0]) && is_dot(filename[1]);
+}
 }  // namespace
 
 path canonical_impl(path const &orig_p, std::error_code *ec) {
@@ -502,11 +503,12 @@ bool create_directory_impl(path const &p, path const &existing_template,
 #if defined(ASAP_WINDOWS)
   auto wpath = p.wstring();
   auto template_wpath = existing_template.wstring();
-  if (detail::win32::CreateDirectoryExW(template_wpath.c_str(), wpath.c_str(),
-                                        nullptr) == 0)
-    return true;
-  if (detail::win32::GetLastError() != ERROR_ALREADY_EXISTS)
-    err.report(capture_errno());
+  if (!detail::win32::CreateDirectoryExW(template_wpath.c_str(), wpath.c_str(),
+                                         nullptr)) {
+    if (detail::win32::GetLastError() != ERROR_ALREADY_EXISTS)
+      err.report(capture_errno());
+  }
+  return true;
 #else
   StatT attr_stat;
   std::error_code mec;
@@ -1138,22 +1140,24 @@ file_status status_impl(const path &p, std::error_code *ec) {
 
 file_status symlink_status_impl(const path &p, std::error_code *ec) {
 #if defined(ASAP_WINDOWS)
-	auto wpath = p.wstring();
+  auto wpath = p.wstring();
   DWORD attr(detail::win32::GetFileAttributesW(wpath.c_str()));
   if (attr == INVALID_FILE_ATTRIBUTES) {
     return detail::win32::process_status_failure(capture_errno(), p, ec);
   }
 
   if (attr & FILE_ATTRIBUTE_REPARSE_POINT)
-    return detail::win32::is_reparse_point_a_symlink(p, ec) ?
-      file_status(file_type::symlink,
-          detail::win32::make_permissions(p, attr)) :
-      file_status(file_type::reparse_file, detail::win32::make_permissions(p, attr));
+    return detail::win32::is_reparse_point_a_symlink(p, ec)
+               ? file_status(file_type::symlink,
+                             detail::win32::make_permissions(p, attr))
+               : file_status(file_type::reparse_file,
+                             detail::win32::make_permissions(p, attr));
 
   return (attr & FILE_ATTRIBUTE_DIRECTORY)
-          ? file_status(file_type::directory, detail::win32::make_permissions(p, attr))
-                    : file_status(file_type::regular, detail::win32::make_permissions(p, attr));
-
+             ? file_status(file_type::directory,
+                           detail::win32::make_permissions(p, attr))
+             : file_status(file_type::regular,
+                           detail::win32::make_permissions(p, attr));
 #else
   StatT path_stat;
   return detail::posix::link_stat(p, path_stat, ec);

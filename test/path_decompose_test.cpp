@@ -87,6 +87,9 @@ TEST_CASE("Path / decompose / parent_path basic",
   REQUIRE(path("/var").parent_path() == path("/"));
   REQUIRE(path("/").parent_path() == path("/"));
   REQUIRE(path("//").parent_path() == path("/"));
+#ifdef ASAP_WINDOWS
+  REQUIRE(path("c:\\").parent_path() == "c:\\");
+#endif
 
   path p0;
   REQUIRE(p0.parent_path() == p0);
@@ -162,12 +165,7 @@ TEST_CASE("Path / decompose / root_directory",
     CAPTURE(p);
     path rootdir = p.root_directory();
     REQUIRE(!rootdir.has_relative_path());
-    if (!rootdir.empty())
-#if defined(__MINGW32__) || defined(__MINGW64__)
-      REQUIRE(rootdir.string() == "/" || rootdir.string() == "\\");
-#else
-      REQUIRE(rootdir.string() == "/");
-#endif
+    if (!rootdir.empty()) REQUIRE(rootdir.string() == path("/"));
   }
 }
 

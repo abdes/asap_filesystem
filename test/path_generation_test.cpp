@@ -11,8 +11,34 @@ using testing::ComparePaths;
 using testing::TEST_PATHS;
 
 // -----------------------------------------------------------------------------
-//  Generation
+//  Generation - normal
 // -----------------------------------------------------------------------------
 
+void ComparePathsNormal(path p, std::string expected) {
+#if defined(ASAP_WINDOWS)
+  for (auto& c : expected)
+    if (c == '/') c = '\\';
+#endif
+  ComparePaths(p, expected);
+}
+
 TEST_CASE("Path / generation / normal",
-          "[common][filesystem][path][generation]") {}
+          "[common][filesystem][path][generation]") {
+  // C++17 [fs.path.gen] p2
+  ComparePathsNormal(path("foo/./bar/..").lexically_normal(), "foo/");
+  ComparePathsNormal(path("foo/.///bar/../").lexically_normal(), "foo/");
+
+  ComparePathsNormal(path("foo/../bar").lexically_normal(), "bar");
+  ComparePathsNormal(path("../foo/../bar").lexically_normal(), "../bar");
+  ComparePathsNormal(path("foo/../").lexically_normal(), ".");
+  ComparePathsNormal(path("../../").lexically_normal(), "../..");
+  ComparePathsNormal(path("../").lexically_normal(), "..");
+  ComparePathsNormal(path("./").lexically_normal(), ".");
+  ComparePathsNormal(path().lexically_normal(), "");
+
+  ComparePathsNormal(path("/..").lexically_normal(), "/");
+
+  // PR libstdc++/82777
+  ComparePathsNormal(path("./a/b/c/../.././b/c").lexically_normal(), "a/b/c");
+  ComparePathsNormal(path("/a/b/c/../.././b/c").lexically_normal(), "/a/b/c");
+}

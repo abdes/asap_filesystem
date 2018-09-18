@@ -24,20 +24,28 @@ namespace detail {
 namespace {
 
 #if !defined(ASAP_WINDOWS)
-template<class DirEntT, class = decltype(DirEntT::d_type)>
+template <class DirEntT, class = decltype(DirEntT::d_type)>
 file_type get_file_type(DirEntT *ent) {
   switch (ent->d_type) {
-    case DT_BLK:return file_type::block;
-    case DT_CHR:return file_type::character;
-    case DT_DIR:return file_type::directory;
-    case DT_FIFO:return file_type::fifo;
-    case DT_LNK:return file_type::symlink;
-    case DT_REG:return file_type::regular;
-    case DT_SOCK:return file_type::socket;
+    case DT_BLK:
+      return file_type::block;
+    case DT_CHR:
+      return file_type::character;
+    case DT_DIR:
+      return file_type::directory;
+    case DT_FIFO:
+      return file_type::fifo;
+    case DT_LNK:
+      return file_type::symlink;
+    case DT_REG:
+      return file_type::regular;
+    case DT_SOCK:
+      return file_type::socket;
       // Unlike in lstat, hitting "unknown" here simply means that the
       // underlying filesystem doesn't support d_type. Report is as 'none' so we
       // correctly set the cache to empty.
-    case DT_UNKNOWN:break;
+    case DT_UNKNOWN:
+      break;
   }
   return file_type::none;
 }
@@ -95,14 +103,37 @@ class DirectoryStream {
 
   DirectoryStream(const path &root, directory_options opts, std::error_code &ec)
       : __stream_(INVALID_HANDLE_VALUE), __root_(root) {
-    __stream_ = ::FindFirstFileW(root.wstring().c_str(), &cached_data_);
+    auto wdirpath = root.wstring();
+    // use a form of search Sebastian Martel reports will work with Win98
+    wdirpath += (wdirpath.empty() || (wdirpath[wdirpath.size() - 1] != L'\\' &&
+                                      wdirpath[wdirpath.size() - 1] != L'/' &&
+                                      wdirpath[wdirpath.size() - 1] != L':'))
+                    ? L"\\*"
+                    : L"*";
+    __stream_ = ::FindFirstFileW(wdirpath.c_str(), &cached_data_);
+    // Skip the '.' and '..'
+    if (__stream_ != INVALID_HANDLE_VALUE) {
+      while (!wcscmp(cached_data_.cFileName, L".") ||
+             !wcscmp(cached_data_.cFileName, L"..")) {
+        if (::FindNextFileW(__stream_, &cached_data_)) {
+          __entry_.AssignIterEntry(__root_ / cached_data_.cFileName,
+                                   directory_entry::CreateIterResult(
+                                       detail::get_file_type(cached_data_)));
+          continue;
+        } else {
+          close();
+          break;
+        }
+      }
+    }
     if (__stream_ == INVALID_HANDLE_VALUE) {
       ec = std::error_code(::GetLastError(), std::generic_category());
       const bool ignore_permission_denied =
           bool(opts & directory_options::skip_permission_denied);
       if (ignore_permission_denied && ec.value() == ERROR_ACCESS_DENIED)
         ec.clear();
-      return;
+      // We consider the situation of no more files available as ok
+      if (ec.value() == ERROR_NO_MORE_FILES) ec.clear();
     }
   }
 
@@ -115,21 +146,24 @@ class DirectoryStream {
 
   bool advance(std::error_code &ec) {
     while (::FindNextFileW(__stream_, &cached_data_)) {
-      if (!wcscmp(cached_data_.cFileName, L".") || wcscmp(cached_data_.cFileName, L".."))
+      if (!wcscmp(cached_data_.cFileName, L".") ||
+          !wcscmp(cached_data_.cFileName, L".."))
         continue;
       // FIXME: Cache more of this
       // directory_entry::CachedData_ cdata;
       // cdata.type = get_file_type(cached_data_);
       // cdata.size = get_file_size(cached_data_);
       // cdata.write_time = get_write_time(cached_data_);
-      __entry_.AssignIterEntry(
-          __root_ / cached_data_.cFileName,
-          directory_entry::CreateIterResult(detail::get_file_type(cached_data_)));
+      __entry_.AssignIterEntry(__root_ / cached_data_.cFileName,
+                               directory_entry::CreateIterResult(
+                                   detail::get_file_type(cached_data_)));
       return true;
     }
-    ec = std::error_code(::GetLastError(), std::generic_category());
+	ec = std::error_code(::GetLastError(), std::generic_category());
     close();
-    return false;
+	// We consider the situation of no more files available as ok
+	if (ec.value() == ERROR_NO_MORE_FILES) ec.clear();
+	return false;
   }
 
  private:
@@ -290,7 +324,8 @@ directory_options recursive_directory_iterator::options() const {
 
 int recursive_directory_iterator::depth() const {
   ErrorHandler<int> err("recursive_directory_iterator::depth()", nullptr);
-  if (!impl_) return err.report(std::errc::invalid_argument, "invalid iterator");
+  if (!impl_)
+    return err.report(std::errc::invalid_argument, "invalid iterator");
 
   return static_cast<int>(impl_->__stack_.size() - 1);
 }
@@ -313,7 +348,8 @@ recursive_directory_iterator &recursive_directory_iterator::do_increment(
 
 void recursive_directory_iterator::Advance(std::error_code *ec) {
   ErrorHandler<void> err("recursive_directory_iterator::Advance()", ec);
-  if (!impl_) return err.report(std::errc::invalid_argument, "invalid iterator");
+  if (!impl_)
+    return err.report(std::errc::invalid_argument, "invalid iterator");
 
   const directory_iterator end_it;
   auto &stack = impl_->__stack_;
@@ -335,7 +371,9 @@ void recursive_directory_iterator::Advance(std::error_code *ec) {
 
 bool recursive_directory_iterator::TryRecursion(std::error_code *ec) {
   ErrorHandler<bool> err("recursive_directory_iterator::TryRecursion()", ec);
-  if (!impl_) return err.report(make_error_code(std::errc::invalid_argument), "invalid iterator");
+  if (!impl_)
+    return err.report(make_error_code(std::errc::invalid_argument),
+                      "invalid iterator");
 
   auto rec_sym = bool(options() & directory_options::follow_directory_symlink);
 

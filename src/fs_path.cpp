@@ -22,6 +22,90 @@ namespace {
 constexpr path::value_type dot = '.';
 }
 
+void path::SplitComponents() {
+  components_.clear();
+  if (pathname_.empty()) {
+    type_ = Type::FILENAME;
+    return;
+  }
+  type_ = Type::MULTI;
+
+  size_t pos = 0;
+  const size_t len = pathname_.size();
+
+  // look for root name or root directory
+  if (IsDirSeparator(pathname_[0])) {
+#ifdef ASAP_WINDOWS
+    // look for root name, such as "//foo"
+    if (len > 2 && pathname_[1] == pathname_[0]) {
+      if (!IsDirSeparator(pathname_[2])) {
+        // got root name, find its end
+        pos = 3;
+        while (pos < len && !IsDirSeparator(pathname_[pos])) ++pos;
+        AddRootName(pos);
+        if (pos < len)  // also got root directory
+          AddRootDir(pos);
+      } else {
+        // got something like "///foo" which is just a root directory
+        // composed of multiple redundant directory separators
+        AddRootDir(0);
+      }
+    } else
+#endif
+    {
+      // got root directory
+      if (pathname_.find_first_not_of('/') == string_type::npos) {
+        // entire path is just slashes
+        type_ = Type::ROOT_DIR;
+        AddRootDir(0);
+        Trim();
+        return;
+      }
+      AddRootDir(0);
+      ++pos;
+    }
+  }
+#ifdef ASAP_WINDOWS
+  else if (len > 1 && pathname_[1] == L':') {
+    // got disk designator
+    AddRootName(2);
+    if (len > 2 && IsDirSeparator(pathname_[2])) AddRootDir(2);
+    pos = 2;
+  }
+#endif
+
+  size_t back = pos;
+  while (pos < len) {
+    if (IsDirSeparator(pathname_[pos])) {
+      if (back != pos) AddFilename(back, pos - back);
+      back = ++pos;
+    } else
+      ++pos;
+  }
+
+  if (back != pos)
+    AddFilename(back, pos - back);
+  else if (IsDirSeparator(pathname_.back())) {
+    // [fs.path.itr]/4
+    // An empty element, if trailing non-root directory-separator present.
+    if (components_.back().type_ == Type::FILENAME) {
+      pos = pathname_.size();
+      components_.emplace_back(string_type(), Type::FILENAME, pos);
+    }
+  }
+
+  Trim();
+}
+
+void path::Trim() {
+  if (components_.size() == 1) {
+    auto &component = components_.front();
+    type_ = component.type_;
+    pathname_ = component.pathname_;
+    components_.clear();
+  }
+}
+
 // -----------------------------------------------------------------------------
 //  Assign
 // -----------------------------------------------------------------------------
@@ -110,17 +194,10 @@ path path::root_name() const {
 path path::root_directory() const {
   path ret;
   if (type_ == Type::ROOT_DIR) {
-    // There will be one single component which has the simplified root dir '/'.
-    // That component does not have components! Test for this case to avoid
-    // issues with the recursive descent over parent directories.
-    if (!components_.empty())
-      ret = *components_.begin();
-    else
-      ret = *this;
+    ret = *this;
   } else if (type_ == Type::ROOT_NAME) {
     // Check for windows special case of drive letter
-    if (pathname_[1] == ':')
-      ret = path("");
+    if (pathname_[1] == ':') ret = path("");
   } else if (!components_.empty()) {
     auto it = components_.begin();
     if (it->type_ == Type::ROOT_NAME) ++it;
@@ -138,7 +215,7 @@ path path::root_path() const {
     if (it->type_ == Type::ROOT_NAME) {
       ret = *it++;
       if (it != components_.end() && it->type_ == Type::ROOT_DIR) {
-        ret.pathname_ += slash;
+        ret.pathname_ += preferred_separator;
         ret.SplitComponents();
       }
     } else if (it->type_ == Type::ROOT_DIR)
@@ -161,33 +238,16 @@ path path::relative_path() const {
 }
 
 path path::parent_path() const {
-  path __ret;
-  if (!has_relative_path()) {
-    if (type_ == Type::ROOT_DIR)
-      __ret = *components_.begin();
-    else
-      __ret = *this;
-  } else if (components_.size() >= 2) {
-    for (auto __it = components_.begin(), __end = std::prev(components_.end());
-         __it != __end; ++__it) {
-      __ret /= *__it;
-    }
-  }
-  return __ret;
-
-  /*
-    path ret;
-    if (components_.size() < 2) {
-      if (type_ == Type::ROOT_DIR) return *this;
-      if (type_ == Type::ROOT_NAME) return path("/");
-      return ret;
-    }
-    for (auto it = components_.begin(), end = std::prev(components_.end());
-         it != end; ++it) {
+  if (type_ == Type::ROOT_DIR) return *this;
+  path ret;
+  if (!components_.empty()) {
+    auto end = std::prev(components_.end());
+    for (auto it = components_.begin(); it != end; ++it) {
       ret /= *it;
     }
-    return ret;
-  */
+    if (end->type_ == Type::ROOT_DIR) ret /= *end;
+  }
+  return ret;
 }
 
 path path::filename() const {
@@ -197,8 +257,8 @@ path path::filename() const {
     return *this;
   else if (type_ == Type::MULTI) {
     if (pathname_.back() == preferred_separator) return {};
-    auto &__last = *--end();
-    if (__last.type_ == Type::FILENAME) return __last;
+    auto &last = *--end();
+    if (last.type_ == Type::FILENAME) return last;
   }
   return {};
 }
@@ -241,98 +301,28 @@ std::pair<const path::string_type *, std::size_t> path::FindExtension() const {
   return {};
 }
 
-void path::SplitComponents() {
-  components_.clear();
-  if (pathname_.empty()) {
-    type_ = Type::FILENAME;
-    return;
-  }
-  type_ = Type::MULTI;
-
-  size_t pos = 0;
-  const size_t len = pathname_.size();
-
-  // look for root name or root directory
-  if (IsDirSeparator(pathname_[0])) {
-#ifdef ASAP_WINDOWS
-    // look for root name, such as "//foo"
-    if (len > 2 && pathname_[1] == pathname_[0]) {
-      if (!IsDirSeparator(pathname_[2])) {
-        // got root name, find its end
-        pos = 3;
-        while (pos < len && !IsDirSeparator(pathname_[pos])) ++pos;
-        AddRootName(pos);
-        if (pos < len)  // also got root directory
-          AddRootDir(pos);
-      } else {
-        // got something like "///foo" which is just a root directory
-        // composed of multiple redundant directory separators
-        AddRootDir(0);
-      }
-    } else
-#endif
-    {
-      // got root directory
-      if (pathname_.find_first_not_of('/') == string_type::npos) {
-        // entire path is just slashes
-        type_ = Type::ROOT_DIR;
-        AddRootDir(0);
-        return;
-      }
-      AddRootDir(0);
-      ++pos;
-    }
-  }
-#ifdef ASAP_WINDOWS
-  else if (len > 1 && pathname_[1] == L':') {
-    // got disk designator
-    AddRootName(2);
-    if (len > 2 && IsDirSeparator(pathname_[2])) AddRootDir(2);
-    pos = 2;
-  }
-#endif
-
-  size_t back = pos;
-  while (pos < len) {
-    if (IsDirSeparator(pathname_[pos])) {
-      if (back != pos) AddFilename(back, pos - back);
-      back = ++pos;
-    } else
-      ++pos;
-  }
-
-  if (back != pos)
-    AddFilename(back, pos - back);
-  else if (IsDirSeparator(pathname_.back())) {
-    // [fs.path.itr]/4
-    // An empty element, if trailing non-root directory-separator present.
-    if (components_.back().type_ == Type::FILENAME) {
-      pos = pathname_.size();
-      components_.emplace_back(string_type(), Type::FILENAME, pos);
-    }
-  }
-
-  Trim();
-}
 // End Decomposition -----------------------------------------------------------
 
 void path::AddRootName(size_t len) {
-  components_.emplace_back(pathname_.substr(0, len), Type::ROOT_NAME, 0);
+  auto rootname = pathname_.substr(0, len);
+#if defined(ASAP_WINDOWS)
+  // Replace separator with preferred separator '\'
+  std::replace(rootname.begin(), rootname.end(), L'/', L'\\');
+#endif
+  components_.emplace_back(rootname, Type::ROOT_NAME, 0);
 }
 
 void path::AddRootDir(size_t pos) {
-  components_.emplace_back(pathname_.substr(pos, 1), Type::ROOT_DIR, pos);
+	auto rootdir = pathname_.substr(pos, 1);
+#if defined(ASAP_WINDOWS)
+	// Replace separator with preferred separator '\'
+	if (rootdir[0] == L'/') rootdir[0] = L'\\';
+#endif
+	components_.emplace_back(rootdir, Type::ROOT_DIR, pos);
 }
 
 void path::AddFilename(size_t pos, size_t len) {
   components_.emplace_back(pathname_.substr(pos, len), Type::FILENAME, pos);
-}
-
-void path::Trim() {
-  if (components_.size() == 1) {
-    type_ = components_.front().type_;
-    components_.clear();
-  }
 }
 
 //
@@ -448,16 +438,18 @@ int path::compare(const value_type *other) const {
 //
 
 path &path::operator/=(const path &p) {
-// TODO: double check conformance to c++ standard
+  // TODO: double check conformance to c++ standard
 
-// 1) If p.is_absolute() || (p.has_root_name() && p.root_name() != root_name()),
-// then replaces the current path with p as if by operator=(p) and finishes.
-//   * Otherwise, if p.has_root_directory(), then removes any root directory
-//     and the entire relative path from the generic format pathname of *this
-//   * Otherwise, if has_filename() || (!has_root_directory() && is_absolute()),
-//     then appends path::preferred_separator to the generic format of *this
-//   * Either way, then appends the native format pathname of p, omitting any
-//     root-name from its generic format, to the native format of *this.
+  // 1) If p.is_absolute() || (p.has_root_name() && p.root_name() !=
+  // root_name()), then replaces the current path with p as if by operator=(p)
+  // and finishes.
+  //   * Otherwise, if p.has_root_directory(), then removes any root directory
+  //     and the entire relative path from the generic format pathname of *this
+  //   * Otherwise, if has_filename() || (!has_root_directory() &&
+  //   is_absolute()),
+  //     then appends path::preferred_separator to the generic format of *this
+  //   * Either way, then appends the native format pathname of p, omitting any
+  //     root-name from its generic format, to the native format of *this.
 
 #if defined(ASAP_WINDOWS)
   if (p.is_absolute() || (p.has_root_name() && p.root_name() != root_name()))
@@ -581,8 +573,7 @@ path &path::remove_filename() {
         auto prev = std::prev(cmpt);
         if (prev->type_ == Type::ROOT_DIR || prev->type_ == Type::ROOT_NAME) {
           components_.erase(cmpt);
-          // Don't trim, leave the root directory as-is
-          // Trim();
+          Trim();
         } else
           cmpt->clear();
       }
@@ -653,7 +644,7 @@ path path::lexically_normal() const {
   for (auto &p : *this) {
 #ifdef ASAP_WINDOWS
     // Replace each slash character in the root-name
-    if (p.type_ == Type::ROOT_NAME) {
+    if (p.type_ == Type::ROOT_NAME || p.type_ == Type::ROOT_DIR) {
       string_type s = p.native();
       std::replace(s.begin(), s.end(), L'/', L'\\');
       ret /= s;
@@ -668,7 +659,8 @@ path path::lexically_normal() const {
         else
           ret /= p;
       } else if (!ret.has_relative_path()) {
-        if (!ret.is_absolute()) ret /= p;
+        // remove a dot-dot filename immediately after root-directory
+        if (!ret.has_root_directory()) ret /= p;
       } else {
         // Got a path with a relative path (i.e. at least one non-root
         // element) and no filename at the end (i.e. empty last element),
@@ -677,8 +669,16 @@ path path::lexically_normal() const {
         if (elem->has_filename() && !is_dotdot(*elem)) {
           // Remove the filename before the trailing slash
           // (equiv. to ret = ret.parent_path().remove_filename())
-          ret.pathname_.erase(elem.cur_->pos_);
-          ret.components_.erase(elem.cur_, ret.components_.end());
+          if (elem == ret.begin())
+            ret.clear();
+          else {
+            ret.pathname_.erase(elem.cur_->pos_);
+            // Do we still have a trailing slash?
+            if (std::prev(elem)->type_ == Type::FILENAME)
+              ret.components_.erase(elem.cur_);
+            else
+              ret.components_.erase(elem.cur_, ret.components_.end());
+          }
         } else  // ???
           ret /= p;
       }

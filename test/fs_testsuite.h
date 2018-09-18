@@ -77,8 +77,6 @@ inline FilesystemErrorMatcher FilesystemErrorDetail(std::error_code ec, path p1,
 }
 
 inline void ComparePaths(const path &p1, const path &p2) {
-  PATH_CHK(p1, p2, native);
-  PATH_CHK(p1, p2, string);
   PATH_CHK(p1, p2, empty);
   PATH_CHK(p1, p2, has_root_path);
   PATH_CHK(p1, p2, has_root_name);

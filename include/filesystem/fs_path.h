@@ -9,6 +9,7 @@
 #include <iostream>  // for operator >> and operator <<
 #include <iterator>  // for std::iterator_traits
 #include <string>
+#include <algorithm>
 #include <type_traits>  // for std::enable_if
 
 #include <common/platform.h>
@@ -39,7 +40,7 @@ class ASAP_FILESYSTEM_API path {
   typedef char value_type;
   typedef std::basic_string<value_type> string_type;
 #ifdef ASAP_WINDOWS
-  static constexpr value_type preferred_separator = '\\';
+  static constexpr value_type preferred_separator = L'\\';
 #else
   static constexpr value_type preferred_separator = '/';
 #endif
@@ -568,17 +569,22 @@ template <typename Allocator>
 inline path::string_type path::make_generic(const Allocator &alloc) const {
   string_type str(alloc);
 
-  if (type_ == Type::ROOT_DIR)
-    str.assign(1, slash);
-  else {
-    str.reserve(pathname_.size());
-    bool add_slash = false;
-    for (auto &elem : *this) {
+  str.reserve(pathname_.size());
+  bool add_slash = false;
+  for (auto &elem : *this) {
+    if (elem.type_ == Type::ROOT_NAME) {
+      auto rootname = elem.pathname_;
+      std::replace(rootname.begin(), rootname.end(), L'\\', L'/');
+      str += rootname;
+    } else if (elem.type_ == Type::ROOT_DIR) {
+      str += slash;
+    } else {
       if (add_slash) str += slash;
       str += elem.pathname_;
       add_slash = elem.type_ == Type::FILENAME;
     }
   }
+
   return str;
 }
 
