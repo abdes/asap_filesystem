@@ -143,7 +143,7 @@ bool is_reparse_point_a_symlink(const path &p, std::error_code *ec) {
                     ->ReparseTag == IO_REPARSE_TAG_MOUNT_POINT;
 }
 
-file_status process_status_failure(std::error_code &m_ec, const path &p,
+file_status process_status_failure(std::error_code m_ec, const path &p,
                                    std::error_code *ec) {
   if (ec) *ec = m_ec;
   if (m_ec) {

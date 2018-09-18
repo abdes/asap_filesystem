@@ -210,7 +210,7 @@ bool not_found_error(int errval);
 
 bool is_reparse_point_a_symlink(const path &p, std::error_code *ec);
 
-file_status process_status_failure(std::error_code &m_ec, const path &p, std::error_code *ec);
+file_status process_status_failure(std::error_code m_ec, const path &p, std::error_code *ec);
 
 perms make_permissions(const path &p, DWORD attr);
 }  // namespace win32

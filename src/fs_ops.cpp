@@ -4,6 +4,7 @@
 //   https://opensource.org/licenses/BSD-3-Clause)
 
 #include <array>
+#include <deque>
 
 #include "fs_portability.h"
 
@@ -50,6 +51,22 @@ path absolute_impl(const path &p, std::error_code *ec) {
 //                               canonical
 // -----------------------------------------------------------------------------
 
+namespace {
+	constexpr path::value_type dot = '.';
+
+	inline bool is_dot(path::value_type c) { return c == dot; }
+
+	inline bool is_dot(const path &path) {
+		const auto &filename = path.native();
+		return filename.size() == 1 && is_dot(filename[0]);
+	}
+
+	inline bool is_dotdot(const path &path) {
+		const auto &filename = path.native();
+		return filename.size() == 2 && is_dot(filename[0]) && is_dot(filename[1]);
+	}
+}  // namespace
+
 path canonical_impl(path const &orig_p, std::error_code *ec) {
   path cwd;
   ErrorHandler<path> err("canonical", ec, &orig_p, &cwd);
@@ -73,7 +90,7 @@ path canonical_impl(path const &orig_p, std::error_code *ec) {
 
   path result = pa.root_path();
 
-  deque<path> cmpts;
+  std::deque<path> cmpts;
   for (auto &f : pa.relative_path()) cmpts.push_back(f);
 
   int max_allowed_symlinks = 40;
@@ -1121,20 +1138,21 @@ file_status status_impl(const path &p, std::error_code *ec) {
 
 file_status symlink_status_impl(const path &p, std::error_code *ec) {
 #if defined(ASAP_WINDOWS)
-  DWORD attr(detail::win32::GetFileAttributesW(p.c_str()));
-  if (attr == INVALID_iFILE_ATTRIBUTES) {
+	auto wpath = p.wstring();
+  DWORD attr(detail::win32::GetFileAttributesW(wpath.c_str()));
+  if (attr == INVALID_FILE_ATTRIBUTES) {
     return detail::win32::process_status_failure(capture_errno(), p, ec);
   }
 
   if (attr & FILE_ATTRIBUTE_REPARSE_POINT)
-    return is_reparse_point_a_symlink(p) ?
-      file_status(file_type::symlink_file,
+    return detail::win32::is_reparse_point_a_symlink(p, ec) ?
+      file_status(file_type::symlink,
           detail::win32::make_permissions(p, attr)) :
-      file_status(reparse_file, make_permissions(p, attr));
+      file_status(file_type::reparse_file, detail::win32::make_permissions(p, attr));
 
   return (attr & FILE_ATTRIBUTE_DIRECTORY)
-          ? file_status(file_type::directory_file, detail::win32::make_permissions(p, attr))
-                    : file_status(file_type::regular_file, detail::win32::make_permissions(p, attr));
+          ? file_status(file_type::directory, detail::win32::make_permissions(p, attr))
+                    : file_status(file_type::regular, detail::win32::make_permissions(p, attr));
 
 #else
   StatT path_stat;

@@ -492,13 +492,13 @@ path &path::operator/=(const path &p) {
     string_type tmp;
     tmp.reserve(len);
     tmp = lhs;
-    if (add_sep) tmp += slash;
+    if (add_sep) tmp += preferred_separator;
     tmp += rhs;
     path newp = std::move(tmp);
     swap(newp);
   } else {
     pathname_ = lhs;
-    if (add_sep) pathname_ += slash;
+    if (add_sep) pathname_ += preferred_separator;
     pathname_ += rhs;
     SplitComponents();
   }
