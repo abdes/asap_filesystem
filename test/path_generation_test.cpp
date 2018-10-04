@@ -31,14 +31,14 @@ TEST_CASE("Path / generation / normal",
   ComparePathsNormal(path("foo/../bar").lexically_normal(), "bar");
   ComparePathsNormal(path("../foo/../bar").lexically_normal(), "../bar");
   ComparePathsNormal(path("foo/../").lexically_normal(), ".");
-  ComparePathsNormal(path("../../").lexically_normal(), "../..");
-  ComparePathsNormal(path("../").lexically_normal(), "..");
-  ComparePathsNormal(path("./").lexically_normal(), ".");
+  ComparePathsNormal(path("../../").lexically_normal(), "../../");
+  ComparePathsNormal(path("../").lexically_normal(), "../");
+  ComparePathsNormal(path("./").lexically_normal(), "./");
   ComparePathsNormal(path().lexically_normal(), "");
 
   ComparePathsNormal(path("/..").lexically_normal(), "/");
 
   // PR libstdc++/82777
-  ComparePathsNormal(path("./a/b/c/../.././b/c").lexically_normal(), "a/b/c");
-  ComparePathsNormal(path("/a/b/c/../.././b/c").lexically_normal(), "/a/b/c");
+  ComparePathsNormal(path("./a/b/c/../.././b/c").lexically_normal(), "a/b/c/");
+  ComparePathsNormal(path("/a/b/c/../.././b/c").lexically_normal(), "/a/b/c/");
 }

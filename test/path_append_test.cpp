@@ -37,6 +37,10 @@ TEST_CASE("Path / append / path", "[common][filesystem][path][append]") {
 
   ComparePaths(append("//host", "foo"), "//host/foo");
   ComparePaths(append("//host/", "foo"), "//host/foo");
+  ComparePaths(append("//host/bar", "foo"), "//host/bar/foo");
+  ComparePaths(append("//host", "/foo"), "/foo");
+  ComparePaths(append("//host", "//other/foo"), "//other/foo");
+  ComparePaths(append("//host/bar", "//other/foo"), "//other/foo");
 
 #if !defined(ASAP_WINDOWS)
 
@@ -46,7 +50,7 @@ TEST_CASE("Path / append / path", "[common][filesystem][path][append]") {
   // path("foo") / "/bar"; // yields "/bar"
   ComparePaths(append("foo", "/bar"), "/bar");
 #else
-  ComparePaths(append("c:/foo", "/bar"), "c:/bar");
+  ComparePaths(append("c:/foo", "/bar"), "/bar");
 
   // path("foo") / ""; // yields "foo/"
   ComparePaths(append("foo", ""), "foo/");
@@ -64,7 +68,7 @@ TEST_CASE("Path / append / path", "[common][filesystem][path][append]") {
   ComparePaths(append("c:", ""), "c:");
 
   // path("c:foo") / "/bar"; // yields "c:/bar"
-  ComparePaths(append("c:foo", "/bar"), "c:/bar");
+  ComparePaths(append("c:foo", "/bar"), "/bar");
 
   // path("c:foo") / "c:bar"; // yields "c:foo/bar"
   ComparePaths(append("foo", "c:\\bar"), "c:\\bar");

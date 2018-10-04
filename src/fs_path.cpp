@@ -165,9 +165,9 @@ bool path::is_absolute() const {
 #if defined(ASAP_WINDOWS)
   if (has_root_name()) {
     auto rn = root_name().pathname_;
-    return (IsDirSeparator(rn[0]) && IsDirSeparator(rn[1])) ||
-           has_root_directory();
+    if (IsDirSeparator(rn[0]) && IsDirSeparator(rn[1])) return true;
   }
+  return has_root_directory();
 #else
   // //foo is absolute because we can't express relative paths on top of it
   // without appending a separator.
@@ -238,16 +238,30 @@ path path::relative_path() const {
 }
 
 path path::parent_path() const {
-  if (type_ == Type::ROOT_DIR) return *this;
-  path ret;
-  if (!components_.empty()) {
-    auto end = std::prev(components_.end());
-    for (auto it = components_.begin(); it != end; ++it) {
-      ret /= *it;
+  if (!has_relative_path()) return *this;
+
+  if (type_ == Type::MULTI) {
+    ASAP_ASSERT(!components_.empty());
+    path ret = *this;
+    // Remove the end component
+    // Note that if the end component is the empty path, we need to remove
+    // the component preceding it as well. The empty path as a component
+    // indicates that the previous component is a directory and it was followed
+    // with a separator in the path name.
+    auto last = std::prev(ret.components_.end());
+    if (last->pathname_ == "") {
+      last = std::prev(last);
+	}
+    ret.components_.erase(last, ret.components_.end());
+    ret.pathname_.clear();
+    for (auto comp : ret.components_) {
+      ret.pathname_.append(comp.pathname_);
+      ret.AppendSeparatorIfNeeded();
     }
-    if (end->type_ == Type::ROOT_DIR) ret /= *end;
+    return ret;
+  } else {
+    return {};
   }
-  return ret;
 }
 
 path path::filename() const {
@@ -313,12 +327,12 @@ void path::AddRootName(size_t len) {
 }
 
 void path::AddRootDir(size_t pos) {
-	auto rootdir = pathname_.substr(pos, 1);
+  auto rootdir = pathname_.substr(pos, 1);
 #if defined(ASAP_WINDOWS)
-	// Replace separator with preferred separator '\'
-	if (rootdir[0] == L'/') rootdir[0] = L'\\';
+  // Replace separator with preferred separator '\'
+  if (rootdir[0] == L'/') rootdir[0] = L'\\';
 #endif
-	components_.emplace_back(rootdir, Type::ROOT_DIR, pos);
+  components_.emplace_back(rootdir, Type::ROOT_DIR, pos);
 }
 
 void path::AddFilename(size_t pos, size_t len) {

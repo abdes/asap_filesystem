@@ -82,25 +82,23 @@ TEST_CASE("Path / decompose / filename special cases",
 
 TEST_CASE("Path / decompose / parent_path basic",
           "[common][filesystem][path][decompose]") {
-  REQUIRE(path("/var/tmp/example.txt").parent_path() == path("/var/tmp"));
-  REQUIRE(path("/var/tmp/.").parent_path() == path("/var/tmp"));
+  REQUIRE(path("/var/tmp/example.txt").parent_path() == path("/var/tmp/"));
+  REQUIRE(path("/var/tmp/.").parent_path() == path("/var/tmp/"));
   REQUIRE(path("/var").parent_path() == path("/"));
   REQUIRE(path("/").parent_path() == path("/"));
   REQUIRE(path("//").parent_path() == path("/"));
+  REQUIRE(path("//foo").parent_path() == path("//foo"));
+  REQUIRE(path("foo").parent_path() == path(""));
+  REQUIRE(path("foo/bar").parent_path() == path("foo/"));
+  REQUIRE(path("/foo/bar").parent_path() == path("/foo/"));
+  REQUIRE(path("/foo/").parent_path() == path("/"));
+  REQUIRE(path("/foo/bar/.").parent_path() == path("/foo/bar/"));
 #ifdef ASAP_WINDOWS
+  REQUIRE(path("c:").parent_path() == "c:");
   REQUIRE(path("c:\\").parent_path() == "c:\\");
+  REQUIRE(path("c:\\foo").parent_path() == "c:\\");
+  REQUIRE(path("c:/foo").parent_path() == "c:/");
 #endif
-
-  path p0;
-  REQUIRE(p0.parent_path() == p0);
-  path p1 = "foo";
-  REQUIRE(p1.parent_path() == p0);
-  path p2 = "foo/bar";
-  REQUIRE(p2.parent_path() == p1);
-  path p3 = "/foo/bar";
-  REQUIRE(p3.parent_path() == path("/foo"));
-  REQUIRE(p3.parent_path().parent_path() == path("/"));
-  REQUIRE(p3.parent_path().parent_path().parent_path() == path("/"));
 }
 
 TEST_CASE("Path / decompose / relative_path basic",

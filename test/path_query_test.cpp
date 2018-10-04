@@ -88,11 +88,11 @@ TEST_CASE("Path / query / is_absolute", "[common][filesystem][path][query]") {
   REQUIRE(path("//foo/bar").is_absolute());
 
 #ifdef ASAP_WINDOWS
-  REQUIRE(!path("/").is_absolute());
-  REQUIRE(!path("/foo").is_absolute());
-  REQUIRE(!path("/foo/").is_absolute());
-  REQUIRE(!path("/foo/bar").is_absolute());
-  REQUIRE(!path("/foo/bar/").is_absolute());
+  REQUIRE(path("/").is_absolute());
+  REQUIRE(path("/foo").is_absolute());
+  REQUIRE(path("/foo/").is_absolute());
+  REQUIRE(path("/foo/bar").is_absolute());
+  REQUIRE(path("/foo/bar/").is_absolute());
   REQUIRE(!path("c:").is_absolute());
   REQUIRE(!path("c:foo").is_absolute());
   REQUIRE(!path("c:foo/").is_absolute());
