@@ -24,11 +24,11 @@ class ASAP_FILESYSTEM_API directory_entry {
 
   explicit directory_entry(path_type const &__p) : path_(__p) {
     std::error_code ec;
-    Refresh(&ec);
+    DoRefresh(&ec);
   }
 
   directory_entry(path_type const &__p, std::error_code &ec) : path_(__p) {
-    Refresh(&ec);
+    DoRefresh(&ec);
   }
 
   ~directory_entry() = default;
@@ -39,28 +39,28 @@ class ASAP_FILESYSTEM_API directory_entry {
   void assign(path_type const &__p) {
     path_ = __p;
     std::error_code ec;
-    Refresh(&ec);
+    DoRefresh(&ec);
   }
 
   void assign(path_type const &__p, std::error_code &ec) {
     path_ = __p;
-    Refresh(&ec);
+    DoRefresh(&ec);
   }
 
   void replace_filename(path_type const &__p) {
     path_.replace_filename(__p);
     std::error_code ec;
-    Refresh(&ec);
+    DoRefresh(&ec);
   }
 
   void replace_filename(path_type const &__p, std::error_code &ec) {
     path_ = path_.parent_path() / __p;
-    Refresh(&ec);
+    DoRefresh(&ec);
   }
 
-  void refresh() { Refresh(); }
+  void refresh() { DoRefresh(); }
 
-  void refresh(std::error_code &ec) noexcept { Refresh(&ec); }
+  void refresh(std::error_code &ec) noexcept { DoRefresh(&ec); }
 
   path_type const &path() const noexcept { return path_; }
 
@@ -237,7 +237,7 @@ class ASAP_FILESYSTEM_API directory_entry {
     cached_data_ = __dt;
   }
 
-  std::error_code Refresh_impl() noexcept;
+  std::error_code DoRefresh_impl() noexcept;
 
   static bool IsDoesNotExistError(std::error_code const &ec) {
     if (!ec) return true;
@@ -261,8 +261,8 @@ class ASAP_FILESYSTEM_API directory_entry {
       throw filesystem_error(__msg, path_, ec);
   }
 
-  void Refresh(std::error_code *ec = nullptr) {
-    HandleError("in directory_entry::refresh", ec, Refresh_impl(),
+  void DoRefresh(std::error_code *ec = nullptr) {
+    HandleError("in directory_entry::refresh", ec, DoRefresh_impl(),
                 /*allow_dne*/ true);
   }
 

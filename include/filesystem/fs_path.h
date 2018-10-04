@@ -40,7 +40,7 @@ class ASAP_FILESYSTEM_API path {
   typedef char value_type;
   typedef std::basic_string<value_type> string_type;
 #ifdef ASAP_WINDOWS
-  static constexpr value_type preferred_separator = L'\\';
+  static constexpr value_type preferred_separator = '\\';
 #else
   static constexpr value_type preferred_separator = '/';
 #endif
@@ -574,7 +574,7 @@ inline path::string_type path::make_generic(const Allocator &alloc) const {
   for (auto &elem : *this) {
     if (elem.type_ == Type::ROOT_NAME) {
       auto rootname = elem.pathname_;
-      std::replace(rootname.begin(), rootname.end(), L'\\', L'/');
+      std::replace(rootname.begin(), rootname.end(), '\\', '/');
       str += rootname;
     } else if (elem.type_ == Type::ROOT_DIR) {
       str += slash;

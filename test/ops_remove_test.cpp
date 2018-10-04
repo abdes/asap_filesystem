@@ -11,28 +11,85 @@
 //  remove
 // -----------------------------------------------------------------------------
 
-TEST_CASE("Ops / remove", "[common][filesystem][ops][remove]") {
+TEST_CASE("Ops / remove / nonexistent path",
+          "[common][filesystem][ops][remove]") {
   std::error_code ec;
   const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
   bool n;
-
-  n = fs::remove("", ec);
-  REQUIRE(!ec);  // This seems odd, but is what the standard requires.
-  REQUIRE(!n);
 
   auto p = testing::nonexistent_path();
   ec = bad_ec;
   n = remove(p, ec);
   REQUIRE(!ec);
   REQUIRE(!n);
+}
 
+TEST_CASE("Ops / remove / empty path",
+          "[common][filesystem][ops][remove]") {
+  std::error_code ec;
+  const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
+  bool n;
+
+  ec = bad_ec;
+  n = fs::remove("", ec);
+  REQUIRE(!ec);  // This seems odd, but is what the standard requires.
+  REQUIRE(!n);
+}
+
+TEST_CASE("Ops / remove / file", "[common][filesystem][ops][remove]") {
+  std::error_code ec;
+  const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
+  bool n;
+
+  auto p = testing::nonexistent_path();
+  testing::scoped_file f(p);
+  REQUIRE(exists(p));
+
+  ec = bad_ec;
+  n = remove(p, ec);
+  REQUIRE(!ec);
+  REQUIRE(n);
+}
+
+TEST_CASE("Ops / remove / empty directory", "[common][filesystem][ops][remove]") {
+  std::error_code ec;
+  const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
+  bool n;
+
+  auto p = testing::nonexistent_path();
+  ec = bad_ec;
+  create_directory(p, ec);
+  REQUIRE(!ec);
+  REQUIRE(exists(p));
+
+  ec = bad_ec;
+  n = remove(p, ec);
+  REQUIRE(!ec);
+  REQUIRE(n);
+}
+
+TEST_CASE("Ops / remove / symlink to nonexistent path", "[common][filesystem][ops][remove]") {
+  std::error_code ec;
+  const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
+  bool n;
+
+  auto p = testing::nonexistent_path();
   auto link = testing::nonexistent_path();
-  create_symlink(p, link);  // dangling symlink
+  create_directory_symlink(p, link);  // dangling symlink
   ec = bad_ec;
   n = remove(link, ec);
   REQUIRE(!ec);
   REQUIRE(n);
   REQUIRE(!exists(symlink_status(link)));
+}
+
+TEST_CASE("Ops / remove / symlink to actual path", "[common][filesystem][ops][remove]") {
+  std::error_code ec;
+  const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
+  bool n;
+
+  auto p = testing::nonexistent_path();
+  auto link = testing::nonexistent_path();
 
   testing::scoped_file f(p);
   create_symlink(p, link);
@@ -42,12 +99,13 @@ TEST_CASE("Ops / remove", "[common][filesystem][ops][remove]") {
   REQUIRE(n);
   REQUIRE(!exists(symlink_status(link)));  // The symlink is removed, but
   REQUIRE(exists(p));                      // its target is not.
+}
 
-  ec = bad_ec;
-  n = remove(p, ec);
-  REQUIRE(!ec);
-  REQUIRE(n);
-  REQUIRE(!exists(symlink_status(p)));
+TEST_CASE("Ops / remove / non-empty directory",
+          "[common][filesystem][ops][remove]") {
+  std::error_code ec;
+  const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
+  bool n;
 
   const auto dir = testing::nonexistent_path();
   create_directories(dir / "a/b");
@@ -56,15 +114,6 @@ TEST_CASE("Ops / remove", "[common][filesystem][ops][remove]") {
   REQUIRE(ec);
   REQUIRE(!n);
   REQUIRE(exists(dir / "a/b"));
-
-  permissions(dir, fs::perms::none, ec);
-  if (!ec) {
-    ec.clear();
-    n = remove(dir / "a/b", ec);
-    REQUIRE(ec);
-    REQUIRE(!n);
-    permissions(dir, fs::perms::owner_all, ec);
-  }
 
   ec = bad_ec;
   n = remove(dir / "a/b", ec);
@@ -76,11 +125,38 @@ TEST_CASE("Ops / remove", "[common][filesystem][ops][remove]") {
   remove(dir, ec);
 }
 
+TEST_CASE("Ops / remove / file permissions",
+          "[common][filesystem][ops][remove]") {
+  std::error_code ec;
+  const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
+  bool n;
+
+  const auto p = testing::nonexistent_path();
+  testing::scoped_file f(p);
+  REQUIRE(exists(p));
+
+  permissions(p, fs::perms::none, ec);
+  if (!ec) {
+    ec.clear();
+    n = remove(p, ec);
+    REQUIRE(ec);
+    REQUIRE(!n);
+    permissions(p, fs::perms::owner_all, ec);
+  }
+
+  ec = bad_ec;
+  n = remove(p, ec);
+  REQUIRE(!ec);
+  REQUIRE(n);
+  REQUIRE(!exists(p));
+}
+
 // -----------------------------------------------------------------------------
 //  remove_all
 // -----------------------------------------------------------------------------
 
-TEST_CASE("Ops / remove_all", "[common][filesystem][ops][remove_all]") {
+TEST_CASE("Ops / remove_all / empty path",
+          "[common][filesystem][ops][remove_all]") {
   std::error_code ec;
   const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
   std::uintmax_t n;
@@ -88,13 +164,27 @@ TEST_CASE("Ops / remove_all", "[common][filesystem][ops][remove_all]") {
   n = fs::remove_all("", ec);
   REQUIRE(!ec);  // This seems odd, but is what the standard requires.
   REQUIRE(n == 0);
+}
+
+TEST_CASE("Ops / remove_all / nonexistent path",
+          "[common][filesystem][ops][remove_all]") {
+  std::error_code ec;
+  const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
+  std::uintmax_t n;
 
   auto p = testing::nonexistent_path();
   ec = bad_ec;
   n = remove_all(p, ec);
   REQUIRE(!ec);
   REQUIRE(n == 0);
+}
 
+TEST_CASE("Ops / remove_all / symlink to nonexistent path", "[common][filesystem][ops][remove_all]") {
+  std::error_code ec;
+  const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
+  std::uintmax_t n;
+
+  auto p = testing::nonexistent_path();
   auto link = testing::nonexistent_path();
   create_symlink(p, link);  // dangling symlink
   ec = bad_ec;
@@ -102,7 +192,15 @@ TEST_CASE("Ops / remove_all", "[common][filesystem][ops][remove_all]") {
   REQUIRE(!ec);
   REQUIRE(n == 1);
   REQUIRE(!exists(symlink_status(link)));  // DR 2721
+}
 
+TEST_CASE("Ops / remove_all / symlink to actual path", "[common][filesystem][ops][remove_all]") {
+  std::error_code ec;
+  const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
+  std::uintmax_t n;
+
+  auto p = testing::nonexistent_path();
+  auto link = testing::nonexistent_path();
   testing::scoped_file f(p);
   create_symlink(p, link);
   ec = bad_ec;
@@ -111,6 +209,12 @@ TEST_CASE("Ops / remove_all", "[common][filesystem][ops][remove_all]") {
   REQUIRE(n == 1);
   REQUIRE(!exists(symlink_status(link)));  // The symlink is removed, but
   REQUIRE(exists(p));                      // its target is not.
+}
+
+TEST_CASE("Ops / remove_all / tree", "[common][filesystem][ops][remove_all]") {
+  std::error_code ec;
+  const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
+  std::uintmax_t n;
 
   const auto dir = testing::nonexistent_path();
   create_directories(dir / "a/b/c");

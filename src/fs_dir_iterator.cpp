@@ -65,20 +65,26 @@ std::pair<std::string, file_type> posix_readdir(DIR *dir_stream,
 #else
 
 file_type get_file_type(const WIN32_FIND_DATAW &data) {
-  // auto attrs = data.dwFileAttributes;
-  // FIXME Windows implementation of get_file_type()
-  return file_type::unknown;
+  auto attrs = data.dwFileAttributes;
+  if (attrs & FILE_ATTRIBUTE_DIRECTORY) return file_type::directory;
+  if (attrs & FILE_ATTRIBUTE_REPARSE_POINT) return file_type::reparse_file;
+  return file_type::regular;
 }
+
 uintmax_t get_file_size(const WIN32_FIND_DATAW &data) {
   return (data.nFileSizeHigh * (MAXDWORD + 1)) + data.nFileSizeLow;
 }
 file_time_type get_write_time(const WIN32_FIND_DATAW &data) {
-  // FIXME: wrong conversion to file_time_type
   ULARGE_INTEGER tmp;
   auto &time = data.ftLastWriteTime;
   tmp.u.LowPart = time.dwLowDateTime;
   tmp.u.HighPart = time.dwHighDateTime;
-  return file_time_type(file_time_type::duration(tmp.QuadPart));
+
+  const long WINDOWS_TICK = 10000000;
+  const long long NANOSEC_TO_UNIX_EPOCH = 11644473600000000000LL;
+
+  return file_time_type(
+      file_time_type::duration(tmp.QuadPart * 100 - NANOSEC_TO_UNIX_EPOCH));
 }
 
 #endif
@@ -115,12 +121,7 @@ class DirectoryStream {
     if (__stream_ != INVALID_HANDLE_VALUE) {
       while (!wcscmp(cached_data_.cFileName, L".") ||
              !wcscmp(cached_data_.cFileName, L"..")) {
-        if (::FindNextFileW(__stream_, &cached_data_)) {
-          __entry_.AssignIterEntry(__root_ / cached_data_.cFileName,
-                                   directory_entry::CreateIterResult(
-                                       detail::get_file_type(cached_data_)));
-          continue;
-        } else {
+        if (!::FindNextFileW(__stream_, &cached_data_)) {
           close();
           break;
         }
@@ -134,6 +135,10 @@ class DirectoryStream {
         ec.clear();
       // We consider the situation of no more files available as ok
       if (ec.value() == ERROR_NO_MORE_FILES) ec.clear();
+    } else {
+      __entry_.AssignIterEntry(__root_ / cached_data_.cFileName,
+                               directory_entry::CreateIterResult(
+                                   detail::get_file_type(cached_data_)));
     }
   }
 
@@ -159,11 +164,11 @@ class DirectoryStream {
                                    detail::get_file_type(cached_data_)));
       return true;
     }
-	ec = std::error_code(::GetLastError(), std::generic_category());
+    ec = std::error_code(::GetLastError(), std::generic_category());
     close();
-	// We consider the situation of no more files available as ok
-	if (ec.value() == ERROR_NO_MORE_FILES) ec.clear();
-	return false;
+    // We consider the situation of no more files available as ok
+    if (ec.value() == ERROR_NO_MORE_FILES) ec.clear();
+    return false;
   }
 
  private:

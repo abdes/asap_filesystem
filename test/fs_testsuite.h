@@ -144,7 +144,11 @@ struct scoped_file {
   scoped_file(path p, adopt_file_t) : path_(p) {}
 
   ~scoped_file() {
-    if (!path_.empty()) fs::remove(path_);
+    if (!path_.empty()) {
+      std::error_code ec;
+      fs::permissions(path_, fs::perms::owner_all, ec);
+      fs::remove(path_);
+    }
   }
 
   path path_{};

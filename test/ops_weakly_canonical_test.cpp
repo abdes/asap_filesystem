@@ -22,7 +22,11 @@ TEST_CASE("Ops / weakly_canonical",
   fs::create_directory(foo);
   fs::create_directory(bar);
   fs::create_directory(bar / "baz");
-  fs::create_symlink("../bar", foo / "bar");
+#if defined(ASAP_WINDOWS)
+  fs::create_directory_symlink("..\\bar", foo / "bar");
+#else
+  fs::create_directory_symlink("../bar", foo / "bar");
+#endif
 
   auto p = fs::weakly_canonical(dir / "foo//./bar///../biz/.");
   REQUIRE(p == dirc / "biz/");

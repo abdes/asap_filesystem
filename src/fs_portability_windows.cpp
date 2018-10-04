@@ -68,34 +68,19 @@ namespace detail {
 #if defined(ASAP_WINDOWS)
 namespace win32 {
 
-PtrCreateHardLinkW CreateHardLinkW_api = PtrCreateHardLinkW(
-    ::GetProcAddress(::GetModuleHandleW(L"kernel32.dll"), "CreateHardLinkW"));
-
-PtrCreateSymbolicLinkW CreateSymbolicLinkW_api =
-    PtrCreateSymbolicLinkW(::GetProcAddress(::GetModuleHandleW(L"kernel32.dll"),
-                                            "CreateSymbolicLinkW"));
-
 file_time_type ft_convert_from_filetime(const FILETIME &ft) {
   // Contains a 64-bit value representing the number of 100-nanosecond intervals
   // since January 1, 1601 (UTC).
-  constexpr auto EPOCH_DIFF = 116444736000000000LL;
+  constexpr auto EPOCH_DIFF = 11644473600;
   ULARGE_INTEGER ulft;
   ulft.HighPart = ft.dwHighDateTime;
   ulft.LowPart = ft.dwLowDateTime;
 
+  // Convert to EPOCH
   using namespace std::chrono;
   using rep = typename file_time_type::rep;
-  using fs_duration = typename file_time_type::duration;
   using fs_seconds = duration<rep>;
-  using fs_nanoseconds = duration<rep, std::nano>;
-
-  // Convert to EPOCH
-  ulft.QuadPart -= EPOCH_DIFF;
-
-  auto secs = ulft.QuadPart / 10000000LL;
-  auto nsecs = ulft.QuadPart - secs * 1000000000LL;
-  return file_time_type(
-      duration_cast<fs_duration>(fs_seconds(secs) + fs_nanoseconds(nsecs)));
+  return file_time_type(fs_seconds(ulft.QuadPart / 10000000 - EPOCH_DIFF));
 }
 
 // -----------------------------------------------------------------------------
@@ -114,7 +99,7 @@ bool not_found_error(int errval) {
 }
 
 bool is_reparse_point_a_symlink(const path &p, std::error_code *ec) {
-  ErrorHandler<bool> err("copy", ec, &p);
+  ErrorHandler<bool> err("is_reparse_point_a_symlink", ec, &p);
 
   std::error_code m_ec;
   auto file = detail::FileDescriptor::create(
@@ -124,23 +109,58 @@ bool is_reparse_point_a_symlink(const path &p, std::error_code *ec) {
       nullptr);
   if (m_ec) return err.report(m_ec);
 
-  auto buff =
-      std::unique_ptr<char[]>(new char[MAXIMUM_REPARSE_DATA_BUFFER_SIZE]);
+  union info_t {
+    char
+        buf[REPARSE_DATA_BUFFER_HEADER_SIZE + MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
+    REPARSE_DATA_BUFFER rdb;
+  } info;
 
   // Query the reparse data
   DWORD dwRetLen;
   BOOL result = detail::win32::DeviceIoControl(
-      file.fd_, FSCTL_GET_REPARSE_POINT, nullptr, 0, buff.get(),
+      file.fd_, FSCTL_GET_REPARSE_POINT, nullptr, 0, info.buf,
       MAXIMUM_REPARSE_DATA_BUFFER_SIZE, &dwRetLen, nullptr);
   if (!result) return err.report(capture_errno());
 
-  return reinterpret_cast<const REPARSE_DATA_BUFFER *>(buff.get())
-                 ->ReparseTag == IO_REPARSE_TAG_SYMLINK
+  return info.rdb.ReparseTag == IO_REPARSE_TAG_SYMLINK
          // Directory junctions are very similar to symlinks, but have some
          // performance and other advantages over symlinks. They can be created
          // from the command line with "mklink /j junction-name target-path".
-         || reinterpret_cast<const REPARSE_DATA_BUFFER *>(buff.get())
-                    ->ReparseTag == IO_REPARSE_TAG_MOUNT_POINT;
+         || info.rdb.ReparseTag == IO_REPARSE_TAG_MOUNT_POINT;
+}
+
+path read_reparse_point_symlink(const path &p, std::error_code *ec) {
+  ErrorHandler<path> err("read_symlink", ec, &p);
+
+  // Open a handle to the symbolic link and read the reparse point data
+  // to obtain the symbolic link target
+  std::error_code m_ec;
+  auto file = detail::FileDescriptor::create(
+      &p, m_ec, FILE_READ_EA,
+      FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr,
+      OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT,
+      nullptr);
+  if (m_ec) return err.report(m_ec);
+
+  union info_t {
+    char
+        buf[REPARSE_DATA_BUFFER_HEADER_SIZE + MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
+    REPARSE_DATA_BUFFER rdb;
+  } info;
+
+  // Query the reparse data
+  DWORD dwRetLen;
+  BOOL result = detail::win32::DeviceIoControl(
+      file.fd_, FSCTL_GET_REPARSE_POINT, nullptr, 0, info.buf,
+      MAXIMUM_REPARSE_DATA_BUFFER_SIZE, &dwRetLen, nullptr);
+  if (!result) return err.report(capture_errno());
+
+  return path(
+      static_cast<wchar_t *>(info.rdb.SymbolicLinkReparseBuffer.PathBuffer) +
+          info.rdb.SymbolicLinkReparseBuffer.PrintNameOffset / sizeof(wchar_t),
+      static_cast<wchar_t *>(info.rdb.SymbolicLinkReparseBuffer.PathBuffer) +
+          info.rdb.SymbolicLinkReparseBuffer.PrintNameOffset / sizeof(wchar_t) +
+          info.rdb.SymbolicLinkReparseBuffer.PrintNameLength / sizeof(wchar_t));
 }
 
 file_status process_status_failure(std::error_code m_ec, const path &p,
@@ -157,9 +177,9 @@ file_status process_status_failure(std::error_code m_ec, const path &p,
         err.report(m_ec,
                    "failed to determine attributes for the specified path");
       }
-      return file_status(file_type::none);
     }
   }
+  return file_status(file_type::none);
 }
 
 namespace {
@@ -176,8 +196,8 @@ perms make_permissions(const path &p, DWORD attr) {
   perms prms = perms::owner_read | perms::group_read | perms::others_read;
   if ((attr & FILE_ATTRIBUTE_READONLY) == 0)
     prms |= perms::owner_write | perms::group_write | perms::others_write;
-  path ext = p.extension();
-  wchar_t const *q = ext.wstring().c_str();
+  auto wext = p.extension().wstring();
+  wchar_t const *q = wext.c_str();
   if (equal_extension(q, L".exe", L".EXE") ||
       equal_extension(q, L".com", L".COM") ||
       equal_extension(q, L".bat", L".BAT") ||

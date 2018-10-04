@@ -84,9 +84,9 @@ path canonical_impl(path const &orig_p, std::error_code *ec) {
 #else
 
   std::error_code m_ec;
-  if (!exists(pa, m_ec)) {
-    if (!m_ec) return err.report(std::errc::no_such_file_or_directory);
-  }
+  //  if (!exists(pa, m_ec)) {
+  //    if (!m_ec) return err.report(std::errc::no_such_file_or_directory);
+  //  }
   // else: we know there are (currently) no unresolvable symlink loops
 
   path result = pa.root_path();
@@ -133,8 +133,10 @@ path canonical_impl(path const &orig_p, std::error_code *ec) {
     }
   }
 
-  if (m_ec || !exists(result, m_ec)) result.clear();
-
+  // Standard says that the canonical path must refer to an existing path.
+  if (m_ec || !exists(result, m_ec)) {
+    return err.report(std::errc::no_such_file_or_directory);
+  }
   return result;
 #endif
 }
@@ -533,7 +535,13 @@ void create_directory_symlink_impl(path const &target, path const &link,
                                    std::error_code *ec) {
   ErrorHandler<void> err("create_directory_symlink", ec, &target, &link);
 #if defined(ASAP_WINDOWS)
-  return err.report(std::errc::not_supported);
+  auto link_wpath = link.wstring();
+  auto target_wpath = target.wstring();
+  if (!detail::win32::CreateSymbolicLinkW(
+          link_wpath.c_str(), target_wpath.c_str(),
+          SYMBOLIC_LINK_FLAG_DIRECTORY |
+              SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE))
+    return err.report(capture_errno());
 #else
   if (detail::posix::symlink(target.c_str(), link.c_str()) != 0)
     return err.report(capture_errno());
@@ -546,8 +554,8 @@ void create_hard_link_impl(const path &target, const path &link,
 #if defined(ASAP_WINDOWS)
   auto link_wpath = link.wstring();
   auto target_wpath = target.wstring();
-  if (!detail::win32::CreateHardLinkW_api(link_wpath.c_str(),
-                                          target_wpath.c_str(), nullptr))
+  if (!detail::win32::CreateHardLinkW(link_wpath.c_str(), target_wpath.c_str(),
+                                      nullptr))
     return err.report(capture_errno());
 #else
   if (detail::posix::link(target.c_str(), link.c_str()) == -1)
@@ -559,7 +567,12 @@ void create_symlink_impl(path const &target, path const &link,
                          std::error_code *ec) {
   ErrorHandler<void> err("create_symlink", ec, &target, &link);
 #if defined(ASAP_WINDOWS)
-  return err.report(std::errc::not_supported);
+  auto link_wpath = link.wstring();
+  auto target_wpath = target.wstring();
+  if (!detail::win32::CreateSymbolicLinkW(
+          link_wpath.c_str(), target_wpath.c_str(),
+          SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE))
+    return err.report(capture_errno());
 #else
   if (detail::posix::symlink(target.c_str(), link.c_str()) == -1)
     return err.report(capture_errno());
@@ -785,8 +798,9 @@ file_time_type last_write_time_impl(const path &p, std::error_code *ec) {
 #if defined(ASAP_WINDOWS)
   std::error_code m_ec;
   auto file = detail::FileDescriptor::create(
-      &p, m_ec, 0, FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
-      nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, nullptr);
+      &p, m_ec, FILE_READ_ATTRIBUTES,
+      FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr,
+      OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, nullptr);
   if (m_ec) return err.report(m_ec);
 
   FILETIME lwt;
@@ -806,6 +820,31 @@ void last_write_time_impl(const path &p, file_time_type new_time,
                           std::error_code *ec) {
   ErrorHandler<void> err("last_write_time", ec, &p);
 
+  // Convert to windows FILETIME
+  using namespace std::chrono;
+  FILETIME wt;
+  auto d = new_time.time_since_epoch();
+  // Negative seconds since epoch is not allowed
+  if (d.count() < 0) return err.report(std::errc::invalid_argument);
+  auto ns = duration_cast<nanoseconds>(d);
+  long long ll = ns.count() / 100 + 116444736000000000LL;
+  wt.dwLowDateTime = (DWORD)ll;
+  wt.dwHighDateTime = ll >> 32;
+
+#if defined(ASAP_WINDOWS)
+  std::error_code m_ec;
+  auto file = detail::FileDescriptor::create(
+      &p, m_ec, FILE_WRITE_ATTRIBUTES,
+      FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr,
+      OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, nullptr);
+  if (m_ec) {
+    return err.report(m_ec);
+  }
+
+  if (!detail::win32::SetFileTime(file.fd_, nullptr, nullptr, &wt)) {
+    return err.report(capture_errno());
+  }
+#else  // ASAP_WINDOWS
   using namespace std::chrono;
 
   auto d = new_time.time_since_epoch();
@@ -843,6 +882,7 @@ void last_write_time_impl(const path &p, file_time_type new_time,
 #else
   return err.report(std::errc::not_supported);
 #endif
+#endif  // ASAP_WINDOWS
 }
 
 // -----------------------------------------------------------------------------
@@ -927,10 +967,11 @@ void permissions_impl(const path &p, perms prms, perm_options opts,
 // -----------------------------------------------------------------------------
 
 path read_symlink_impl(const path &p, std::error_code *ec) {
-  ErrorHandler<path> err("read_symlink", ec, &p);
 #if defined(ASAP_WINDOWS)
-  return err.report(std::errc::not_supported);
+  return detail::win32::read_reparse_point_symlink(p, ec);
 #else
+  ErrorHandler<path> err("read_symlink", ec, &p);
+
   auto size = detail::posix::pathconf(".", _PC_PATH_MAX);
   ASAP_ASSERT(size > 0);
   auto buff = std::unique_ptr<char[]>(new char[size + 1]);
@@ -951,19 +992,32 @@ path read_symlink_impl(const path &p, std::error_code *ec) {
 // -----------------------------------------------------------------------------
 
 bool remove_impl(const path &p, std::error_code *ec) {
+  ErrorHandler<bool> err("remove", ec, &p);
+
   // If the path is empty, nothing is deleted but no error is reported.
   if (p.empty()) return false;
 
-  ErrorHandler<bool> err("remove", ec, &p);
 #if defined(ASAP_WINDOWS)
+  // On windows, deleting files uses a different API then directorues.
+  // We need to need to check for that manually here as is_directory()
+  // uses status() and follows symlinks, and we don't want that here.
+
+  bool is_dir = false;
   auto wpath = p.wstring();
-  if (ec ? is_directory(p, *ec) : is_directory(p)) {
-    if (!detail::win32::RemoveDirectoryW(wpath.c_str())) {
-      err.report(capture_errno());
-      return false;
-    }
+  auto attrs = detail::win32::GetFileAttributesW(wpath.c_str());
+  if (attrs == INVALID_FILE_ATTRIBUTES) {
+    // Attempting to remove a non-existing path should return false
+    // without failing.
+    return (detail::win32::GetLastError() == ERROR_FILE_NOT_FOUND)
+               ? false
+               : err.report(capture_errno());
   } else {
-    if (!detail::win32::DeleteFileW(wpath.c_str())) {
+    if (attrs & FILE_ATTRIBUTE_DIRECTORY) {
+      is_dir = true;
+    }
+    auto status = is_dir ? detail::win32::RemoveDirectoryW(wpath.c_str())
+                         : detail::win32::DeleteFileW(wpath.c_str());
+    if (!status && detail::win32::GetLastError() != ERROR_FILE_NOT_FOUND) {
       err.report(capture_errno());
       return false;
     }
@@ -976,7 +1030,7 @@ bool remove_impl(const path &p, std::error_code *ec) {
 #endif
 
   return true;
-}
+}  // namespace filesystem
 
 // -----------------------------------------------------------------------------
 //                               remove_all
@@ -1006,6 +1060,9 @@ uintmax_t do_remove_all_impl(path const &p, std::error_code &ec) {
 
 uintmax_t remove_all_impl(const path &p, std::error_code *ec) {
   ErrorHandler<uintmax_t> err("remove_all", ec, &p);
+
+  // If the path is empty, nothing is deleted but no error is reported.
+  if (p.empty()) return 0;
 
   std::error_code mec;
   auto count = do_remove_all_impl(p, mec);
@@ -1140,6 +1197,7 @@ file_status status_impl(const path &p, std::error_code *ec) {
 
 file_status symlink_status_impl(const path &p, std::error_code *ec) {
 #if defined(ASAP_WINDOWS)
+  if (ec) ec->clear();
   auto wpath = p.wstring();
   DWORD attr(detail::win32::GetFileAttributesW(wpath.c_str()));
   if (attr == INVALID_FILE_ATTRIBUTES) {
@@ -1250,7 +1308,7 @@ path weakly_canonical_impl(const path &p, std::error_code *ec) {
 // -----------------------------------------------------------------------------
 
 #ifndef ASAP_WINDOWS
-std::error_code directory_entry::Refresh_impl() noexcept {
+std::error_code directory_entry::DoRefresh_impl() noexcept {
   cached_data_.Reset();
   std::error_code failure_ec;
 
@@ -1304,7 +1362,7 @@ std::error_code directory_entry::Refresh_impl() noexcept {
   return failure_ec;
 }
 #else
-std::error_code directory_entry::Refresh_impl() noexcept {
+std::error_code directory_entry::DoRefresh_impl() noexcept {
   cached_data_.Reset();
   std::error_code failure_ec;
 

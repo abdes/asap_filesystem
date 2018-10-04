@@ -28,6 +28,7 @@ TEST_CASE("Dir / dir_pop / simple", "[common][filesystem][ops][dir_pop]") {
   const auto p = testing::nonexistent_path();
   create_directories(p / "d1/d2/d3");
   for (int i = 0; i < 3; ++i) {
+    CAPTURE(i);
     fs::recursive_directory_iterator dir(p);
     REQUIRE(dir != end(dir));
     std::advance(dir, i);

@@ -48,7 +48,7 @@ TEST_CASE("Ops / symlink_status / non-existing",
   REQUIRE(st2.type() == fs::file_type::not_found);
 }
 
-TEST_CASE("Ops / symlink_status", "[common][filesystem][ops][symlink_status]") {
+TEST_CASE("Ops / symlink_status / permissions", "[common][filesystem][ops][symlink_status]") {
   fs::path dir = testing::nonexistent_path();
   fs::create_directory(dir);
   testing::scoped_file d(dir, testing::scoped_file::adopt_file);

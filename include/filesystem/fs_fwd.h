@@ -103,8 +103,8 @@ inline copy_options &operator^=(copy_options &lhs, copy_options rhs) noexcept {
 enum class perms : unsigned {
   none = 0,
   owner_read = 0400,
-  owner_write = 0,
-  owner_exec = 0,
+  owner_write = 0200,
+  owner_exec = 0100,
   owner_all = 0700,
   group_read = 040,
   group_write = 020,

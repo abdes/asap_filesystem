@@ -38,28 +38,30 @@ TEST_CASE("Ops / canonical", "[common][filesystem][ops][canonical]") {
   ComparePaths(p2, p);
   REQUIRE(!ec);
 
+  // For absolute pths, canonical on windows will add the root name
+
   ec = bad_ec;
   p = "/";
   p = canonical(p, ec);
-  ComparePaths(p, "/");
+  ComparePaths(p, p.root_name() / "/");
   REQUIRE(!ec);
 
   ec = bad_ec;
   p = "/.";
   p = canonical(p, ec);
-  ComparePaths(p, "/");
+  ComparePaths(p, p.root_name() / "/");
   REQUIRE(!ec);
 
   ec = bad_ec;
   p = "/..";
   p = canonical(p, ec);
-  ComparePaths(p, "/");
+  ComparePaths(p, p.root_name() / "/");
   REQUIRE(!ec);
 
   ec = bad_ec;
   p = "/../.././.";
   p = canonical(p, ec);
-  ComparePaths(p, "/");
+  ComparePaths(p, p.root_name() / "/");
   REQUIRE(!ec);
 }
 
@@ -83,8 +85,11 @@ TEST_CASE("Ops / canonical / real use",
   fs::path foo = dir / "foo", bar = dir / "bar";
   fs::create_directory(foo);
   fs::create_directory(bar);
-  fs::create_symlink("../bar", foo / "baz");
-
+#if defined(ASAP_WINDOWS)
+  fs::create_directory_symlink("..\\bar", foo / "baz");
+#else
+  fs::create_directory_symlink("../bar", foo / "baz");
+#endif
   auto dirc = canonical(dir);
   auto barc = canonical(bar);
 

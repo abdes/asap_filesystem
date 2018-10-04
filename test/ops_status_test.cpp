@@ -40,6 +40,22 @@ TEST_CASE("Ops / status", "[common][filesystem][ops][status]") {
   fs::create_directory(dir);
   testing::scoped_file d(dir, testing::scoped_file::adopt_file);
   testing::scoped_file f(dir / "file");
+
+  std::error_code ec;
+  fs::file_status st = fs::status(d.path_, ec);
+  REQUIRE(!ec);
+  REQUIRE(st.type() == fs::file_type::directory);
+
+  st = fs::status(f.path_, ec);
+  REQUIRE(!ec);
+  REQUIRE(st.type() == fs::file_type::regular);
+}
+
+TEST_CASE("Ops / status / no permission", "[common][filesystem][ops][status]") {
+  fs::path dir = testing::nonexistent_path();
+  fs::create_directory(dir);
+  testing::scoped_file d(dir, testing::scoped_file::adopt_file);
+  testing::scoped_file f(dir / "file");
   fs::permissions(dir, fs::perms::none);
 
   std::error_code ec;
@@ -47,7 +63,7 @@ TEST_CASE("Ops / status", "[common][filesystem][ops][status]") {
   REQUIRE(ec.value() == (int)std::errc::permission_denied);
   REQUIRE(st.type() == fs::file_type::none);
 
-  REQUIRE_THROWS_MATCHES(fs::symlink_status(f.path_), fs::filesystem_error,
+  REQUIRE_THROWS_MATCHES(fs::status(f.path_), fs::filesystem_error,
                          testing::FilesystemErrorDetail(ec, f.path_));
 
   fs::permissions(dir, fs::perms::owner_all, ec);
