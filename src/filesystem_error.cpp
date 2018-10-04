@@ -6,7 +6,7 @@
 #include <filesystem/filesystem_error.h>
 #include <filesystem/fs_path.h>
 
-#include <fmt/format.h>
+// TODO: #include <fmt/format.h>
 
 namespace asap {
 namespace filesystem {
@@ -16,13 +16,15 @@ void filesystem_error::create_what(int num_paths) {
   data_->what_ = [&]() -> std::string {
     const char *p1 = path1().native().empty() ? "\"\"" : path1().c_str();
     const char *p2 = path2().native().empty() ? "\"\"" : path2().c_str();
-    switch(num_paths) {
+    switch (num_paths) {
       default:
-        return fmt::format("filesystem error: {}", base_what);
+        return "";  // TDOD: fmt::format("filesystem error: {}", base_what);
       case 1:
-        return fmt::format("filesystem error: {} [{}]", base_what, p1);
+        return "";  // TDOD: fmt::format("filesystem error: {} [{}]", base_what,
+                    // p1);
       case 2:
-        return fmt::format("filesystem error: {} [{}] [{}]", base_what, p1, p2);
+        return "";  // TDOD: fmt::format("filesystem error: {} [{}] [{}]",
+                    // base_what, p1, p2);
     }
   }();
 }

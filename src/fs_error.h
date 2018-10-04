@@ -18,14 +18,14 @@
 
 // Silence this warning as fmt lib checks properly for the compiler support of
 // string literal operator template before enabling it
-#if ASAP_COMPILER_IS_AppleClang || ASAP_COMPILER_IS_AppleClang
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wgnu-string-literal-operator-template"
-#endif
-#include <fmt/format.h>
-#if ASAP_COMPILER_IS_AppleClang || ASAP_COMPILER_IS_AppleClang
-#pragma clang diagnostic pop
-#endif
+//#if ASAP_COMPILER_IS_AppleClang || ASAP_COMPILER_IS_AppleClang
+//#pragma clang diagnostic push
+//#pragma clang diagnostic ignored "-Wgnu-string-literal-operator-template"
+//#endif
+//#include <fmt/format.h>
+//#if ASAP_COMPILER_IS_AppleClang || ASAP_COMPILER_IS_AppleClang
+//#pragma clang diagnostic pop
+//#endif
 
 #include <filesystem/fs_fwd.h>
 #include <filesystem/fs_path.h>
@@ -122,8 +122,7 @@ struct ErrorHandler {
       *ec = m_ec;
       return error_value<T>();
     }
-    std::string what =
-        std::string("in ") + func_name + ": " + fmt::format(msg, args...);
+    std::string what = std::string("in ") + func_name + ": "; //TODO: +fmt::format(msg, args...);
     switch (bool(p1) + bool(p2)) {
       case 0:
         throw filesystem_error(what, m_ec);
