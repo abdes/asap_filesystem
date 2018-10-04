@@ -100,6 +100,13 @@ typedef ULONG_PTR ulong_ptr;
 typedef HANDLE handle;
 const handle invalid_handle_value = (handle)((ulong_ptr)-1);
 
+// This should be defined when (_WIN32_WINNT >= 0x0600) which is what we 
+// request from the compiler, but for some environments such as travis CI
+// the build fails because of this symbol.
+#if !defined(SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE)
+#define SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE (0x2)
+#endif
+
 using ::CloseHandle;
 using ::CopyFileW;
 using ::CreateDirectoryExW;
