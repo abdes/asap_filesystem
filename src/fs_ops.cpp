@@ -820,6 +820,7 @@ void last_write_time_impl(const path &p, file_time_type new_time,
                           std::error_code *ec) {
   ErrorHandler<void> err("last_write_time", ec, &p);
 
+#if defined(ASAP_WINDOWS)
   // Convert to windows FILETIME
   using namespace std::chrono;
   FILETIME wt;
@@ -831,7 +832,6 @@ void last_write_time_impl(const path &p, file_time_type new_time,
   wt.dwLowDateTime = (DWORD)ll;
   wt.dwHighDateTime = ll >> 32;
 
-#if defined(ASAP_WINDOWS)
   std::error_code m_ec;
   auto file = detail::FileDescriptor::create(
       &p, m_ec, FILE_WRITE_ATTRIBUTES,
