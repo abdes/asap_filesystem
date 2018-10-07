@@ -100,7 +100,7 @@ typedef ULONG_PTR ulong_ptr;
 typedef HANDLE handle;
 const handle invalid_handle_value = (handle)((ulong_ptr)-1);
 
-// This should be defined when (_WIN32_WINNT >= 0x0600) which is what we 
+// This should be defined when (_WIN32_WINNT >= 0x0600) which is what we
 // request from the compiler, but for some environments such as travis CI
 // the build fails because of this symbol.
 #if !defined(SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE)
@@ -143,7 +143,7 @@ typedef struct ::timespec TimeSpec;
 #if defined(ASAP_POSIX)
 namespace posix {
 
-file_time_type ft_convert_from_timespec(TimeSpec tm);
+file_time_type FileTimeTypeFromPosixTimeSpec(TimeSpec tm);
 
 }  // namespace posix
 #endif  // ASAP_POSIX
@@ -151,7 +151,10 @@ file_time_type ft_convert_from_timespec(TimeSpec tm);
 #if defined(ASAP_WINDOWS)
 namespace win32 {
 
-file_time_type ft_convert_from_filetime(const FILETIME &ft);
+file_time_type FileTimeTypeFromWindowsFileTime(const FILETIME &ft,
+                                               std::error_code &ec);
+FILETIME FileTimeTypeToWindowsFileTime(const file_time_type &ft,
+                                       std::error_code &ec);
 
 }  // namespace win32
 #endif  // ASAP_WINDOWS
@@ -168,27 +171,33 @@ namespace posix {
 typedef struct ::stat StatT;
 
 #if defined(ASAP_APPLE)
-inline TimeSpec extract_mtime(StatT const &st) { return st.st_mtimespec; }
+inline TimeSpec ExtractModificationTime(StatT const &st) {
+  return st.st_mtimespec;
+}
 #else
-inline TimeSpec extract_mtime(StatT const &st) { return st.st_mtim; }
+inline TimeSpec ExtractModificationTime(StatT const &st) { return st.st_mtim; }
 #endif
 
 #if ASAP_FS_USE_UTIME
 #if defined(ASAP_APPLE)
-inline TimeSpec extract_atime(StatT const &st) { return st.st_atimespec; }
+inline TimeSpec ExtractAccessTime(StatT const &st) { return st.st_atimespec; }
 #else
-inline TimeSpec extract_atime(StatT const &st) { return st.st_atim; }
+inline TimeSpec ExtractAccessTime(StatT const &st) { return st.st_atim; }
 #endif
 #endif  // ASAP_FS_USE_UTIME
 
-file_status file_stat(path const &p, posix::StatT &path_stat,
-                      std::error_code *ec);
+file_status CreateFileStatus(std::error_code &m_ec, path const &p,
+                             const posix::StatT &path_stat,
+                             std::error_code *ec);
 
-file_status link_stat(path const &p, posix::StatT &path_stat,
-                      std::error_code *ec);
+file_status GetFileStatus(path const &p, posix::StatT &path_stat,
+                          std::error_code *ec);
 
-file_time_type extract_last_write_time(const path &p, const StatT &st,
-                                       std::error_code *ec);
+file_status GetLinkStatus(path const &p, posix::StatT &path_stat,
+                          std::error_code *ec);
+
+file_time_type ExtractLastWriteTime(const path &p, const StatT &st,
+                                    std::error_code *ec);
 
 }  // namespace posix
 #endif  // ASAP_POSIX
@@ -199,16 +208,16 @@ file_time_type extract_last_write_time(const path &p, const StatT &st,
 
 #if defined(ASAP_WINDOWS)
 namespace win32 {
-bool not_found_error(int errval);
+bool IsNotFoundError(int errval);
 
-bool is_reparse_point_a_symlink(const path &p, std::error_code *ec);
+bool IsReparsePointSymlink(const path &p, std::error_code *ec);
 
-path read_reparse_point_symlink(const path &p, std::error_code *ec);
+path ReadSymlinkFromReparsePoint(const path &p, std::error_code *ec);
 
-file_status process_status_failure(std::error_code m_ec, const path &p,
+file_status ProcessStatusFailure(std::error_code m_ec, const path &p,
                                    std::error_code *ec);
 
-perms make_permissions(const path &p, DWORD attr);
+perms MakePermissions(const path &p, DWORD attr);
 }  // namespace win32
 #endif  // ASAP_WINDOWS
 
@@ -239,14 +248,14 @@ struct FileDescriptor {
     other.status_ = file_status{};
   }
 
-  ~FileDescriptor() { close(); }
+  ~FileDescriptor() { Close(); }
 
   FileDescriptor() = delete;
   FileDescriptor(FileDescriptor const &) = delete;
   FileDescriptor &operator=(FileDescriptor const &) = delete;
 
   template <class... Args>
-  static FileDescriptor create(const path *p, std::error_code &ec,
+  static FileDescriptor Create(const path *p, std::error_code &ec,
                                Args... args) {
     ec.clear();
     fd_type fd{invalid_value};
@@ -264,22 +273,27 @@ struct FileDescriptor {
   }
 
   template <class... Args>
-  static FileDescriptor create_with_status(const path *p, std::error_code &ec,
-                                           Args... args) {
-    FileDescriptor fd = create(p, ec, args...);
-    if (!ec) fd.refresh_status(ec);
+  static FileDescriptor CreateWithStatus(const path *p, std::error_code &ec,
+                                         Args... args) {
+    FileDescriptor fd = Create(p, ec, args...);
+    if (!ec) fd.RefreshStatus(ec);
 
     return fd;
   }
 
-  file_status get_status() const { return status_; }
+  file_status Status() const { return status_; }
 #if defined(ASAP_POSIX)
-  posix::StatT const &get_stat() const { return stat_; }
+  posix::StatT const &PosixStatus() const { return stat_; }
 #endif
 
-  file_status refresh_status(std::error_code &ec);
+  file_status RefreshStatus(std::error_code &ec);
 
-  void close() noexcept {
+ private:
+  explicit FileDescriptor(const path *p,
+                          fd_type fd = FileDescriptor::invalid_value)
+      : name_(*p), fd_(fd) {}
+
+  void Close() noexcept {
     if (fd_ != invalid_value) {
 #if defined(ASAP_WINDOWS)
       win32::CloseHandle(fd_);
@@ -289,11 +303,6 @@ struct FileDescriptor {
     }
     fd_ = invalid_value;
   }
-
- private:
-  explicit FileDescriptor(const path *p,
-                          fd_type fd = FileDescriptor::invalid_value)
-      : name_(*p), fd_(fd) {}
 };
 
 }  // namespace detail

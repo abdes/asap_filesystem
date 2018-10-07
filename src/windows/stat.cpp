@@ -3,10 +3,14 @@
 //    (See accompanying file LICENSE or copy at
 //   https://opensource.org/licenses/BSD-3-Clause)
 
-#include "fs_error.h"
-#include "fs_portability.h"
+#include "../fs_error.h"
+#include "../fs_portability.h"
 
 #if defined(ASAP_WINDOWS)
+
+// -----------------------------------------------------------------------------
+//                            detail: stat
+// -----------------------------------------------------------------------------
 
 #if !defined(REPARSE_DATA_BUFFER_HEADER_SIZE)
 typedef struct _REPARSE_DATA_BUFFER {
@@ -55,39 +59,13 @@ typedef struct _REPARSE_DATA_BUFFER {
 #if !defined(IO_REPARSE_TAG_SYMLINK)
 #define IO_REPARSE_TAG_SYMLINK (0xA000000CL)
 #endif
-#endif  // ASAP_WINDOWS
 
 namespace asap {
 namespace filesystem {
 namespace detail {
-
-// -----------------------------------------------------------------------------
-//                          detail: file time utils
-// -----------------------------------------------------------------------------
-
-#if defined(ASAP_WINDOWS)
 namespace win32 {
 
-file_time_type ft_convert_from_filetime(const FILETIME &ft) {
-  // Contains a 64-bit value representing the number of 100-nanosecond intervals
-  // since January 1, 1601 (UTC).
-  constexpr auto EPOCH_DIFF = 11644473600;
-  ULARGE_INTEGER ulft;
-  ulft.HighPart = ft.dwHighDateTime;
-  ulft.LowPart = ft.dwLowDateTime;
-
-  // Convert to EPOCH
-  using namespace std::chrono;
-  using rep = typename file_time_type::rep;
-  using fs_seconds = duration<rep>;
-  return file_time_type(fs_seconds(ulft.QuadPart / 10000000 - EPOCH_DIFF));
-}
-
-// -----------------------------------------------------------------------------
-//                           detail: windows status
-// -----------------------------------------------------------------------------
-
-bool not_found_error(int errval) {
+bool IsNotFoundError(int errval) {
   return errval == ERROR_FILE_NOT_FOUND || errval == ERROR_PATH_NOT_FOUND ||
          errval == ERROR_INVALID_NAME  // "tools/jam/src/:sys:stat.h", "//foo"
          ||
@@ -98,11 +76,11 @@ bool not_found_error(int errval) {
          || errval == ERROR_BAD_NETPATH;       // "//nosuch" on Win32
 }
 
-bool is_reparse_point_a_symlink(const path &p, std::error_code *ec) {
-  ErrorHandler<bool> err("is_reparse_point_a_symlink", ec, &p);
+bool IsReparsePointSymlink(const path &p, std::error_code *ec) {
+  ErrorHandler<bool> err("IsReparsePointSymlink", ec, &p);
 
   std::error_code m_ec;
-  auto file = detail::FileDescriptor::create(
+  auto file = detail::FileDescriptor::Create(
       &p, m_ec, FILE_READ_EA,
       FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr,
       OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT,
@@ -129,13 +107,13 @@ bool is_reparse_point_a_symlink(const path &p, std::error_code *ec) {
          || info.rdb.ReparseTag == IO_REPARSE_TAG_MOUNT_POINT;
 }
 
-path read_reparse_point_symlink(const path &p, std::error_code *ec) {
+path ReadSymlinkFromReparsePoint(const path &p, std::error_code *ec) {
   ErrorHandler<path> err("read_symlink", ec, &p);
 
   // Open a handle to the symbolic link and read the reparse point data
   // to obtain the symbolic link target
   std::error_code m_ec;
-  auto file = detail::FileDescriptor::create(
+  auto file = detail::FileDescriptor::Create(
       &p, m_ec, FILE_READ_EA,
       FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr,
       OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT,
@@ -163,11 +141,11 @@ path read_reparse_point_symlink(const path &p, std::error_code *ec) {
           info.rdb.SymbolicLinkReparseBuffer.PrintNameLength / sizeof(wchar_t));
 }
 
-file_status process_status_failure(std::error_code m_ec, const path &p,
+file_status ProcessStatusFailure(std::error_code m_ec, const path &p,
                                    std::error_code *ec) {
   if (ec) *ec = m_ec;
   if (m_ec) {
-    if (not_found_error(m_ec.value())) {
+    if (IsNotFoundError(m_ec.value())) {
       return file_status(file_type::not_found, perms::none);
     } else if (m_ec.value() == ERROR_SHARING_VIOLATION) {
       return file_status(file_type::unknown);
@@ -182,53 +160,9 @@ file_status process_status_failure(std::error_code m_ec, const path &p,
   return file_status(file_type::none);
 }
 
-namespace {
-bool equal_extension(wchar_t const *p, wchar_t const (&x1)[5],
-                     wchar_t const (&x2)[5]) {
-  return (p[0] == x1[0] || p[0] == x2[0]) && (p[1] == x1[1] || p[1] == x2[1]) &&
-         (p[2] == x1[2] || p[2] == x2[2]) && (p[3] == x1[3] || p[3] == x2[3]) &&
-         p[4] == 0;
-}
-}  // namespace
-
-perms make_permissions(const path &p, DWORD attr) {
-  // TODO: See if we can get the permissions in a better way
-  perms prms = perms::owner_read | perms::group_read | perms::others_read;
-  if ((attr & FILE_ATTRIBUTE_READONLY) == 0)
-    prms |= perms::owner_write | perms::group_write | perms::others_write;
-  auto wext = p.extension().wstring();
-  wchar_t const *q = wext.c_str();
-  if (equal_extension(q, L".exe", L".EXE") ||
-      equal_extension(q, L".com", L".COM") ||
-      equal_extension(q, L".bat", L".BAT") ||
-      equal_extension(q, L".cmd", L".CMD"))
-    prms |= perms::owner_exec | perms::group_exec | perms::others_exec;
-  return prms;
-}
-
 }  // namespace win32
-#endif  // ASAP_WINDOWS
-
-// -----------------------------------------------------------------------------
-//                            detail: FileDescriptor
-// -----------------------------------------------------------------------------
-
-#if defined(ASAP_WINDOWS)
-
-const FileDescriptor::fd_type FileDescriptor::invalid_value =
-    win32::invalid_handle_value;
-
-file_status FileDescriptor::refresh_status(std::error_code &ec) {
-  // FD must be open and good.
-  status_ = file_status{};
-
-  // TODO: implement status refresh for windows
-
-  return status_;
-}
-
-#endif  // ASAP_WINDOWS
-
 }  // namespace detail
 }  // namespace filesystem
 }  // namespace asap
+
+#endif  // ASAP_WINDOWS

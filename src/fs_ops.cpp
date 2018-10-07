@@ -173,14 +173,14 @@ void copy_impl(const path &from, const path &to, copy_options options,
   // For the souce file, if it's a symlink and the copy_options require to
   // act on the symlink rather than the file pointed to, then use lstat
   bool use_lstat = create_symlinks || skip_symlinks || copy_symlinks;
-  f = use_lstat ? detail::posix::link_stat(from, f_st, &m_ec1)
-                : detail::posix::file_stat(from, f_st, &m_ec1);
+  f = use_lstat ? detail::posix::GetLinkStatus(from, f_st, &m_ec1)
+                : detail::posix::GetFileStatus(from, f_st, &m_ec1);
   if (m_ec1) return err.report(m_ec1);
 
   StatT t_st = {};
   use_lstat = create_symlinks || skip_symlinks;
-  t = use_lstat ? detail::posix::link_stat(to, t_st, &m_ec1)
-                : detail::posix::file_stat(to, t_st, &m_ec1);
+  t = use_lstat ? detail::posix::GetLinkStatus(to, t_st, &m_ec1)
+                : detail::posix::GetFileStatus(to, t_st, &m_ec1);
   if (!status_known(t)) return err.report(m_ec1);
 
   if (!exists(f) || is_other(f) || is_other(t) ||
@@ -267,7 +267,7 @@ bool do_copy_file_win32(FileDescriptor &read_fd, FileDescriptor &write_fd,
 //    both 32-bit and 64-bit systems.)
 bool do_copy_file_sendfile(FileDescriptor &read_fd, FileDescriptor &write_fd,
                            std::error_code &ec) {
-  size_t count = read_fd.get_stat().st_size;
+  size_t count = read_fd.PosixStatus().st_size;
   if (count > 0x7ffff000) return false;
   do {
     ssize_t res;
@@ -364,11 +364,11 @@ bool copy_file_impl(const path &from, const path &to, copy_options options,
 #else   // ASAP_WINDOWS
   std::error_code m_ec;
   FileDescriptor from_fd =
-      FileDescriptor::create_with_status(&from, m_ec, O_RDONLY | O_NONBLOCK);
+      FileDescriptor::CreateWithStatus(&from, m_ec, O_RDONLY | O_NONBLOCK);
   if (m_ec) return err.report(m_ec);
 
-  auto from_st = from_fd.get_status();
-  StatT const &from_stat = from_fd.get_stat();
+  auto from_st = from_fd.Status();
+  StatT const &from_stat = from_fd.PosixStatus();
   if (!is_regular_file(from_st)) {
     if (!m_ec) m_ec = make_error_code(std::errc::not_supported);
     return err.report(m_ec);
@@ -380,7 +380,7 @@ bool copy_file_impl(const path &from, const path &to, copy_options options,
       bool(copy_options::overwrite_existing & options);
 
   StatT to_stat_path;
-  file_status to_st = detail::posix::file_stat(to, to_stat_path, &m_ec);
+  file_status to_st = detail::posix::GetFileStatus(to, to_stat_path, &m_ec);
   if (!status_known(to_st)) return err.report(m_ec);
 
   const bool to_exists = exists(to_st);
@@ -394,8 +394,8 @@ bool copy_file_impl(const path &from, const path &to, copy_options options,
 
   bool ShouldCopy = [&]() {
     if (to_exists && update_existing) {
-      auto from_time = detail::posix::extract_mtime(from_stat);
-      auto to_time = detail::posix::extract_mtime(to_stat_path);
+      auto from_time = detail::posix::ExtractModificationTime(from_stat);
+      auto to_time = detail::posix::ExtractModificationTime(to_stat_path);
       if (from_time.tv_sec < to_time.tv_sec) return false;
       if (from_time.tv_sec == to_time.tv_sec &&
           from_time.tv_nsec <= to_time.tv_nsec)
@@ -411,7 +411,7 @@ bool copy_file_impl(const path &from, const path &to, copy_options options,
   // originally looked at; we'll check this later.
   int to_open_flags = O_WRONLY;
   if (!to_exists) to_open_flags |= O_CREAT;
-  FileDescriptor to_fd = FileDescriptor::create_with_status(
+  FileDescriptor to_fd = FileDescriptor::CreateWithStatus(
       &to, m_ec, to_open_flags, from_stat.st_mode);
   if (m_ec) return err.report(m_ec);
 
@@ -419,7 +419,7 @@ bool copy_file_impl(const path &from, const path &to, copy_options options,
     // Check that the file we initially stat'ed is equivalent to the one
     // we opened.
     // FIXME: report this better.
-    if (!stat_equivalent(to_stat_path, to_fd.get_stat()))
+    if (!stat_equivalent(to_stat_path, to_fd.PosixStatus()))
       return err.report(std::errc::bad_file_descriptor);
 
     // Set the permissions and truncate the file we opened.
@@ -514,7 +514,7 @@ bool create_directory_impl(path const &p, path const &existing_template,
 #else
   StatT attr_stat;
   std::error_code mec;
-  auto st = detail::posix::file_stat(existing_template, attr_stat, &mec);
+  auto st = detail::posix::GetFileStatus(existing_template, attr_stat, &mec);
   if (!status_known(st)) return err.report(mec);
   if (!is_directory(st))
     return err.report(std::errc::not_a_directory,
@@ -621,11 +621,11 @@ bool equivalent_impl(const path &p1, const path &p2, std::error_code *ec) {
   ErrorHandler<bool> err("equivalent", ec, &p1, &p2);
 #if defined(ASAP_WINDOWS)
   std::error_code m_ec;
-  auto file1 = detail::FileDescriptor::create(
+  auto file1 = detail::FileDescriptor::Create(
       &p1, m_ec, 0, FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
       nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, nullptr);
   if (m_ec) return err.report(m_ec);
-  auto file2 = detail::FileDescriptor::create(
+  auto file2 = detail::FileDescriptor::Create(
       &p2, m_ec, 0, FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
       nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, nullptr);
   if (m_ec) return err.report(m_ec);
@@ -670,9 +670,9 @@ bool equivalent_impl(const path &p1, const path &p2, std::error_code *ec) {
   // If either p1 or p2 does not exist, an error is reported.
   std::error_code ec1, ec2;
   StatT st1 = {}, st2 = {};
-  auto s1 = detail::posix::file_stat(p1.native(), st1, &ec1);
+  auto s1 = detail::posix::GetFileStatus(p1.native(), st1, &ec1);
   if (!exists(s1)) return err.report(std::errc::not_supported);
-  auto s2 = detail::posix::file_stat(p2.native(), st2, &ec2);
+  auto s2 = detail::posix::GetFileStatus(p2.native(), st2, &ec2);
   if (!exists(s2)) return err.report(std::errc::not_supported);
 
   return stat_equivalent(st1, st2);
@@ -704,7 +704,7 @@ uintmax_t file_size_impl(const path &p, std::error_code *ec) {
 #else
   std::error_code m_ec;
   StatT st;
-  file_status fst = detail::posix::file_stat(p, st, &m_ec);
+  file_status fst = detail::posix::GetFileStatus(p, st, &m_ec);
   if (!exists(fst) || !is_regular_file(fst)) {
     std::errc error_kind = is_directory(fst) ? std::errc::is_a_directory
                                              : std::errc::not_supported;
@@ -726,7 +726,7 @@ uintmax_t hard_link_count_impl(const path &p, std::error_code *ec) {
 #if defined(ASAP_WINDOWS)
   // Link count info is only available through GetFileInformationByHandle
   std::error_code m_ec;
-  auto file = detail::FileDescriptor::create(
+  auto file = detail::FileDescriptor::Create(
       &p, m_ec, 0, FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
       nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, nullptr);
   if (m_ec) return err.report(m_ec);
@@ -740,7 +740,7 @@ uintmax_t hard_link_count_impl(const path &p, std::error_code *ec) {
 #else
   std::error_code m_ec;
   StatT st;
-  detail::posix::file_stat(p, st, &m_ec);
+  detail::posix::GetFileStatus(p, st, &m_ec);
   if (m_ec) return err.report(m_ec);
   return static_cast<uintmax_t>(st.st_nlink);
 #endif
@@ -774,7 +774,7 @@ bool is_empty_impl(const path &p, std::error_code *ec) {
 #else
   std::error_code m_ec;
   StatT pst;
-  auto st = detail::posix::file_stat(p, pst, &m_ec);
+  auto st = detail::posix::GetFileStatus(p, pst, &m_ec);
   if (m_ec)
     return err.report(m_ec);
   else if (!is_directory(st) && !is_regular_file(st))
@@ -797,7 +797,7 @@ file_time_type last_write_time_impl(const path &p, std::error_code *ec) {
   ErrorHandler<file_time_type> err("last_write_time", ec, &p);
 #if defined(ASAP_WINDOWS)
   std::error_code m_ec;
-  auto file = detail::FileDescriptor::create(
+  auto file = detail::FileDescriptor::Create(
       &p, m_ec, FILE_READ_ATTRIBUTES,
       FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr,
       OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, nullptr);
@@ -806,13 +806,14 @@ file_time_type last_write_time_impl(const path &p, std::error_code *ec) {
   FILETIME lwt;
   if (!detail::win32::GetFileTime(file.fd_, 0, 0, &lwt))
     return err.report(capture_errno());
-  return detail::win32::ft_convert_from_filetime(lwt);
+  auto ft = detail::win32::FileTimeTypeFromWindowsFileTime(lwt, m_ec);
+  return (m_ec ? err.report(m_ec) : ft);
 #else
   std::error_code m_ec;
   StatT st;
-  detail::posix::file_stat(p, st, &m_ec);
+  detail::posix::GetFileStatus(p, st, &m_ec);
   if (m_ec) return err.report(m_ec);
-  return detail::posix::extract_last_write_time(p, st, ec);
+  return detail::posix::ExtractLastWriteTime(p, st, ec);
 #endif
 }
 
@@ -821,25 +822,16 @@ void last_write_time_impl(const path &p, file_time_type new_time,
   ErrorHandler<void> err("last_write_time", ec, &p);
 
 #if defined(ASAP_WINDOWS)
-  // Convert to windows FILETIME
-  using namespace std::chrono;
-  FILETIME wt;
-  auto d = new_time.time_since_epoch();
-  // Negative seconds since epoch is not allowed
-  if (d.count() < 0) return err.report(std::errc::invalid_argument);
-  auto ns = duration_cast<nanoseconds>(d);
-  long long ll = ns.count() / 100 + 116444736000000000LL;
-  wt.dwLowDateTime = (DWORD)ll;
-  wt.dwHighDateTime = ll >> 32;
 
   std::error_code m_ec;
-  auto file = detail::FileDescriptor::create(
+  auto file = detail::FileDescriptor::Create(
       &p, m_ec, FILE_WRITE_ATTRIBUTES,
       FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr,
       OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, nullptr);
-  if (m_ec) {
-    return err.report(m_ec);
-  }
+  if (m_ec) return err.report(m_ec);
+
+  auto wt = detail::win32::FileTimeTypeToWindowsFileTime(new_time, m_ec);
+  if (m_ec) return err.report(m_ec);
 
   if (!detail::win32::SetFileTime(file.fd_, nullptr, nullptr, &wt)) {
     return err.report(capture_errno());
@@ -877,7 +869,7 @@ void last_write_time_impl(const path &p, file_time_type new_time,
   detail::posix_stat(p, st, &m_ec);
   if (m_ec) return err.report(m_ec);
   // The utime call allows time resolution of 1 second
-  times.actime = detail::extract_atime(st).tv_sec;
+  times.actime = detail::ExtractAccessTime(st).tv_sec;
   if (::utime(p.c_str(), &times)) return err.report(capture_errno());
 #else
   return err.report(std::errc::not_supported);
@@ -968,7 +960,7 @@ void permissions_impl(const path &p, perms prms, perm_options opts,
 
 path read_symlink_impl(const path &p, std::error_code *ec) {
 #if defined(ASAP_WINDOWS)
-  return detail::win32::read_reparse_point_symlink(p, ec);
+  return detail::win32::ReadSymlinkFromReparsePoint(p, ec);
 #else
   ErrorHandler<path> err("read_symlink", ec, &p);
 
@@ -1090,7 +1082,7 @@ void resize_file_impl(const path &p, uintmax_t size, std::error_code *ec) {
   ErrorHandler<void> err("resize_file", ec, &p);
 #if defined(ASAP_WINDOWS)
   std::error_code m_ec;
-  auto file = detail::FileDescriptor::create(
+  auto file = detail::FileDescriptor::Create(
       &p, m_ec, GENERIC_READ | GENERIC_WRITE, 0, nullptr, OPEN_EXISTING,
       FILE_ATTRIBUTE_NORMAL, nullptr);
   if (m_ec) return err.report(m_ec);
@@ -1164,7 +1156,7 @@ file_status status_impl(const path &p, std::error_code *ec) {
   auto wpath = p.wstring();
   auto attrs = detail::win32::GetFileAttributesW(wpath.c_str());
   if (attrs == INVALID_FILE_ATTRIBUTES) {
-    return detail::win32::process_status_failure(capture_errno(), p, ec);
+    return detail::win32::ProcessStatusFailure(capture_errno(), p, ec);
   }
 
   // Handle the case of reparse point.
@@ -1173,25 +1165,25 @@ file_status status_impl(const path &p, std::error_code *ec) {
   // TODO: must follow through symlinks
   if (attrs & FILE_ATTRIBUTE_REPARSE_POINT) {
     std::error_code m_ec;
-    auto file1 = detail::FileDescriptor::create(
+    auto file1 = detail::FileDescriptor::Create(
         &p, m_ec, 0, FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
         nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, nullptr);
     if (m_ec) {
-      return detail::win32::process_status_failure(m_ec, p, ec);
+      return detail::win32::ProcessStatusFailure(m_ec, p, ec);
     }
-    if (!detail::win32::is_reparse_point_a_symlink(p, ec))
+    if (!detail::win32::IsReparsePointSymlink(p, ec))
       return file_status(file_type::reparse_file,
-                         detail::win32::make_permissions(p, attrs));
+                         detail::win32::MakePermissions(p, attrs));
   }
 
   return (attrs & FILE_ATTRIBUTE_DIRECTORY)
              ? file_status(file_type::directory,
-                           detail::win32::make_permissions(p, attrs))
+                           detail::win32::MakePermissions(p, attrs))
              : file_status(file_type::regular,
-                           detail::win32::make_permissions(p, attrs));
+                           detail::win32::MakePermissions(p, attrs));
 #else
   StatT path_stat;
-  return detail::posix::file_stat(p, path_stat, ec);
+  return detail::posix::GetFileStatus(p, path_stat, ec);
 #endif
 }
 
@@ -1201,24 +1193,24 @@ file_status symlink_status_impl(const path &p, std::error_code *ec) {
   auto wpath = p.wstring();
   DWORD attr(detail::win32::GetFileAttributesW(wpath.c_str()));
   if (attr == INVALID_FILE_ATTRIBUTES) {
-    return detail::win32::process_status_failure(capture_errno(), p, ec);
+    return detail::win32::ProcessStatusFailure(capture_errno(), p, ec);
   }
 
   if (attr & FILE_ATTRIBUTE_REPARSE_POINT)
-    return detail::win32::is_reparse_point_a_symlink(p, ec)
+    return detail::win32::IsReparsePointSymlink(p, ec)
                ? file_status(file_type::symlink,
-                             detail::win32::make_permissions(p, attr))
+                             detail::win32::MakePermissions(p, attr))
                : file_status(file_type::reparse_file,
-                             detail::win32::make_permissions(p, attr));
+                             detail::win32::MakePermissions(p, attr));
 
   return (attr & FILE_ATTRIBUTE_DIRECTORY)
              ? file_status(file_type::directory,
-                           detail::win32::make_permissions(p, attr))
+                           detail::win32::MakePermissions(p, attr))
              : file_status(file_type::regular,
-                           detail::win32::make_permissions(p, attr));
+                           detail::win32::MakePermissions(p, attr));
 #else
   StatT path_stat;
-  return detail::posix::link_stat(p, path_stat, ec);
+  return detail::posix::GetLinkStatus(p, path_stat, ec);
 #endif
 }
 
@@ -1249,11 +1241,11 @@ path temp_directory_path_impl(std::error_code *ec) {
   std::error_code status_ec;
   file_status st = status(p, status_ec);
   if (!status_known(st))
-    return err.report(status_ec, "cannot access path \"{}\"", p.string());
+    return err.report(status_ec, "cannot access path \"{" + p.string() + "}\"");
 
   if (!exists(st) || !is_directory(st))
     return err.report(std::errc::not_a_directory,
-                      "path \"{}\" is not a directory", p.string());
+                      "path \"{" + p.string() + "}\" is not a directory");
 
   return p;
 }
@@ -1313,7 +1305,7 @@ std::error_code directory_entry::DoRefresh_impl() noexcept {
   std::error_code failure_ec;
 
   StatT full_st;
-  file_status st = detail::posix::link_stat(path_, full_st, &failure_ec);
+  file_status st = detail::posix::GetLinkStatus(path_, full_st, &failure_ec);
   if (!status_known(st)) {
     cached_data_.Reset();
     return failure_ec;
@@ -1329,7 +1321,7 @@ std::error_code directory_entry::DoRefresh_impl() noexcept {
     // Ignore errors from stat, since we don't want errors regarding symlink
     // resolution to be reported to the user.
     std::error_code ignored_ec;
-    st = detail::posix::file_stat(path_, full_st, &ignored_ec);
+    st = detail::posix::GetFileStatus(path_, full_st, &ignored_ec);
 
     cached_data_.type = st.type();
     cached_data_.non_symlink_perms = st.permissions();
@@ -1356,7 +1348,7 @@ std::error_code directory_entry::DoRefresh_impl() noexcept {
     // the value is actually used.
     std::error_code ignored_ec;
     cached_data_.write_time =
-        detail::posix::extract_last_write_time(path_, full_st, &ignored_ec);
+        detail::posix::ExtractLastWriteTime(path_, full_st, &ignored_ec);
   }
 
   return failure_ec;

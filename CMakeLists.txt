@@ -63,16 +63,29 @@ set(public_headers
   "include/filesystem/fs_fwd.h"
   "include/filesystem/fs_dir.h"
   )
+if (WIN32)
+  set(platform_specific_sources
+    "src/windows/file.cpp"
+    "src/windows/time.cpp"
+    "src/windows/stat.cpp"
+    "src/windows/permissions.cpp"
+    )
+else ()
+  set(platform_specific_sources
+    "src/posix/file.cpp"
+    "src/posix/time.cpp"
+    "src/posix/stat.cpp"
+    )
+endif ()
 
 set(sources
   "src/fs_path.cpp"
-  "src/fs_error.h"
-  "src/fs_portability.h"
-  "src/fs_portability_posix.cpp"
-  "src/fs_portability_windows.cpp"
   "src/fs_dir_iterator.cpp"
   "src/fs_ops.cpp"
   "src/filesystem_error.cpp"
+  ${platform_specific_sources}
+  "src/fs_error.h"
+  "src/fs_portability.h"
   ${public_headers}
   )
 
@@ -103,7 +116,7 @@ set(private_compile_options)
 # Libraries
 # ------------------------------------------------------------------------------
 
-set(public_libraries ${META_PROJECT_NAME}::common fmt::fmt)
+set(public_libraries ${META_PROJECT_NAME}::common)
 
 # ------------------------------------------------------------------------------
 # Create targets

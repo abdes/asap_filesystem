@@ -6,27 +6,24 @@
 #include <filesystem/filesystem_error.h>
 #include <filesystem/fs_path.h>
 
-// TODO: #include <fmt/format.h>
+#include <sstream>
 
 namespace asap {
 namespace filesystem {
 
 void filesystem_error::create_what(int num_paths) {
+  std::ostringstream ostr;
   const char *base_what = std::system_error::what();
-  data_->what_ = [&]() -> std::string {
+  ostr << "filesystem error: " << base_what;
+  if (num_paths == 1) {
     const char *p1 = path1().native().empty() ? "\"\"" : path1().c_str();
+    ostr << " [" << p1 << "]";
+  }
+  if (num_paths == 2) {
     const char *p2 = path2().native().empty() ? "\"\"" : path2().c_str();
-    switch (num_paths) {
-      default:
-        return "";  // TDOD: fmt::format("filesystem error: {}", base_what);
-      case 1:
-        return "";  // TDOD: fmt::format("filesystem error: {} [{}]", base_what,
-                    // p1);
-      case 2:
-        return "";  // TDOD: fmt::format("filesystem error: {} [{}] [{}]",
-                    // base_what, p1, p2);
-    }
-  }();
+    ostr << " [" << p2 << "]";
+  }
+  data_->what_ = ostr.str();
 }
 
 }  // namespace filesystem

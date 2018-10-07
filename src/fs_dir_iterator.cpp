@@ -274,7 +274,7 @@ directory_iterator &directory_iterator::do_increment(std::error_code *ec) {
     if (!impl_->advance(m_ec)) {
       path root = std::move(impl_->__root_);
       impl_.reset();
-      if (m_ec) err.report(m_ec, "at root \"{}\"", root.string());
+      if (m_ec) err.report(m_ec, "at root \"" + root.string() + "\"");
     }
   } else {
     err.report(std::errc::invalid_argument, "invalid iterator");
@@ -368,7 +368,7 @@ void recursive_directory_iterator::Advance(std::error_code *ec) {
   if (m_ec) {
     path root = std::move(stack.top().__root_);
     impl_.reset();
-    err.report(m_ec, "at root \"{}\"", root.string());
+    err.report(m_ec, "at root \"{" + root.string() + "}\"");
   } else {
     impl_.reset();
   }
@@ -411,7 +411,8 @@ bool recursive_directory_iterator::TryRecursion(std::error_code *ec) {
     } else {
       path at_ent = std::move(curr_it.__entry_.path_);
       impl_.reset();
-      err.report(m_ec, "attempting recursion into \"{}\"", at_ent.string());
+      err.report(m_ec,
+                 "attempting recursion into \"{" + at_ent.string() + "}\"");
     }
   }
   return false;

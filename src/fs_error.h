@@ -16,17 +16,6 @@
 #include <Windows.h>
 #endif
 
-// Silence this warning as fmt lib checks properly for the compiler support of
-// string literal operator template before enabling it
-//#if ASAP_COMPILER_IS_AppleClang || ASAP_COMPILER_IS_AppleClang
-//#pragma clang diagnostic push
-//#pragma clang diagnostic ignored "-Wgnu-string-literal-operator-template"
-//#endif
-//#include <fmt/format.h>
-//#if ASAP_COMPILER_IS_AppleClang || ASAP_COMPILER_IS_AppleClang
-//#pragma clang diagnostic pop
-//#endif
-
 #include <filesystem/fs_fwd.h>
 #include <filesystem/fs_path.h>
 #include <filesystem/filesystem_error.h>
@@ -115,14 +104,13 @@ struct ErrorHandler {
     ASAP_UNREACHABLE();
   }
 
-  template <class... Args>
-  T report(const std::error_code &m_ec, const char *msg,
-           Args const &... args) const {
+  T report(const std::error_code &m_ec, std::string msg) const {
     if (ec) {
       *ec = m_ec;
       return error_value<T>();
     }
-    std::string what = std::string("in ") + func_name + ": "; //TODO: +fmt::format(msg, args...);
+    std::string what =
+        std::string("in ").append(func_name).append(": ").append(msg);
     switch (bool(p1) + bool(p2)) {
       case 0:
         throw filesystem_error(what, m_ec);
@@ -137,9 +125,8 @@ struct ErrorHandler {
 
   T report(std::errc const &err) const { return report(make_error_code(err)); }
 
-  template <class... Args>
-  T report(std::errc const &err, const char *msg, Args const &... args) const {
-    return report(std::make_error_code(err), msg, args...);
+  T report(std::errc const &err, std::string msg) const {
+    return report(make_error_code(err), msg);
   }
 };
 
