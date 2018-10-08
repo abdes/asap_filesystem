@@ -251,12 +251,15 @@ path path::parent_path() const {
     auto last = std::prev(ret.components_.end());
     if (last->pathname_ == "") {
       last = std::prev(last);
-	}
+    }
     ret.components_.erase(last, ret.components_.end());
     ret.pathname_.clear();
+    auto components_size = ret.components_.size();
+    auto component_index = 1;
     for (auto comp : ret.components_) {
       ret.pathname_.append(comp.pathname_);
-      ret.AppendSeparatorIfNeeded();
+      if (component_index < components_size) ret.AppendSeparatorIfNeeded();
+      ++component_index;
     }
     return ret;
   } else {
@@ -452,8 +455,16 @@ int path::compare(const value_type *other) const {
 //
 
 path &path::operator/=(const path &p) {
-  // TODO: double check conformance to c++ standard
-
+  // NOTE: the standard is not clear when it comes to handling root names.
+  // The following examples were specified for windows:
+  //   path("foo") / "c:/bar"; // yields "c:/bar"
+  //   path("foo") / "c:";       // yields "c:"
+  //   path("c:") / "";          // yields "c:"
+  //   path("c:foo") / "/bar";   // yields "c:/bar"
+  //   path("c:foo") / "c:bar";  // yields "c:foo/bar"
+  //
+  // But...
+  //
   // 1) If p.is_absolute() || (p.has_root_name() && p.root_name() !=
   // root_name()), then replaces the current path with p as if by operator=(p)
   // and finishes.
@@ -465,9 +476,10 @@ path &path::operator/=(const path &p) {
   //   * Either way, then appends the native format pathname of p, omitting any
   //     root-name from its generic format, to the native format of *this.
 
-#if defined(ASAP_WINDOWS)
-  if (p.is_absolute() || (p.has_root_name() && p.root_name() != root_name()))
+  if ((p.is_absolute() && !this->has_root_name()) ||
+      (p.has_root_name() && p.root_name() != this->root_name())) {
     return operator=(p);
+  }
 
   auto lhs = pathname_;
   bool add_sep = false;
@@ -507,34 +519,6 @@ path &path::operator/=(const path &p) {
     if (add_sep) pathname_ += preferred_separator;
     pathname_ += rhs;
     SplitComponents();
-  }
-#else
-  if (p.is_absolute())
-    operator=(p);
-  else {
-    if (this == &p)  // self-append
-    {
-      path rhs(p);
-      AppendSeparatorIfNeeded();
-      pathname_.append(rhs.pathname_);
-    } else {
-      AppendSeparatorIfNeeded();
-      pathname_.append(p.pathname_);
-    }
-    SplitComponents();
-  }
-#endif  // ASAP_WINDOWS
-  return *this;
-}
-
-path &path::Append(path p) {
-  if (p.is_absolute()) operator=(std::move(p));
-#if defined(ASAP_WINDOWS)
-  else if (p.has_root_name() && p.root_name() != root_name())
-    operator=(std::move(p));
-#endif
-  else {
-    operator/=(const_cast<const path &>(p));
   }
   return *this;
 }
@@ -660,7 +644,7 @@ path path::lexically_normal() const {
     // Replace each slash character in the root-name
     if (p.type_ == Type::ROOT_NAME || p.type_ == Type::ROOT_DIR) {
       string_type s = p.native();
-      std::replace(s.begin(), s.end(), L'/', L'\\');
+      std::replace(s.begin(), s.end(), slash, preferred_separator);
       ret /= s;
       continue;
     }
@@ -703,11 +687,13 @@ path path::lexically_normal() const {
   }
 
   if (ret.components_.size() >= 2) {
-    auto back = std::prev(ret.end());
+    auto back = std::prev(ret.components_.end());
     // If the last filename is dot-dot, ...
-    if (back->empty() && is_dotdot(*std::prev(back)))
+    if (back->empty() && is_dotdot(*std::prev(back))) {
       // ... remove any trailing directory-separator.
-      ret = ret.parent_path();
+      ret.components_.erase(back);
+      ret.pathname_.erase(std::prev(ret.pathname_.end()));
+    }
   }
   // If the path is empty, add a dot.
   else if (ret.empty())

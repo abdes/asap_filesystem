@@ -24,21 +24,77 @@ void ComparePathsNormal(path p, std::string expected) {
 
 TEST_CASE("Path / generation / normal",
           "[common][filesystem][path][generation]") {
-  // C++17 [fs.path.gen] p2
-  ComparePathsNormal(path("foo/./bar/..").lexically_normal(), "foo/");
-  ComparePathsNormal(path("foo/.///bar/../").lexically_normal(), "foo/");
+  // Empty stays empty
+  CHECK(path().lexically_normal() == "");
 
-  ComparePathsNormal(path("foo/../bar").lexically_normal(), "bar");
-  ComparePathsNormal(path("../foo/../bar").lexically_normal(), "../bar");
-  ComparePathsNormal(path("foo/../").lexically_normal(), ".");
-  ComparePathsNormal(path("../../").lexically_normal(), "../../");
-  ComparePathsNormal(path("../").lexically_normal(), "../");
-  ComparePathsNormal(path("./").lexically_normal(), "./");
-  ComparePathsNormal(path().lexically_normal(), "");
+  // dot
+  CHECK(path(".").lexically_normal() == ".");
 
-  ComparePathsNormal(path("/..").lexically_normal(), "/");
+  // dotdot
+  // 7. If the last filename is dot-dot, remove any trailing directory-separator.
+  CHECK(path("..").lexically_normal() == "..");
+  CHECK(path("../").lexically_normal() == "..");
+  CHECK(path("../../").lexically_normal() == "../..");
+  CHECK(path(".././../.").lexically_normal() == "../..");
+  CHECK(path(".././.././").lexically_normal() == "../..");
 
-  // PR libstdc++/82777
-  ComparePathsNormal(path("./a/b/c/../.././b/c").lexically_normal(), "a/b/c/");
-  ComparePathsNormal(path("/a/b/c/../.././b/c").lexically_normal(), "/a/b/c/");
+  //
+  CHECK(path("/").lexically_normal() == "/");
+  CHECK(path("//").lexically_normal() == "//");
+  CHECK(path("/foo").lexically_normal() == "/foo");
+  CHECK(path("/foo/").lexically_normal() == "/foo/");
+  CHECK(path("/foo/.").lexically_normal() == "/foo/");
+  CHECK(path("/foo/bar/..").lexically_normal() == "/foo/");
+  CHECK(path("/foo/..").lexically_normal() == "/");
+
+  CHECK(path("/.").lexically_normal() == "/");
+  CHECK(path("/./").lexically_normal() == "/");
+  CHECK(path("/./.").lexically_normal() == "/");
+  CHECK(path("/././").lexically_normal() == "/");
+  CHECK(path("/././.").lexically_normal() == "/");
+
+  // 4. Remove each dot filename and any immediately following directory-separator.
+  // 8. If the path is empty, add a dot.
+  CHECK(path("./").lexically_normal() == ".");
+  CHECK(path("./.").lexically_normal() == ".");
+  CHECK(path("././").lexically_normal() == ".");
+  CHECK(path("././.").lexically_normal() == ".");
+  CHECK(path("./././").lexically_normal() == ".");
+  CHECK(path("./././.").lexically_normal() == ".");
+
+  CHECK(path("foo/..").lexically_normal() == ".");
+  CHECK(path("foo/../").lexically_normal() == ".");
+  CHECK(path("foo/../..").lexically_normal() == "..");
+
+#if defined(ASAP_WINDOWS)
+  CHECK(path("c:bar/..").lexically_normal() == "c:");
+  CHECK(path("c:").lexically_normal() == "c:");
+#endif
+  CHECK(path("//host/bar/..").lexically_normal() == "//host/");
+  CHECK(path("//host").lexically_normal() == "//host");
+
+  CHECK(path("foo/../foo/..").lexically_normal() == ".");
+  CHECK(path("foo/../foo/../..").lexically_normal() == "..");
+  CHECK(path("../foo/../foo/..").lexically_normal() == "..");
+  CHECK(path("../.f/../f").lexically_normal() == "../f");
+  CHECK(path("../f/../.f").lexically_normal() == "../.f");
+
+  // 6) If there is root-directory, remove all dot-dots and any
+  // directory-separators immediately following them.
+  CHECK(path("/..").lexically_normal() == "/");
+  CHECK(path("/../").lexically_normal() == "/");
+  CHECK(path("/../foo").lexically_normal() == "/foo");
+  CHECK(path("/../..").lexically_normal() == "/");
+  CHECK(path("/../../").lexically_normal() == "/");
+  CHECK(path("/../../foo/").lexically_normal() == "/foo/");
+
+  CHECK(path("foo/./bar/..").lexically_normal() == "foo/");
+  CHECK(path("foo/.///bar/../").lexically_normal() == "foo/");
+
+  CHECK(path("foo/../bar").lexically_normal() == "bar");
+  CHECK(path("../foo/../bar").lexically_normal() == "../bar");
+  CHECK(path("foo/../").lexically_normal() == ".");
+
+  CHECK(path("./a/b/c/../.././b/c").lexically_normal() == "a/b/c");
+  CHECK(path("/a/b/c/../.././b/c").lexically_normal() == "/a/b/c");
 }

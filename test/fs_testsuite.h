@@ -77,6 +77,8 @@ inline FilesystemErrorMatcher FilesystemErrorDetail(std::error_code ec, path p1,
 }
 
 inline void ComparePaths(const path &p1, const path &p2) {
+  CAPTURE(p1);
+  CAPTURE(p2);
   PATH_CHK(p1, p2, empty);
   PATH_CHK(p1, p2, has_root_path);
   PATH_CHK(p1, p2, has_root_name);
@@ -90,7 +92,7 @@ inline void ComparePaths(const path &p1, const path &p2) {
   PATH_CHK(p1, p2, is_relative);
   auto d1 = std::distance(p1.begin(), p1.end());
   auto d2 = std::distance(p2.begin(), p2.end());
-  REQUIRE(d1 == d2);
+  CHECK(d1 == d2);
 }
 
 const std::string TEST_PATHS[] = {

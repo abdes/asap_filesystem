@@ -36,7 +36,13 @@ using detail::posix::StatT;
 
 static path do_absolute_impl(const path &p, path *cwd, std::error_code *ec) {
   if (ec) ec->clear();
-  if (p.is_absolute()) return p;
+  if (p.is_absolute()
+#if defined(ASAP_WINDOWS)
+      && p.has_root_name()
+#endif
+  ) {
+    return p;
+  }
   *cwd = current_path_impl(ec);
   if (ec && *ec) return {};
   return (*cwd) / p;
@@ -137,6 +143,7 @@ path canonical_impl(path const &orig_p, std::error_code *ec) {
   if (m_ec || !exists(result, m_ec)) {
     return err.report(std::errc::no_such_file_or_directory);
   }
+  //if (is_directory(result, m_ec) && !m_ec) result /= "";
   return result;
 #endif
 }

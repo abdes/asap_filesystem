@@ -128,18 +128,18 @@ class ASAP_FILESYSTEM_API path {
 
   template <class Source, typename = IsPathable<Source>>
   path &operator/=(Source const &source) {
-    return Append(path(source));
+    return operator/=(path(source));
   }
 
   template <typename Source, typename = IsPathable<Source>>
   path &append(Source const &source) {
-    return Append(path(source));
+    return operator/=(path(source));
   }
 
   template <typename InputIterator,
             typename = IsPathable<InputIterator, InputIterator>>
   path &append(InputIterator first, InputIterator last) {
-    return Append(path(first, last));
+    return operator/=(path(first, last));
   }
 
   // concatenation
@@ -349,7 +349,6 @@ class ASAP_FILESYSTEM_API path {
 
   std::pair<const string_type *, size_t> FindExtension() const;
 
-  path &Append(path p);
   string_type::size_type AppendSeparatorIfNeeded();
   void EraseRedundantSeparator(string_type::size_type sep_pos);
 

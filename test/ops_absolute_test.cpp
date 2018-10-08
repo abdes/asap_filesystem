@@ -38,6 +38,7 @@ TEST_CASE("Ops / absolute / special cases",
   REQUIRE(absolute(p1) != p1);
   path p2("/foo");
   REQUIRE(absolute(p2) != p2);
+  REQUIRE(absolute(p2) == (absolute(p1) / p2));
   path p3("foo");
   REQUIRE(absolute(p3) != p3);
   path p4("C:\\");

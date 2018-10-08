@@ -52,7 +52,7 @@ TEST_CASE("Path / concat / strings", "[common][filesystem][path][assign]") {
   p += "baz.txt";
   REQUIRE(p.filename().generic_string() == "baz.txt");
   p.concat("/dir/");
-  REQUIRE(p.parent_path() == path("/foobar/baz.txt/"));
+  REQUIRE(p.parent_path() == path("/foobar/baz.txt"));
   REQUIRE(p.filename().generic_string() == "");
   const char file[] = "file";
   std::vector<char> input(file, file + 4);
