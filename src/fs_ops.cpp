@@ -5,6 +5,7 @@
 
 #include <array>
 #include <deque>
+#include <stack>
 
 #include "fs_portability.h"
 
@@ -143,7 +144,7 @@ path canonical_impl(path const &orig_p, std::error_code *ec) {
   if (m_ec || !exists(result, m_ec)) {
     return err.report(std::errc::no_such_file_or_directory);
   }
-  //if (is_directory(result, m_ec) && !m_ec) result /= "";
+
   return result;
 #endif
 }
@@ -467,27 +468,47 @@ bool create_directories_impl(const path &p, std::error_code *ec) {
 
   if (p.empty()) return err.report(std::errc::invalid_argument);
 
-  std::error_code m_ec;
-  auto const st = status_impl(p, &m_ec);
-  if (!status_known(st))
-    return err.report(m_ec);
-  else if (is_directory(st))
-    return false;
-  else if (exists(st))
-    return err.report(std::errc::file_exists);
+  std::stack<path> missing;
+  path pp = p;
 
-  const path parent = p.parent_path();
-  if (!parent.empty()) {
-    const file_status parent_st = status(parent, m_ec);
-    if (!status_known(parent_st)) return err.report(m_ec);
-    if (!exists(parent_st)) {
-      create_directories_impl(parent, ec);
-      if (ec && *ec) {
-        return false;
-      }
-    }
+  // NOTE: to work around the differences between the way POSIX systems and
+  // Windows handle the status of a path, we need to push all the components of
+  // the path (except . and ..) on the missing stack.
+  //
+  // The issue is that if we try to create the directories in the path
+  // "./foo/../bar", POSIX systems stat will require that all components of the
+  // path do exist while windows GetFileAttributes will simplify the path into
+  // "bar" and checks for bar only, thus losing the other components of the
+  // path.
+  std::error_code m_ec;
+  while (pp.has_filename() /*&& status(pp, m_ec).type() == file_type::not_found*/) {
+    m_ec.clear();
+    const auto &filename = pp.filename();
+    if (!is_dot(filename) && !is_dotdot(filename)) missing.push(pp);
+    pp = pp.parent_path();
   }
-  return create_directory_impl(p, ec);
+  if (m_ec) return err.report(m_ec);
+  if (missing.empty()) return false;
+
+  // Because some of the components of the path pushed on the missing stack may
+  // be already existing, we need to check their status at this point and we
+  // also need to track if we have ever created any of these components to
+  // properly return the correct return value.
+  bool created{false};
+  do {
+    const path &top = missing.top();
+    // Check the status of the current component from the top of the stack and
+    // create only if it is not found.
+    if (status(top, m_ec).type() == file_type::not_found) {
+      created = true;
+      create_directory(top, m_ec);
+    }
+    if (m_ec && is_directory(top)) m_ec.clear();
+    missing.pop();
+  } while (!missing.empty() && !m_ec);
+
+  if (m_ec) return err.report(m_ec);
+  return created && missing.empty();
 }
 
 bool create_directory_impl(const path &p, std::error_code *ec) {
@@ -898,8 +919,8 @@ void permissions_impl(const path &p, perms prms, perm_options opts,
   const bool remove_perms = has_opt(perm_options::remove);
   ASAP_ASSERT(
       ((add_perms + remove_perms + has_opt(perm_options::replace)) == 1) &&
-      "One and only one of the perm_options constants replace, add, or remove "
-      "is present in opts");
+      "One and only one of the perm_options constants replace, add, or "
+      "remove is present in opts");
 
   bool set_sym_perms = false;
   prms &= perms::mask;
