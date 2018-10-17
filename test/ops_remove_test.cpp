@@ -125,9 +125,13 @@ TEST_CASE("Ops / remove / non-empty directory",
   remove(dir, ec);
 }
 
+// FIXME: this is not correct on POSIX
+// To remove a file, you need write permissions on the containing directory
+// permissions on the file itself are not sued
 TEST_CASE("Ops / remove / file permissions",
           "[common][filesystem][ops][remove]") {
-  std::error_code ec;
+#if 0 // FIXME
+  //  std::error_code ec;
   const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
   bool n;
 
@@ -149,7 +153,11 @@ TEST_CASE("Ops / remove / file permissions",
   REQUIRE(!ec);
   REQUIRE(n);
   REQUIRE(!exists(p));
+#endif // FIXME
 }
+
+// FIXME: need to add test cases for permission scenarios involving files and
+// directories, including permissions on parent directory
 
 // -----------------------------------------------------------------------------
 //  remove_all
@@ -158,7 +166,6 @@ TEST_CASE("Ops / remove / file permissions",
 TEST_CASE("Ops / remove_all / empty path",
           "[common][filesystem][ops][remove_all]") {
   std::error_code ec;
-  const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
   std::uintmax_t n;
 
   n = fs::remove_all("", ec);
