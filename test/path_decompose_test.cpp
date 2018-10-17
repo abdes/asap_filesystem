@@ -87,13 +87,13 @@ TEST_CASE("Path / decompose / parent_path basic",
   REQUIRE(path("/var").parent_path() == path("/"));
   REQUIRE(path("/").parent_path() == path("/"));
   REQUIRE(path("//").parent_path() == path("/"));
-  REQUIRE(path("//foo").parent_path() == path("//foo"));
   REQUIRE(path("foo").parent_path() == path(""));
   REQUIRE(path("foo/bar").parent_path() == path("foo"));
   REQUIRE(path("/foo/bar").parent_path() == path("/foo"));
   REQUIRE(path("/foo/").parent_path() == path("/"));
   REQUIRE(path("/foo/bar/.").parent_path() == path("/foo/bar"));
 #ifdef ASAP_WINDOWS
+  REQUIRE(path("//foo").parent_path() == path("//foo"));
   REQUIRE(path("c:").parent_path() == "c:");
   REQUIRE(path("c:\\").parent_path() == "c:\\");
   REQUIRE(path("c:\\foo").parent_path() == "c:\\");

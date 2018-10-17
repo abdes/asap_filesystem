@@ -35,6 +35,19 @@ TEST_CASE("Path / append / path", "[common][filesystem][path][append]") {
   ComparePaths(append("dir/", "/file"), "/file");
   ComparePaths(append("dir/", "file"), "dir/file");
 
+  // path("foo") / ""; // yields "foo/"
+  ComparePaths(append("foo", ""), "foo/");
+
+  // path("foo") / "/bar"; // yields "/bar"
+  ComparePaths(append("foo", "/bar"), "/bar");
+
+  // path("foo") / ""; // yields "foo/"
+  ComparePaths(append("foo", ""), "foo/");
+
+  // path("foo") / "/bar"; // yields "/bar"
+  ComparePaths(append("foo", "/bar"), "/bar");
+
+#if defined(ASAP_WINDOWS)
   ComparePaths(append("//host", "foo"), "//host/foo");
   ComparePaths(append("//host/", "foo"), "//host/foo");
   ComparePaths(append("//host/bar", "foo"), "//host/bar/foo");
@@ -42,25 +55,7 @@ TEST_CASE("Path / append / path", "[common][filesystem][path][append]") {
   ComparePaths(append("//host", "//other/foo"), "//other/foo");
   ComparePaths(append("//host/bar", "//other/foo"), "//other/foo");
 
-  // path("foo") / ""; // yields "foo/"
-  ComparePaths(append("foo", ""), "foo/");
-
-  // path("foo") / "/bar"; // yields "/bar"
-  ComparePaths(append("foo", "/bar"), "/bar");
-
   ComparePaths(append("c:/foo", "/bar"), "c:/bar");
-
-  // path("foo") / ""; // yields "foo/"
-  ComparePaths(append("foo", ""), "foo/");
-
-  // path("foo") / "/bar"; // yields "/bar"
-  ComparePaths(append("foo", "/bar"), "/bar");
-
-  // path("foo") / "c:/bar"; // yields "c:/bar"
-  ComparePaths(append("foo", "c:/bar"), "c:/bar");
-
-  // path("foo") / "c:"; // yields "c:"
-  ComparePaths(append("foo", "c:"), "c:");
 
   // path("c:") / ""; // yields "c:"
   ComparePaths(append("c:", ""), "c:");
@@ -70,6 +65,13 @@ TEST_CASE("Path / append / path", "[common][filesystem][path][append]") {
 
   // path("c:foo") / "c:bar"; // yields "c:foo/bar"
   ComparePaths(append("c:foo", "c:bar"), "c:foo/bar");
+
+  // path("foo") / "c:/bar"; // yields "c:/bar"
+  ComparePaths(append("foo", "c:/bar"), "c:/bar");
+
+  // path("foo") / "c:"; // yields "c:"
+  ComparePaths(append("foo", "c:"), "c:");
+#endif // ASAP_WINDOWS
 }
 
 // path::operator/=(const Source& source)
