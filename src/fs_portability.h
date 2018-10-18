@@ -121,6 +121,7 @@ using ::GetDiskFreeSpaceExW;
 using ::GetFileAttributesExW;
 using ::GetFileAttributesW;
 using ::GetFileInformationByHandle;
+using ::GetFileInformationByHandleEx;
 using ::GetFileTime;
 using ::GetLastError;
 using ::GetTempPathW;

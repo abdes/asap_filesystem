@@ -156,4 +156,32 @@ struct scoped_file {
   path path_{};
 };
 
+
+#if defined(ASAP_WINDOWS)
+// Symbolic links without privilege escalation require developer mode and
+// windows creator update version (10.0 build 1703).
+//
+// "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock"
+// AllowDevelopmentWithoutDevLicense -PropertyType DWORD -Value 1
+
+inline bool IsDeveloperModeEnabled() {
+  HKEY hKey;
+  LSTATUS lResult = ::RegOpenKeyExW(
+      HKEY_LOCAL_MACHINE,
+      L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\AppModelUnlock", 0,
+      KEY_READ | KEY_WOW64_64KEY, &hKey);
+  if (lResult == ERROR_SUCCESS) {
+    DWORD dwBufferSize(sizeof(DWORD));
+    DWORD nValue(0);
+    lResult =
+        ::RegQueryValueExW(hKey, L"AllowDevelopmentWithoutDevLicense", 0, NULL,
+                           reinterpret_cast<LPBYTE>(&nValue), &dwBufferSize);
+    if (lResult == ERROR_SUCCESS) {
+      return (nValue != 0);
+    }
+  }
+  return false;
+}
+#endif  // ASAP_WINDOWS
+
 }  // namespace testing
