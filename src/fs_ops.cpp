@@ -1190,18 +1190,24 @@ file_status status_impl(const path &p, std::error_code *ec) {
   // Handle the case of reparse point.
   // Since GetFileAttributesW does not resolve symlinks, try to open the file
   // handle to discover if it exists.
-  // TODO: must follow through symlinks
   if (attrs & FILE_ATTRIBUTE_REPARSE_POINT) {
     std::error_code m_ec;
+    // Becasue we do not specify the flag FILE_FLAG_OPEN_REPARSE_POINT, symlinks
+    // will be followed and the target is opened.
     auto file1 = detail::FileDescriptor::Create(
         &p, m_ec, 0, FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
         nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, nullptr);
     if (m_ec) {
       return detail::win32::ProcessStatusFailure(m_ec, p, ec);
     }
-    if (!detail::win32::IsReparsePointSymlink(p, ec))
-      return file_status(file_type::reparse_file,
-                         detail::win32::MakePermissions(p, attrs));
+    // Get the file attributes from its handle
+    FILE_ATTRIBUTE_TAG_INFO file_info;
+    if (!detail::win32::GetFileInformationByHandleEx(
+            file1.fd_, FileAttributeTagInfo, &file_info, sizeof(file_info))) {
+      return detail::win32::ProcessStatusFailure(capture_errno(), p, ec);
+    } else {
+      attrs = file_info.FileAttributes;
+    }
   }
 
   return (attrs & FILE_ATTRIBUTE_DIRECTORY)
