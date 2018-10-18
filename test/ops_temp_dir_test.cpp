@@ -100,7 +100,9 @@ TEST_CASE("Ops / temp_dir / permission",
 TEST_CASE("Ops / temp_dir / not a directory",
           "[common][filesystem][ops][temp_dir]") {
   testing::scoped_file f;
-  set_env("TMP", f.path_.string());
+  // Use TMPDIR as it is the first env variable to be checked, making sure that
+  // it will be the value used to return a temporary path
+  set_env("TMPDIR", f.path_.string());
   std::error_code ec;
   auto r = fs::temp_directory_path(ec);
   REQUIRE(ec == std::make_error_code(std::errc::not_a_directory));
