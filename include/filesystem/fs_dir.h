@@ -60,7 +60,14 @@ class ASAP_FILESYSTEM_API directory_entry {
 
   void refresh() { DoRefresh(); }
 
-  void refresh(std::error_code &ec) noexcept { DoRefresh(&ec); }
+  void refresh(std::error_code &ec) noexcept {
+    try {
+      DoRefresh(&ec);
+    } catch (...) {
+      // The above will never throw when we pass a non null ec
+      ASAP_UNREACHABLE();
+    }
+  }
 
   path_type const &path() const noexcept { return path_; }
 
@@ -129,19 +136,34 @@ class ASAP_FILESYSTEM_API directory_entry {
   uintmax_t file_size() const { return GetSize(); }
 
   uintmax_t file_size(std::error_code &ec) const noexcept {
-    return GetSize(&ec);
+    try {
+      return GetSize(&ec);
+    } catch (...) {
+      // The above will never throw when we pass a non null ec
+      ASAP_UNREACHABLE();
+    }
   }
 
   uintmax_t hard_link_count() const { return GetHardLinkCount(); }
 
   uintmax_t hard_link_count(std::error_code &ec) const noexcept {
-    return GetHardLinkCount(&ec);
+    try {
+      return GetHardLinkCount(&ec);
+    } catch (...) {
+      // The above will never throw when we pass a non null ec
+      ASAP_UNREACHABLE();
+    }
   }
 
   file_time_type last_write_time() const { return GetLastWriteTime(); }
 
   file_time_type last_write_time(std::error_code &ec) const noexcept {
-    return GetLastWriteTime(&ec);
+    try {
+      return GetLastWriteTime(&ec);
+    } catch (...) {
+      // The above will never throw when we pass a non null ec
+      ASAP_UNREACHABLE();
+    }
   }
 
   file_status status() const { return GetStatus(); }
@@ -251,8 +273,7 @@ class ASAP_FILESYSTEM_API directory_entry {
   }
 
   void HandleError(const char *__msg, std::error_code *__dest_ec,
-                   std::error_code const &ec,
-                   bool __allow_dne = false) const {
+                   std::error_code const &ec, bool __allow_dne = false) const {
     if (__dest_ec) {
       *__dest_ec = ec;
       return;
@@ -338,8 +359,7 @@ class ASAP_FILESYSTEM_API directory_entry {
 
       case CacheType_::REFRESH_SYMLINK:
       case CacheType_::REFRESH_SYMLINK_UNRESOLVED:
-        return file_status(GetSymLinkFileType(ec),
-                           cached_data_.symlink_perms);
+        return file_status(GetSymLinkFileType(ec), cached_data_.symlink_perms);
     }
     ASAP_UNREACHABLE();
   }

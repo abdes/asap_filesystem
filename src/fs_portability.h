@@ -169,7 +169,11 @@ namespace posix {
 
 // Use typedef instead of using to avoid gcc warning on struct ::stat not
 // declaring anything. (alternative is: "using StatT = struct ::stat;" )
+#if ASAP_COMPILER_IS_GNU
 typedef struct ::stat StatT;
+#else
+using StatT = struct ::stat;
+#endif
 
 #if defined(ASAP_APPLE)
 inline TimeSpec ExtractModificationTime(StatT const &st) {
@@ -232,7 +236,7 @@ struct FileDescriptor {
   using fd_type = win32::handle;
 #else
   using fd_type = int;
-  detail::posix::StatT stat_;
+  posix::StatT stat_;
 #endif
   static const fd_type invalid_value;
   fd_type fd_{invalid_value};
