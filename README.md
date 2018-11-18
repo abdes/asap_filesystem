@@ -1,3 +1,6 @@
+[![repo on GitHub](https://img.shields.io/badge/repo-GitHub-brightgreen.svg)](https://github.com/abdes/asap_filesystem)
+[![repo on GitLab](https://img.shields.io/badge/repo-GitLab-brightgreen.svg)](https://gitlab.com/absassi/asap_filesystem)
+
 # Backport of std::filesystem submodule for the asap project
 
 See https://gitlab.com/absassi/asap for a functional minimal starter project
