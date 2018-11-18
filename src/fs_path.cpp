@@ -255,7 +255,7 @@ path path::parent_path() const {
     ret.components_.erase(last, ret.components_.end());
     ret.pathname_.clear();
     auto components_size = ret.components_.size();
-    auto component_index = 1;
+    auto component_index = 1U;
     for (auto comp : ret.components_) {
       ret.pathname_.append(comp.pathname_);
       if (component_index < components_size) ret.AppendSeparatorIfNeeded();
