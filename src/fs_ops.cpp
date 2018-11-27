@@ -894,10 +894,10 @@ void last_write_time_impl(const path &p, file_time_type new_time,
   times.modtime = s.count();
   std::error_code m_ec;
   StatT st;
-  detail::posix_stat(p, st, &m_ec);
+  detail::posix::GetFileStatus(p, st, &m_ec);
   if (m_ec) return err.report(m_ec);
   // The utime call allows time resolution of 1 second
-  times.actime = detail::ExtractAccessTime(st).tv_sec;
+  times.actime = detail::posix::ExtractAccessTime(st).tv_sec;
   if (::utime(p.c_str(), &times)) return err.report(capture_errno());
 #else
   return err.report(std::errc::not_supported);

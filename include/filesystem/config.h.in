@@ -34,7 +34,8 @@
 #  define ASAP_FS_USE_UTIMENSAT 1
 #endif
 
-#if !ASAP_FS_USE_UTIMENSAT && ASAP_HAVE_UTIME_H
+#cmakedefine ASAP_HAVE_UTIME_H
+#if !ASAP_FS_USE_UTIMENSAT && defined(ASAP_HAVE_UTIME_H)
 #  define ASAP_FS_USE_UTIME 1
 #endif
 
