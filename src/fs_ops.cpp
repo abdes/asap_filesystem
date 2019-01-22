@@ -1252,6 +1252,42 @@ file_status symlink_status_impl(const path &p, std::error_code *ec) {
 //                               temp_directory_path
 // -----------------------------------------------------------------------------
 
+/**
+ * @brief Returns the directory location suitable for temporary files.
+ *
+ * On POSIX systems, the path may be the one specified in the environment
+ * variables TMPDIR, TMP, TEMP, TEMPDIR, and, if none of them are specified, the
+ * path "/tmp" is returned.
+ *
+ * TMPDIR is the canonical environment variable in Unix and POSIX[1] that should
+ * be used to specify a temporary directory for scratch space. Most Unix
+ * programs will honor this setting and use its value to denote the scratch area
+ * for temporary files instead of the common default of /tmp[2][3] or /var/tmp.
+ *
+ * Other forms sometimes accepted are TEMP, TEMPDIR and TMP, but these
+ * alternatives are used more commonly by non-POSIX operating systems or
+ * non-conformant programs.
+ *
+ * TMPDIR is specified in various Unix and similar standards, e.g. per the
+ * Single UNIX Specification.
+ *
+ * On Windows systems, the path is typically the one returned by GetTempPath
+ * function which checks for the existence of environment variables in the
+ * following order and uses the first path found: TMP, TEMP, USERPROFILE, the
+ * Windows directory.
+ *
+ * @return A directory suitable for temporary files. When successful, the path
+ * is guaranteed to exist and to be a directory.
+ *
+ * @throws If the std::error_code* parameter is null, throws filesystem_error on
+ * underlying OS API errors or if the temp directory path does not exist or is
+ * not a directory, constructed with path to be returned as the first path
+ * argument and the OS error code as the error code argument. If the
+ * std::error_code* parameter is not null, it is set to the OS API error code if
+ * an OS API call fails, std::errc::not_a_directory if the temp directory path
+ * does not exist or is not a directory, otherwise it is cleared with ec.clear()
+ * if no errors occur.
+ */
 path temp_directory_path_impl(std::error_code *ec) {
   ErrorHandler<path> err("temp_directory_path", ec);
 
