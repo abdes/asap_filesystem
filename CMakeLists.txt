@@ -62,6 +62,7 @@ set(public_headers
   "include/filesystem/filesystem_error.h"
   "include/filesystem/fs_fwd.h"
   "include/filesystem/fs_dir.h"
+  "include/filesystem/fs_ops.h"
   )
 if (WIN32)
   set(platform_specific_sources
