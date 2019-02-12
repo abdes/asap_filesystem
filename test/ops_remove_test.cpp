@@ -69,6 +69,12 @@ TEST_CASE("Ops / remove / empty directory", "[common][filesystem][ops][remove]")
 }
 
 TEST_CASE("Ops / remove / symlink to nonexistent path", "[common][filesystem][ops][remove]") {
+  // This test case requires symlinks and on windows, this will only work if
+  // developer mode is enabled or the test cases are run as administrator.
+#if defined(ASAP_WINDOWS)
+  if (!testing::IsDeveloperModeEnabled()) return;
+#endif
+
   std::error_code ec;
   const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
   bool n;
@@ -84,6 +90,12 @@ TEST_CASE("Ops / remove / symlink to nonexistent path", "[common][filesystem][op
 }
 
 TEST_CASE("Ops / remove / symlink to actual path", "[common][filesystem][ops][remove]") {
+  // This test case requires symlinks and on windows, this will only work if
+  // developer mode is enabled or the test cases are run as administrator.
+#if defined(ASAP_WINDOWS)
+  if (!testing::IsDeveloperModeEnabled()) return;
+#endif
+
   std::error_code ec;
   const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
   bool n;
@@ -187,6 +199,12 @@ TEST_CASE("Ops / remove_all / nonexistent path",
 }
 
 TEST_CASE("Ops / remove_all / symlink to nonexistent path", "[common][filesystem][ops][remove_all]") {
+  // This test case requires symlinks and on windows, this will only work if
+  // developer mode is enabled or the test cases are run as administrator.
+#if defined(ASAP_WINDOWS)
+  if (!testing::IsDeveloperModeEnabled()) return;
+#endif
+
   std::error_code ec;
   const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
   std::uintmax_t n;
@@ -202,6 +220,12 @@ TEST_CASE("Ops / remove_all / symlink to nonexistent path", "[common][filesystem
 }
 
 TEST_CASE("Ops / remove_all / symlink to actual path", "[common][filesystem][ops][remove_all]") {
+  // This test case requires symlinks and on windows, this will only work if
+  // developer mode is enabled or the test cases are run as administrator.
+#if defined(ASAP_WINDOWS)
+  if (!testing::IsDeveloperModeEnabled()) return;
+#endif
+
   std::error_code ec;
   const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
   std::uintmax_t n;

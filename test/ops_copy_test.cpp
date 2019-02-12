@@ -49,6 +49,12 @@ TEST_CASE("Ops / copy / errors", "[common][filesystem][ops][copy]") {
 }
 
 TEST_CASE("Ops / copy / symlinks", "[common][filesystem][ops][copy]") {
+  // This test case requires symlinks and on windows, this will only work if
+  // developer mode is enabled or the test cases are run as administrator.
+#if defined(ASAP_WINDOWS)
+  if (!testing::IsDeveloperModeEnabled()) return;
+#endif
+
   const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
   auto from = testing::nonexistent_path();
   auto to = testing::nonexistent_path();
@@ -90,7 +96,7 @@ TEST_CASE("Ops / copy / symlinks", "[common][filesystem][ops][copy]") {
   remove(to, ec);
 }
 
-TEST_CASE("Ops / copy / regular file", "[common][filesystem][ops][copy]") {
+TEST_CASE("Ops / copy / empty file", "[common][filesystem][ops][copy]") {
   auto from = testing::nonexistent_path();
   auto to = testing::nonexistent_path();
 
@@ -102,10 +108,18 @@ TEST_CASE("Ops / copy / regular file", "[common][filesystem][ops][copy]") {
   REQUIRE(fs::exists(to));
   REQUIRE(fs::file_size(to) == 0);
 
+  remove(from);
   remove(to);
-  REQUIRE(!fs::exists(to));
+}
+
+TEST_CASE("Ops / copy / regular file", "[common][filesystem][ops][copy]") {
+  auto from = testing::nonexistent_path();
+  auto to = testing::nonexistent_path();
+
   std::ofstream{from} << "Hello, filesystem!";
   REQUIRE(fs::file_size(from) != 0);
+
+  REQUIRE(!fs::exists(to));
   fs::copy(from, to);
   REQUIRE(fs::exists(to));
   REQUIRE(fs::file_size(to) == fs::file_size(from));

@@ -15,6 +15,12 @@ using testing::ComparePaths;
 
 TEST_CASE("Ops / weakly_canonical",
           "[common][filesystem][ops][weakly_canonical]") {
+  // This test case requires symlinks and on windows, this will only work if
+  // developer mode is enabled or the test cases are run as administrator.
+#if defined(ASAP_WINDOWS)
+  if (!testing::IsDeveloperModeEnabled()) return;
+#endif
+
   auto dir = testing::nonexistent_path();
   fs::create_directory(dir);
   const auto dirc = canonical(dir);

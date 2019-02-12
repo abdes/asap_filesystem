@@ -13,6 +13,12 @@
 
 TEST_CASE("Ops / read_symlink / dir",
           "[common][filesystem][ops][read_symlink]") {
+  // This test case requires symlinks and on windows, this will only work if
+  // developer mode is enabled or the test cases are run as administrator.
+#if defined(ASAP_WINDOWS)
+  if (!testing::IsDeveloperModeEnabled()) return;
+#endif
+
   auto p = testing::nonexistent_path();
   std::error_code ec;
 
@@ -31,6 +37,12 @@ TEST_CASE("Ops / read_symlink / dir",
 
 TEST_CASE("Ops / read_symlink / file",
           "[common][filesystem][ops][read_symlink]") {
+  // This test case requires symlinks and on windows, this will only work if
+  // developer mode is enabled or the test cases are run as administrator.
+#if defined(ASAP_WINDOWS)
+  if (!testing::IsDeveloperModeEnabled()) return;
+#endif
+
   auto p = testing::nonexistent_path();
   std::error_code ec;
 

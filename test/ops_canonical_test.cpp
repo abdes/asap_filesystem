@@ -78,8 +78,14 @@ TEST_CASE("Ops / canonical / exception",
       testing::FilesystemErrorDetail(ec, p, fs::current_path()));
 }
 
-TEST_CASE("Ops / canonical / real use",
+TEST_CASE("Ops / canonical / with symlinks",
           "[common][filesystem][ops][canonical]") {
+  // This test case requires symlinks and on windows, this will only work if
+  // developer mode is enabled or the test cases are run as administrator.
+#if defined(ASAP_WINDOWS)
+  if (!testing::IsDeveloperModeEnabled()) return;
+#endif
+
   auto dir = testing::nonexistent_path();
   fs::create_directory(dir);
   fs::path foo = dir / "foo", bar = dir / "bar";

@@ -13,6 +13,12 @@
 
 TEST_CASE("Ops / symlink_status / dot",
           "[common][filesystem][ops][symlink_status]") {
+  // This test case requires symlinks and on windows, this will only work if
+  // developer mode is enabled or the test cases are run as administrator.
+#if defined(ASAP_WINDOWS)
+  if (!testing::IsDeveloperModeEnabled()) return;
+#endif
+
   const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
   std::error_code ec = bad_ec;
   fs::path dot = ".";
@@ -49,6 +55,12 @@ TEST_CASE("Ops / symlink_status / non-existing",
 }
 
 TEST_CASE("Ops / symlink_status / permissions", "[common][filesystem][ops][symlink_status]") {
+  // This test case requires symlinks and on windows, this will only work if
+  // developer mode is enabled or the test cases are run as administrator.
+#if defined(ASAP_WINDOWS)
+  if (!testing::IsDeveloperModeEnabled()) return;
+#endif
+
   fs::path dir = testing::nonexistent_path();
   fs::create_directory(dir);
   testing::scoped_file d(dir, testing::scoped_file::adopt_file);

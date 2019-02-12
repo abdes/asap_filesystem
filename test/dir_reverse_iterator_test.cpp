@@ -135,4 +135,7 @@ TEST_CASE("Dir / dir_reverse_iterator / noexcept",
   static_assert(noexcept(begin(it)), "begin is noexcept");
   REQUIRE(end(it) == endit);
   static_assert(noexcept(end(it)), "end is noexcept");
+
+  std::error_code ec;
+  remove_all(p, ec);
 }
