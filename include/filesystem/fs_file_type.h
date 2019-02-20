@@ -8,7 +8,11 @@
 namespace asap {
 namespace filesystem {
 
-enum class file_type : signed char {
+// -----------------------------------------------------------------------------
+//                               file_type
+// -----------------------------------------------------------------------------
+
+	enum class file_type : signed char {
   none = 0,        // file status has not been evaluated yet, or an error
                    // occurred when evaluating it
   not_found = -1,  // file was not found (this is not considered an error)
