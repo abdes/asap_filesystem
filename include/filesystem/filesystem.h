@@ -7,6 +7,7 @@
 
 // clang-format off
 #include <filesystem/filesystem_error.h>
+#include <filesystem/fs_file_type.h>
 #include <filesystem/fs_fwd.h>
 #include <filesystem/fs_file_status.h>
 #include <filesystem/fs_ops.h>
