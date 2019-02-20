@@ -17,6 +17,7 @@
 #endif
 
 #include <filesystem/fs_fwd.h>
+#include <filesystem/fs_file_time_type.h>
 #include <filesystem/fs_path.h>
 #include <filesystem/filesystem_error.h>
 // clang-format on
