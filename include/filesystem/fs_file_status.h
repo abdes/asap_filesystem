@@ -6,7 +6,6 @@
 #pragma once
 
 #include <filesystem/asap_filesystem_api.h>
-#include <filesystem/fs_fwd.h>
 
 namespace asap {
 namespace filesystem {

@@ -8,7 +8,6 @@
 #include <filesystem/asap_filesystem_api.h>
 
 #include <filesystem/fs_file_status.h>
-#include <filesystem/fs_fwd.h>
 #include <filesystem/fs_path.h>
 
 namespace asap {

@@ -12,7 +12,6 @@
 #include <filesystem/fs_perms.h>
 #include <filesystem/fs_directory_options.h>
 #include <filesystem/fs_file_time_type.h>
-#include <filesystem/fs_fwd.h>
 #include <filesystem/fs_file_status.h>
 #include <filesystem/fs_ops.h>
 #include <filesystem/fs_path.h>
