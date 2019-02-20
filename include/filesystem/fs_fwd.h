@@ -24,12 +24,6 @@ class directory_iterator;
 class recursive_directory_iterator;
 class file_status;
 
-struct space_info {
-  std::uintmax_t capacity;
-  std::uintmax_t free;
-  std::uintmax_t available;
-};
-
 enum class file_type : signed char {
   none = 0,        // file status has not been evaluated yet, or an error
                    // occurred when evaluating it
