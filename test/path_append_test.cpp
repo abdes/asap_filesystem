@@ -12,9 +12,11 @@ using testing::TEST_PATHS;
 
 // path::operator/=(const path&)
 
-fs::path append(fs::path l, const fs::path& r) {
-  l /= r;
-  return l;
+namespace {
+  fs::path Append(fs::path l, const fs::path& r) {
+    l /= r;
+    return l;
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -22,63 +24,63 @@ fs::path append(fs::path l, const fs::path& r) {
 // -----------------------------------------------------------------------------
 
 TEST_CASE("Path / append / path", "[common][filesystem][path][append]") {
-  ComparePaths(append("/foo/bar", "/foo/"), "/foo/");
+  ComparePaths(Append("/foo/bar", "/foo/"), "/foo/");
 
-  ComparePaths(append("baz", "baz"), "baz/baz");
-  ComparePaths(append("baz/", "baz"), "baz/baz");
-  ComparePaths(append("baz", "/foo/bar"), "/foo/bar");
-  ComparePaths(append("baz/", "/foo/bar"), "/foo/bar");
+  ComparePaths(Append("baz", "baz"), "baz/baz");
+  ComparePaths(Append("baz/", "baz"), "baz/baz");
+  ComparePaths(Append("baz", "/foo/bar"), "/foo/bar");
+  ComparePaths(Append("baz/", "/foo/bar"), "/foo/bar");
 
-  REQUIRE(append("", "").empty());
-  REQUIRE(!append("", "rel").is_absolute());
+  REQUIRE(Append("", "").empty());
+  REQUIRE(!Append("", "rel").is_absolute());
 
-  ComparePaths(append("dir/", "/file"), "/file");
-  ComparePaths(append("dir/", "file"), "dir/file");
-
-  // path("foo") / ""; // yields "foo/"
-  ComparePaths(append("foo", ""), "foo/");
-
-  // path("foo") / "/bar"; // yields "/bar"
-  ComparePaths(append("foo", "/bar"), "/bar");
+  ComparePaths(Append("dir/", "/file"), "/file");
+  ComparePaths(Append("dir/", "file"), "dir/file");
 
   // path("foo") / ""; // yields "foo/"
-  ComparePaths(append("foo", ""), "foo/");
+  ComparePaths(Append("foo", ""), "foo/");
 
   // path("foo") / "/bar"; // yields "/bar"
-  ComparePaths(append("foo", "/bar"), "/bar");
+  ComparePaths(Append("foo", "/bar"), "/bar");
+
+  // path("foo") / ""; // yields "foo/"
+  ComparePaths(Append("foo", ""), "foo/");
+
+  // path("foo") / "/bar"; // yields "/bar"
+  ComparePaths(Append("foo", "/bar"), "/bar");
 
 #if defined(ASAP_WINDOWS)
-  ComparePaths(append("//host", "foo"), "//host/foo");
-  ComparePaths(append("//host/", "foo"), "//host/foo");
-  ComparePaths(append("//host/bar", "foo"), "//host/bar/foo");
-  ComparePaths(append("//host", "/foo"), "//host/foo");
-  ComparePaths(append("//host", "//other/foo"), "//other/foo");
-  ComparePaths(append("//host/bar", "//other/foo"), "//other/foo");
+  ComparePaths(Append("//host", "foo"), "//host/foo");
+  ComparePaths(Append("//host/", "foo"), "//host/foo");
+  ComparePaths(Append("//host/bar", "foo"), "//host/bar/foo");
+  ComparePaths(Append("//host", "/foo"), "//host/foo");
+  ComparePaths(Append("//host", "//other/foo"), "//other/foo");
+  ComparePaths(Append("//host/bar", "//other/foo"), "//other/foo");
 
-  ComparePaths(append("c:/foo", "/bar"), "c:/bar");
+  ComparePaths(Append("c:/foo", "/bar"), "c:/bar");
 
   // path("c:") / ""; // yields "c:"
-  ComparePaths(append("c:", ""), "c:");
+  ComparePaths(Append("c:", ""), "c:");
 
   // path("c:foo") / "/bar"; // yields "c:/bar"
-  ComparePaths(append("c:foo", "/bar"), "c:/bar");
+  ComparePaths(Append("c:foo", "/bar"), "c:/bar");
 
   // path("c:foo") / "c:bar"; // yields "c:foo/bar"
-  ComparePaths(append("c:foo", "c:bar"), "c:foo/bar");
+  ComparePaths(Append("c:foo", "c:bar"), "c:foo/bar");
 
   // path("foo") / "c:/bar"; // yields "c:/bar"
-  ComparePaths(append("foo", "c:/bar"), "c:/bar");
+  ComparePaths(Append("foo", "c:/bar"), "c:/bar");
 
   // path("foo") / "c:"; // yields "c:"
-  ComparePaths(append("foo", "c:"), "c:");
+  ComparePaths(Append("foo", "c:"), "c:");
 #endif // ASAP_WINDOWS
 }
 
 // path::operator/=(const Source& source)
-// path::append(const Source& source)
+// path::Append(const Source& source)
 // Equivalent to: return operator/=(path(source));
 
-// path::append(InputIterator first, InputIterator last)
+// path::Append(InputIterator first, InputIterator last)
 // Equivalent to: return operator/=(path(first, last));
 
 template <typename Char>
