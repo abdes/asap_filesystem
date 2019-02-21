@@ -61,6 +61,7 @@ set(public_headers
   "include/filesystem/fs_path.h"
   "include/filesystem/filesystem_error.h"
   "include/filesystem/fs_file_type.h"
+  "include/filesystem/fs_file_status.h"
   "include/filesystem/fs_copy_options.h"
   "include/filesystem/fs_perms.h"
   "include/filesystem/fs_directory_options.h"
