@@ -174,7 +174,28 @@ void copy_impl(const path &from, const path &to, copy_options options,
 
   file_status f, t;
 #if defined(ASAP_WINDOWS)
-  // TODO: implement these checks for windows
+  // TODO: Combine this with the non-Windows code
+  std::error_code m_ec1;
+  bool use_lstat = create_symlinks || skip_symlinks || copy_symlinks;
+  f = use_lstat ? symlink_status_impl(from, &m_ec1) : status_impl(from, &m_ec1);
+  if (m_ec1) return err.report(m_ec1);
+
+  use_lstat = create_symlinks || skip_symlinks;
+  t = use_lstat ? symlink_status_impl(to, &m_ec1) : status_impl(to, &m_ec1);
+  if (!status_known(t)) return err.report(m_ec1);
+
+  if (!exists(f) || is_other(f) || is_other(t) ||
+      (is_directory(f) && is_regular_file(t))) {
+    return err.report(std::errc::function_not_supported);
+  }
+  // TODO: status will be queried again here. Need optimization.
+  if (exists(f) && exists(t)) {
+    bool same_file = equivalent_impl(from, to, &m_ec1);
+    if (m_ec1) return err.report(m_ec1);
+    if (same_file) {
+      return err.report(std::errc::function_not_supported);
+    }
+  }
 #else
   std::error_code m_ec1;
   StatT f_st = {};
@@ -366,11 +387,60 @@ bool copy_file_impl(const path &from, const path &to, copy_options options,
                     std::error_code *ec) {
   ErrorHandler<bool> err("copy_file", ec, &to, &from);
 
-#if defined(ASAP_WINDOWS)
-  // TODO: implement copy_file_impl on windows
-  return err.report(std::errc::not_supported);
-#else   // ASAP_WINDOWS
   std::error_code m_ec;
+
+  const bool skip_existing = bool(copy_options::skip_existing & options);
+  const bool update_existing = bool(copy_options::update_existing & options);
+  const bool overwrite_existing =
+      bool(copy_options::overwrite_existing & options);
+
+#if defined(ASAP_WINDOWS)
+  // TODO: refactor code to share portable portables
+
+  auto from_st = status_impl(from, &m_ec);
+  if (m_ec) return err.report(m_ec);
+
+  if (!is_regular_file(from_st)) {
+    return err.report(make_error_code(std::errc::not_supported));
+  }
+
+  auto to_st = status_impl(to, &m_ec);
+  if (!status_known(to_st)) return err.report(m_ec);
+
+  const bool to_exists = exists(to_st);
+  if (to_exists && !is_regular_file(to_st))
+    return err.report(std::errc::not_supported);
+
+  if (to_exists && equivalent_impl(from, to, &m_ec)) {
+    if (m_ec)
+      return err.report(std::errc::invalid_argument);
+    else
+      return err.report(std::errc::file_exists);
+  }
+  if (to_exists && skip_existing) return false;
+
+  bool ShouldCopy = [&]() {
+    if (to_exists && update_existing) {
+      auto from_time = last_write_time_impl(from, &m_ec);
+      if (m_ec) return err.report(m_ec);
+      auto to_time = last_write_time_impl(to, &m_ec);
+      if (m_ec) return err.report(m_ec);
+      if (from_time < to_time) return false;
+      return true;
+    }
+    if (!to_exists || overwrite_existing) return true;
+    return err.report(std::errc::file_exists);
+  }();
+  if (!ShouldCopy) return false;
+
+  auto from_wpath = from.wstring();
+  auto to_wpath = to.wstring();
+  if (!detail::win32::CopyFileW(from_wpath.c_str(), to_wpath.c_str(), false)) {
+    return err.report(capture_errno());
+  }
+
+  return true;
+#else   // ASAP_WINDOWS
   FileDescriptor from_fd =
       FileDescriptor::CreateWithStatus(&from, m_ec, O_RDONLY | O_NONBLOCK);
   if (m_ec) return err.report(m_ec);
@@ -381,11 +451,6 @@ bool copy_file_impl(const path &from, const path &to, copy_options options,
     if (!m_ec) m_ec = make_error_code(std::errc::not_supported);
     return err.report(m_ec);
   }
-
-  const bool skip_existing = bool(copy_options::skip_existing & options);
-  const bool update_existing = bool(copy_options::update_existing & options);
-  const bool overwrite_existing =
-      bool(copy_options::overwrite_existing & options);
 
   StatT to_stat_path;
   file_status to_st = detail::posix::GetFileStatus(to, to_stat_path, &m_ec);
