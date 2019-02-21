@@ -20,12 +20,20 @@ const FileDescriptor::fd_type FileDescriptor::invalid_value =
     win32::invalid_handle_value;
 
 file_status FileDescriptor::RefreshStatus(std::error_code &ec) {
-  // FD must be open and good.
-  status_ = file_status{};
-
-  // TODO: implement status refresh for windows
-
-  return status_;
+  // Get the file attributes from its handle
+  FILE_ATTRIBUTE_TAG_INFO file_info;
+  if (!detail::win32::GetFileInformationByHandleEx(
+          fd_, FileAttributeTagInfo, &file_info, sizeof(file_info))) {
+    return detail::win32::ProcessStatusFailure(capture_errno(), name_, &ec);
+  } else {
+    return (file_info.FileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+               ? file_status(file_type::directory,
+                             detail::win32::MakePermissions(
+                                 name_, file_info.FileAttributes))
+               : file_status(file_type::regular,
+                             detail::win32::MakePermissions(
+                                 name_, file_info.FileAttributes));
+  }
 }
 
 }  // namespace detail
