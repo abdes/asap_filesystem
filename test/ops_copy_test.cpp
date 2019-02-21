@@ -61,7 +61,12 @@ TEST_CASE("Ops / copy / symlinks", "[common][filesystem][ops][copy]") {
   std::error_code ec;
 
   ec = bad_ec;
-  fs::create_symlink(".", from, ec);
+
+  fs::path tgt = testing::nonexistent_path();
+  fs::create_directory(tgt);
+  testing::scoped_file tgt_sf(tgt, testing::scoped_file::adopt_file);
+
+  fs::create_directory_symlink(tgt, from, ec);
   REQUIRE(!ec);
   REQUIRE(fs::exists(from));
 

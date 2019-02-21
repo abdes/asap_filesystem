@@ -514,14 +514,26 @@ bool copy_file_impl(const path &from, const path &to, copy_options options,
 
 void copy_symlink_impl(const path &existing_symlink, const path &new_symlink,
                        std::error_code *ec) {
-  const path real_path(read_symlink_impl(existing_symlink, ec));
-  if (ec && *ec) {
-    return;
-  }
-  // NOTE: proposal says you should detect if you should call
-  // create_symlink or create_directory_symlink. I don't think this
-  // is needed with POSIX
+  ErrorHandler<void> err("copy_symlink", ec, &existing_symlink, &new_symlink);
+
+  std::error_code m_ec;
+
+  const path real_path(read_symlink_impl(existing_symlink, &m_ec));
+  if (m_ec) return err.report(m_ec);
+
+    // NOTE: proposal says you should detect if you should call
+    // create_symlink or create_directory_symlink. Although this
+    // is not needed with POSIX it is needed with Windows.
+#if defined(ASAP_WINDOWS)
+  bool is_dir = is_directory(real_path, m_ec);
+  if (m_ec) return err.report(m_ec);
+  if (is_dir)
+    create_directory_symlink_impl(real_path, new_symlink, ec);
+  else
+    create_symlink_impl(real_path, new_symlink, ec);
+#else
   create_symlink_impl(real_path, new_symlink, ec);
+#endif
 }
 
 // -----------------------------------------------------------------------------

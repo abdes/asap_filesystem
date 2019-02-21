@@ -59,6 +59,7 @@ set(sources
   "ops_canonical_test.cpp"
   "ops_copy_test.cpp"
   "ops_copy_file_test.cpp"
+  "ops_copy_symlink_test.cpp"
   "ops_create_dir_test.cpp"
   "ops_create_symlink_test.cpp"
   "ops_current_path_test.cpp"
