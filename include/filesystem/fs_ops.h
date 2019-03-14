@@ -98,8 +98,6 @@ file_status status_impl(const path &p, std::error_code *ec = nullptr);
 ASAP_FILESYSTEM_API
 file_status symlink_status_impl(const path &p, std::error_code *ec = nullptr);
 ASAP_FILESYSTEM_API
-path system_complete_impl(const path &p, std::error_code *ec = nullptr);
-ASAP_FILESYSTEM_API
 path temp_directory_path_impl(std::error_code *ec = nullptr);
 ASAP_FILESYSTEM_API
 path weakly_canonical_impl(path const &p, std::error_code *ec = nullptr);
