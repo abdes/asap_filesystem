@@ -28,26 +28,25 @@
 #if __ENVIRONMENT_WATCH_OS_VERSION_MIN_REQUIRED__ >= 40000
 #define ASAP_FS_USE_UTIMENSAT 1
 #endif
-#endif // __ENVIRONMENT_.*_VERSION_MIN_REQUIRED__
+#endif  // __ENVIRONMENT_.*_VERSION_MIN_REQUIRED__
 
 #elif defined(ASAP_LINUX) && defined(ASAP_POSIX)
-#  define ASAP_FS_USE_UTIMENSAT 1
+#define ASAP_FS_USE_UTIMENSAT 1
 #endif
 
 #cmakedefine ASAP_HAVE_UTIME_H
 #if !ASAP_FS_USE_UTIMENSAT && defined(ASAP_HAVE_UTIME_H)
-#  define ASAP_FS_USE_UTIME 1
+#define ASAP_FS_USE_UTIME 1
 #endif
-
 
 // Which method to use to copy files
 #cmakedefine ASAP_HAVE_COPYFILE_H
 #if defined(ASAP_HAVE_COPYFILE_H)
-#  define ASAP_FS_USE_COPYFILE 1
+#define ASAP_FS_USE_COPYFILE 1
 #endif
 #if defined(ASAP_LINUX)
-#  include <linux/version.h>
-#  if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 33)
-#    define ASAP_FS_USE_SENDFILE 1
-#  endif
+#include <linux/version.h>
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 33)
+#define ASAP_FS_USE_SENDFILE 1
+#endif
 #endif

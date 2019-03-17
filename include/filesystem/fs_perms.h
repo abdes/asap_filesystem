@@ -12,6 +12,16 @@ namespace filesystem {
 //                               perms
 // -----------------------------------------------------------------------------
 
+/*!
+@brief This type represents file access permissions.
+
+perms satisfies the requirements
+of BitmaskType (which means the bitwise operators operator&, operator|,
+operator^, operator~, operator&=, operator|=, and operator^= are defined for
+this type).
+
+@see https://en.cppreference.com/w/cpp/filesystem/perms
+ */
 enum class perms : unsigned {
   none = 0,
   owner_read = 0400,
@@ -70,6 +80,16 @@ inline perms &operator^=(perms &lhs, perms rhs) noexcept {
 //                               perms_options
 // -----------------------------------------------------------------------------
 
+/*!
+@brief This type represents available options that control the behavior of the
+function permissions().
+
+perm_options satisfies the requirements of BitmaskType (which means the bitwise
+operators operator&, operator|, operator^, operator~, operator&=, operator|=,
+and operator^= are defined for this type).
+
+@see https://en.cppreference.com/w/cpp/filesystem/perm_options
+*/
 enum class perm_options : unsigned {
   replace = 0x1,
   add = 0x2,
@@ -111,7 +131,6 @@ inline perm_options &operator|=(perm_options &lhs, perm_options rhs) noexcept {
 inline perm_options &operator^=(perm_options &lhs, perm_options rhs) noexcept {
   return lhs = lhs ^ rhs;
 }
-
 
 }  // namespace filesystem
 }  // namespace asap

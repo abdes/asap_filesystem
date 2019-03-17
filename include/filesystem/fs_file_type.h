@@ -12,7 +12,13 @@ namespace filesystem {
 //                               file_type
 // -----------------------------------------------------------------------------
 
-	enum class file_type : signed char {
+///
+/// @brief Defines constants that indicate a type of a file or directory a path
+/// refers to. The value of the enumerators are distinct.
+///
+/// @see https://en.cppreference.com/w/cpp/filesystem/file_type
+///
+enum class file_type : signed char {
   none = 0,        // file status has not been evaluated yet, or an error
                    // occurred when evaluating it
   not_found = -1,  // file was not found (this is not considered an error)
@@ -26,7 +32,7 @@ namespace filesystem {
   unknown = 8      // the file exists but its type could not be determined
 #if defined(ASAP_WINDOWS)
   ,
-  reparse_file = 100
+  reparse_file = 100  // used for symlinks on windows
 #endif
 };
 

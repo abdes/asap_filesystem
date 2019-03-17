@@ -12,6 +12,17 @@ namespace filesystem {
 //                               copy_options
 // -----------------------------------------------------------------------------
 
+/*!
+@brief This type represents available options that control the behavior of
+the copy() and copy_file() function.
+
+copy_options satisfies the requirements of BitmaskType (which means the
+bitwise operators operator&, operator|, operator^, operator~, operator&=,
+operator|=, and operator^= are defined for this type). none represents the
+empty bitmask; every other enumerator represents a distinct bitmask element.
+
+@see https://en.cppreference.com/w/cpp/filesystem/copy_options
+*/
 enum class copy_options : unsigned short {
   none = 0,
   skip_existing = 1,

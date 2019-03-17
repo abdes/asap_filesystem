@@ -14,6 +14,11 @@ namespace filesystem {
 //                          class file_status
 // -----------------------------------------------------------------------------
 
+/*!
+@brief Stores information about the type and permissions of a file.
+
+@see https://en.cppreference.com/w/cpp/filesystem/file_status
+*/
 class ASAP_FILESYSTEM_API file_status {
  public:
   /// @name Constructors and destructor

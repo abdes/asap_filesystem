@@ -5,11 +5,11 @@
 
 #pragma once
 
+#include <algorithm>
 #include <iomanip>   // for std::quoted
 #include <iostream>  // for operator >> and operator <<
 #include <iterator>  // for std::iterator_traits
 #include <string>
-#include <algorithm>
 #include <type_traits>  // for std::enable_if
 
 #include <common/platform.h>

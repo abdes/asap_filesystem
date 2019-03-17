@@ -3,15 +3,6 @@
 //    (See accompanying file LICENSE or copy at
 //   https://opensource.org/licenses/BSD-3-Clause)
 
-//===------------------ directory_iterator.cpp ----------------------------===//
-//
-//                     The LLVM Compiler Infrastructure
-//
-// This file is dual licensed under the MIT and the University of Illinois Open
-// Source Licenses. See LICENSE.TXT for details.
-//
-//===----------------------------------------------------------------------===//
-
 #include <stack>
 
 #include <filesystem/filesystem.h>
@@ -19,6 +10,107 @@
 
 namespace asap {
 namespace filesystem {
+
+// -----------------------------------------------------------------------------
+//                           directory entry definitions
+// -----------------------------------------------------------------------------
+
+#ifndef ASAP_WINDOWS
+std::error_code directory_entry::DoRefresh_impl() noexcept {
+  cached_data_.Reset();
+  std::error_code failure_ec;
+
+  StatT full_st;
+  file_status st = detail::posix::GetLinkStatus(path_, full_st, &failure_ec);
+  if (!status_known(st)) {
+    cached_data_.Reset();
+    return failure_ec;
+  }
+
+  if (!asap::filesystem::exists(st) || !asap::filesystem::is_symlink(st)) {
+    cached_data_.cache_type = CacheType_::REFRESH_NON_SYMLINK;
+    cached_data_.type = st.type();
+    cached_data_.non_symlink_perms = st.permissions();
+  } else {  // we have a symlink
+    cached_data_.symlink_perms = st.permissions();
+    // Get the information about the linked entity.
+    // Ignore errors from stat, since we don't want errors regarding symlink
+    // resolution to be reported to the user.
+    std::error_code ignored_ec;
+    st = detail::posix::GetFileStatus(path_, full_st, &ignored_ec);
+
+    cached_data_.type = st.type();
+    cached_data_.non_symlink_perms = st.permissions();
+
+    // If we failed to resolve the link, then only partially populate the
+    // cache.
+    if (!status_known(st)) {
+      cached_data_.cache_type = CacheType_::REFRESH_SYMLINK_UNRESOLVED;
+      return std::error_code{};
+    }
+    // Otherwise, we resolved the link, potentially as not existing.
+    // That's OK.
+    cached_data_.cache_type = CacheType_::REFRESH_SYMLINK;
+  }
+
+  if (asap::filesystem::is_regular_file(st))
+    cached_data_.size = static_cast<uintmax_t>(full_st.st_size);
+
+  if (asap::filesystem::exists(st)) {
+    cached_data_.nlink = static_cast<uintmax_t>(full_st.st_nlink);
+
+    // Attempt to extract the mtime, and fail if it's not representable using
+    // file_time_type. For now we ignore the error, as we'll report it when
+    // the value is actually used.
+    std::error_code ignored_ec;
+    cached_data_.write_time =
+        detail::posix::ExtractLastWriteTime(path_, full_st, &ignored_ec);
+  }
+
+  return failure_ec;
+}
+#else
+std::error_code directory_entry::DoRefresh_impl() noexcept {
+  cached_data_.Reset();
+  std::error_code failure_ec;
+
+  file_status st = asap::filesystem::symlink_status(path_, failure_ec);
+  if (!status_known(st)) {
+    cached_data_.Reset();
+    return failure_ec;
+  }
+
+  if (!asap::filesystem::exists(st) || !asap::filesystem::is_symlink(st)) {
+    cached_data_.cache_type = CacheType_::REFRESH_NON_SYMLINK;
+    cached_data_.type = st.type();
+    cached_data_.non_symlink_perms = st.permissions();
+  } else {  // we have a symlink
+    cached_data_.symlink_perms = st.permissions();
+    // Get the information about the linked entity.
+    // Ignore errors from stat, since we don't want errors regarding
+    // symlink resolution to be reported to the user.
+    std::error_code ignored_ec;
+    st = asap::filesystem::status(path_, ignored_ec);
+
+    cached_data_.type = st.type();
+    cached_data_.non_symlink_perms = st.permissions();
+
+    // If we failed to resolve the link, then only partially populate the
+    // cache.
+    if (!status_known(st)) {
+      cached_data_.cache_type = CacheType_::REFRESH_SYMLINK_UNRESOLVED;
+      return std::error_code{};
+    }
+    cached_data_.cache_type = CacheType_::REFRESH_SYMLINK;
+  }
+
+  // FIXME: This is currently broken, and the implementation only a
+  // placeholder. We need to cache last_write_time, file_size, and
+  // hard_link_count here before the implementation actually works.
+
+  return failure_ec;
+}
+#endif
 
 namespace detail {
 namespace {
@@ -67,7 +159,17 @@ std::pair<std::string, file_type> posix_readdir(DIR *dir_stream,
 file_type get_file_type(const WIN32_FIND_DATAW &data) {
   auto attrs = data.dwFileAttributes;
   if (attrs & FILE_ATTRIBUTE_DIRECTORY) return file_type::directory;
-  if (attrs & FILE_ATTRIBUTE_REPARSE_POINT) return file_type::reparse_file;
+  if (attrs & FILE_ATTRIBUTE_REPARSE_POINT) {
+    auto reparseTag = data.dwReserved0;
+    return (reparseTag == IO_REPARSE_TAG_SYMLINK
+            // Directory junctions are very similar to symlinks, but have some
+            // performance and other advantages over symlinks. They can be
+            // created from the command line with "mklink /j junction-name
+            // target-path".
+            || reparseTag == IO_REPARSE_TAG_MOUNT_POINT)
+               ? file_type::symlink
+               : file_type::reparse_file;
+  }
   return file_type::regular;
 }
 

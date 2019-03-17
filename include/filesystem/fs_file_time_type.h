@@ -14,7 +14,11 @@ namespace filesystem {
 //                               file_time_type
 // -----------------------------------------------------------------------------
 
+/*!
+ @brief Represents file time.
 
+ @see https://en.cppreference.com/w/cpp/filesystem/file_time_type
+ */
 using file_time_type = std::chrono::system_clock::time_point;
 
 }  // namespace filesystem

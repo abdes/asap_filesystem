@@ -1,7 +1,3 @@
-#include <utility>
-
-#include <utility>
-
 //        Copyright The Authors 2018.
 //    Distributed under the 3-Clause BSD License.
 //    (See accompanying file LICENSE or copy at
@@ -16,8 +12,6 @@
 #include <filesystem/asap_filesystem_api.h>
 #include <filesystem/fs_path.h>
 
-#include <iostream>
-
 namespace asap {
 namespace filesystem {
 
@@ -25,11 +19,26 @@ namespace filesystem {
 //                          class filesystem_error
 // -----------------------------------------------------------------------------
 
+/*
+MSVC will issue a C4275 warning and erors will follow due to the fact that
+filesystem_error declares a DLL interface but inherits from a class that does
+not declare a DLL interface (in this case std::system_error). We need the DLL
+interface for filesystem_error and this works fine on non MSVC compilers.
+
+For MSVC, we don't need to explicitly declare the DLL interface for this
+class as it is inheriting from a standard library class.
+*/
+/*!
+@brief Defines an exception object that is thrown on failure by the throwing
+overloads of the functions in the filesystem library.
+
+@see https://en.cppreference.com/w/cpp/filesystem/filesystem_error
+*/
 class
 #if !ASAP_COMPILER_IS_MSVC
-ASAP_FILESYSTEM_API
+    ASAP_FILESYSTEM_API
 #endif
-filesystem_error : public std::system_error {
+        filesystem_error : public std::system_error {
  public:
   filesystem_error(const std::string& what, std::error_code ec)
       : std::system_error(ec, what),

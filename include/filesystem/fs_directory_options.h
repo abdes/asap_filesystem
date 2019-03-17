@@ -12,6 +12,17 @@ namespace filesystem {
 //                               directory_options
 // -----------------------------------------------------------------------------
 
+/*!
+@brief This type represents available options that control the behavior of the
+directory_iterator and recursive_directory_iterator.
+
+directory_options satisfies the requirements of BitmaskType (which means the
+bitwise operators operator&, operator|, operator^, operator~, operator&=,
+operator|=, and operator^= are defined for this type). none represents the empty
+bitmask; every other enumerator represents a distinct bitmask element.
+
+@see https://en.cppreference.com/w/cpp/filesystem/directory_options
+*/
 enum class directory_options : unsigned char {
   none = 0,
   follow_directory_symlink = 1,
@@ -58,7 +69,6 @@ inline directory_options &operator^=(directory_options &lhs,
                                      directory_options rhs) noexcept {
   return lhs = lhs ^ rhs;
 }
-
 
 }  // namespace filesystem
 }  // namespace asap

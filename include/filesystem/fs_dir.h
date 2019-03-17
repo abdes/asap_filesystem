@@ -1,4 +1,7 @@
-
+//        Copyright The Authors 8.
+//    Distributed under the 3-Clause BSD License.
+//    (See accompanying file LICENSE or copy at
+//   https://opensource.org/licenses/BSD-3-Clause)
 
 #pragma once
 
@@ -13,6 +16,19 @@ namespace filesystem {
 
 class DirectoryStream;
 
+// -----------------------------------------------------------------------------
+//                               directory_entry
+// -----------------------------------------------------------------------------
+
+/*!
+@brief Represents a directory entry.
+
+The object stores a path as a member and may also store additional file
+attributes (hard link count, status, symlink status file size, and last write
+time) during directory iteration.
+
+@see https://en.cppreference.com/w/cpp/filesystem/directory_entry
+*/
 class ASAP_FILESYSTEM_API directory_entry {
   typedef asap::filesystem::path path_type;
 
@@ -22,12 +38,12 @@ class ASAP_FILESYSTEM_API directory_entry {
   directory_entry(directory_entry const &) = default;
   directory_entry(directory_entry &&) noexcept = default;
 
-  explicit directory_entry(path_type const &__p) : path_(__p) {
+  explicit directory_entry(path_type const &p) : path_(p) {
     std::error_code ec;
     DoRefresh(&ec);
   }
 
-  directory_entry(path_type const &__p, std::error_code &ec) : path_(__p) {
+  directory_entry(path_type const &p, std::error_code &ec) : path_(p) {
     DoRefresh(&ec);
   }
 
@@ -36,25 +52,23 @@ class ASAP_FILESYSTEM_API directory_entry {
   directory_entry &operator=(directory_entry const &) = default;
   directory_entry &operator=(directory_entry &&) noexcept = default;
 
-  void assign(path_type const &__p) {
-    path_ = __p;
-    std::error_code ec;
+  void assign(path_type const &p) {
+    path_ = p;
+    DoRefresh();
+  }
+
+  void assign(path_type const &p, std::error_code &ec) {
+    path_ = p;
     DoRefresh(&ec);
   }
 
-  void assign(path_type const &__p, std::error_code &ec) {
-    path_ = __p;
-    DoRefresh(&ec);
+  void replace_filename(path_type const &p) {
+    path_.replace_filename(p);
+    DoRefresh();
   }
 
-  void replace_filename(path_type const &__p) {
-    path_.replace_filename(__p);
-    std::error_code ec;
-    DoRefresh(&ec);
-  }
-
-  void replace_filename(path_type const &__p, std::error_code &ec) {
-    path_ = path_.parent_path() / __p;
+  void replace_filename(path_type const &p, std::error_code &ec) {
+    path_.replace_filename(p);
     DoRefresh(&ec);
   }
 
@@ -178,28 +192,28 @@ class ASAP_FILESYSTEM_API directory_entry {
     return GetSymLinkStatus(&ec);
   }
 
-  bool operator<(directory_entry const &__rhs) const noexcept {
-    return path_ < __rhs.path_;
+  bool operator<(directory_entry const &rhs) const noexcept {
+    return path_ < rhs.path_;
   }
 
-  bool operator==(directory_entry const &__rhs) const noexcept {
-    return path_ == __rhs.path_;
+  bool operator==(directory_entry const &rhs) const noexcept {
+    return path_ == rhs.path_;
   }
 
-  bool operator!=(directory_entry const &__rhs) const noexcept {
-    return path_ != __rhs.path_;
+  bool operator!=(directory_entry const &rhs) const noexcept {
+    return path_ != rhs.path_;
   }
 
-  bool operator<=(directory_entry const &__rhs) const noexcept {
-    return path_ <= __rhs.path_;
+  bool operator<=(directory_entry const &rhs) const noexcept {
+    return path_ <= rhs.path_;
   }
 
-  bool operator>(directory_entry const &__rhs) const noexcept {
-    return path_ > __rhs.path_;
+  bool operator>(directory_entry const &rhs) const noexcept {
+    return path_ > rhs.path_;
   }
 
-  bool operator>=(directory_entry const &__rhs) const noexcept {
-    return path_ >= __rhs.path_;
+  bool operator>=(directory_entry const &rhs) const noexcept {
+    return path_ >= rhs.path_;
   }
 
  private:
@@ -221,10 +235,10 @@ class ASAP_FILESYSTEM_API directory_entry {
     uintmax_t       size;              // Total size, in bytes
     uintmax_t       nlink;             // Number of hard links
     file_time_type  write_time;        // Time of last modification
-    perms           symlink_perms;     // Symbolic link permissions
-    perms           non_symlink_perms; //
-    file_type       type;              //
-    CacheType_      cache_type;        //
+    perms           symlink_perms;
+    perms           non_symlink_perms;
+    file_type       type;
+    CacheType_      cache_type;
     // clang-format on
 
     CachedData_() noexcept { Reset(); }
@@ -254,9 +268,9 @@ class ASAP_FILESYSTEM_API directory_entry {
     return data;
   }
 
-  void AssignIterEntry(path_type &&__p, CachedData_ __dt) {
-    path_ = std::move(__p);
-    cached_data_ = __dt;
+  void AssignIterEntry(path_type &&p, CachedData_ data) {
+    path_ = std::move(p);
+    cached_data_ = data;
   }
 
   std::error_code DoRefresh_impl() noexcept;
@@ -272,18 +286,18 @@ class ASAP_FILESYSTEM_API directory_entry {
     }
   }
 
-  void HandleError(const char *__msg, std::error_code *__dest_ec,
-                   std::error_code const &ec, bool __allow_dne = false) const {
-    if (__dest_ec) {
-      *__dest_ec = ec;
+  void HandleError(const char *msg, std::error_code *dest_ec,
+                   std::error_code const &ec, bool allow_dne = false) const {
+    if (dest_ec) {
+      *dest_ec = ec;
       return;
     }
-    if (ec && (!__allow_dne || !IsDoesNotExistError(ec)))
-      throw filesystem_error(__msg, path_, ec);
+    if (ec && (!allow_dne || !IsDoesNotExistError(ec)))
+      throw filesystem_error(msg, path_, ec);
   }
 
   void DoRefresh(std::error_code *ec = nullptr) {
-    HandleError("in directory_entry::refresh", ec, DoRefresh_impl(),
+    HandleError("in directory_entry::DoRefresh", ec, DoRefresh_impl(),
                 /*allow_dne*/ true);
   }
 
@@ -300,8 +314,8 @@ class ASAP_FILESYSTEM_API directory_entry {
 
       case CacheType_::ITER_NON_SYMLINK:
       case CacheType_::REFRESH_NON_SYMLINK:
-        file_status __st(cached_data_.type);
-        if (ec && !asap::filesystem::exists(__st))
+        file_status st(cached_data_.type);
+        if (ec && !asap::filesystem::exists(st))
           *ec = make_error_code(std::errc::no_such_file_or_directory);
         else if (ec)
           ec->clear();
@@ -320,8 +334,8 @@ class ASAP_FILESYSTEM_API directory_entry {
       case CacheType_::ITER_NON_SYMLINK:
       case CacheType_::REFRESH_NON_SYMLINK:
       case CacheType_::REFRESH_SYMLINK: {
-        file_status __st(cached_data_.type);
-        if (ec && !asap::filesystem::exists(__st))
+        file_status st(cached_data_.type);
+        if (ec && !asap::filesystem::exists(st))
           *ec = make_error_code(std::errc::no_such_file_or_directory);
         else if (ec)
           ec->clear();
@@ -374,16 +388,16 @@ class ASAP_FILESYSTEM_API directory_entry {
 
       case CacheType_::REFRESH_SYMLINK:
       case CacheType_::REFRESH_NON_SYMLINK: {
-        std::error_code __m_ec;
-        file_status __st(GetFileType(&__m_ec));
-        HandleError("in directory_entry::file_size", ec, __m_ec);
-        if (asap::filesystem::exists(__st) &&
-            !asap::filesystem::is_regular_file(__st)) {
-          std::errc __err_kind = asap::filesystem::is_directory(__st)
-                                     ? std::errc::is_a_directory
-                                     : std::errc::not_supported;
-          HandleError("in directory_entry::file_size", ec,
-                      make_error_code(__err_kind));
+        std::error_code m_ec;
+        file_status st(GetFileType(&m_ec));
+        HandleError("in directory_entry::GetSize", ec, m_ec);
+        if (asap::filesystem::exists(st) &&
+            !asap::filesystem::is_regular_file(st)) {
+          std::errc err_kind = asap::filesystem::is_directory(st)
+                                   ? std::errc::is_a_directory
+                                   : std::errc::not_supported;
+          HandleError("in directory_entry::GetSize", ec,
+                      make_error_code(err_kind));
         }
         return cached_data_.size;
       }
@@ -401,9 +415,9 @@ class ASAP_FILESYSTEM_API directory_entry {
 
       case CacheType_::REFRESH_SYMLINK:
       case CacheType_::REFRESH_NON_SYMLINK: {
-        std::error_code __m_ec;
-        (void)GetFileType(&__m_ec);
-        HandleError("in directory_entry::hard_link_count", ec, __m_ec);
+        std::error_code m_ec;
+        (void)GetFileType(&m_ec);
+        HandleError("in directory_entry::GetHardLinkCount", ec, m_ec);
         return cached_data_.nlink;
       }
     }
@@ -420,12 +434,12 @@ class ASAP_FILESYSTEM_API directory_entry {
 
       case CacheType_::REFRESH_SYMLINK:
       case CacheType_::REFRESH_NON_SYMLINK: {
-        std::error_code __m_ec;
-        file_status __st(GetFileType(&__m_ec));
-        HandleError("in directory_entry::last_write_time", ec, __m_ec);
-        if (asap::filesystem::exists(__st) &&
+        std::error_code m_ec;
+        file_status st(GetFileType(&m_ec));
+        HandleError("in directory_entry::GetLastWriteTime", ec, m_ec);
+        if (asap::filesystem::exists(st) &&
             cached_data_.write_time == file_time_type::min())
-          HandleError("in directory_entry::last_write_time", ec,
+          HandleError("in directory_entry::GetLastWriteTime", ec,
                       make_error_code(std::errc::value_too_large));
         return cached_data_.write_time;
       }
@@ -452,6 +466,27 @@ class DirectoryEntryProxy_ {
   directory_entry entry_;
 };
 
+// -----------------------------------------------------------------------------
+//                               directory_iterator
+// -----------------------------------------------------------------------------
+
+/*!
+@brief A LegacyInputIterator that iterates over the directory_entry elements of
+a directory (but does not visit the subdirectories). The iteration order is
+unspecified, except that each directory entry is visited only once. The special
+pathnames dot and dot-dot are skipped.
+
+If the directory_iterator reports an error or is advanced past the last
+directory entry, it becomes equal to the default-constructed iterator, also
+known as the end iterator. Two end iterators are always equal, dereferencing or
+incrementing the end iterator is undefined behavior.
+
+If a file or a directory is deleted or added to the directory tree after the
+directory iterator has been created, it is unspecified whether the change would
+be observed through the iterator.
+
+@see https://en.cppreference.com/w/cpp/filesystem/directory_iterator
+*/
 class ASAP_FILESYSTEM_API directory_iterator {
  public:
   typedef directory_entry value_type;
@@ -464,18 +499,17 @@ class ASAP_FILESYSTEM_API directory_iterator {
   // ctor & dtor
   directory_iterator() noexcept = default;
 
-  explicit directory_iterator(const path &__p)
-      : directory_iterator(__p, nullptr) {}
+  explicit directory_iterator(const path &p) : directory_iterator(p, nullptr) {}
 
-  directory_iterator(const path &__p, directory_options __opts)
-      : directory_iterator(__p, nullptr, __opts) {}
+  directory_iterator(const path &p, directory_options __opts)
+      : directory_iterator(p, nullptr, __opts) {}
 
-  directory_iterator(const path &__p, std::error_code &ec)
-      : directory_iterator(__p, &ec) {}
+  directory_iterator(const path &p, std::error_code &ec)
+      : directory_iterator(p, &ec) {}
 
-  directory_iterator(const path &__p, directory_options __opts,
+  directory_iterator(const path &p, directory_options __opts,
                      std::error_code &ec)
-      : directory_iterator(__p, &ec, __opts) {}
+      : directory_iterator(p, &ec, __opts) {}
 
   directory_iterator(const directory_iterator &) = default;
   directory_iterator(directory_iterator &&) = default;
@@ -545,6 +579,35 @@ inline directory_iterator end(const directory_iterator &) noexcept {
   return directory_iterator();
 }
 
+// -----------------------------------------------------------------------------
+//                        recursive_directory_iterator
+// -----------------------------------------------------------------------------
+
+/*!
+@brief A LegacyInputIterator that iterates over the directory_entry elements of
+a directory, and, recursively, over the entries of all subdirectories. The
+iteration order is unspecified, except that each directory entry is visited only
+once.
+
+By default, symlinks are not followed, but this can be enabled by specifying the
+directory option follow_directory_symlink at construction time.
+
+The special pathnames dot and dot-dot are skipped.
+
+If the recursive_directory_iterator reports an error or is advanced past the
+last directory entry of the top-level directory, it becomes equal to the
+default-constructed iterator, also known as the end iterator. Two end iterators
+are always equal, dereferencing or incrementing the end iterator is undefined
+behavior.
+
+If a file or a directory is deleted or added to the directory tree after the
+recursive directory iterator has been created, it is unspecified whether the
+change would be observed through the iterator.
+
+If the directory structure contains cycles, the end iterator may be unreachable.
+
+@see https://en.cppreference.com/w/cpp/filesystem/recursive_directory_iterator
+*/
 class ASAP_FILESYSTEM_API recursive_directory_iterator {
  public:
   using value_type = directory_entry;
@@ -559,15 +622,15 @@ class ASAP_FILESYSTEM_API recursive_directory_iterator {
   recursive_directory_iterator() noexcept : recursion_(false) {}
 
   explicit recursive_directory_iterator(
-      const path &__p, directory_options __xoptions = directory_options::none)
-      : recursive_directory_iterator(__p, __xoptions, nullptr) {}
+      const path &p, directory_options __xoptions = directory_options::none)
+      : recursive_directory_iterator(p, __xoptions, nullptr) {}
 
-  recursive_directory_iterator(const path &__p, directory_options __xoptions,
+  recursive_directory_iterator(const path &p, directory_options __xoptions,
                                std::error_code &ec)
-      : recursive_directory_iterator(__p, __xoptions, &ec) {}
+      : recursive_directory_iterator(p, __xoptions, &ec) {}
 
-  recursive_directory_iterator(const path &__p, std::error_code &ec)
-      : recursive_directory_iterator(__p, directory_options::none, &ec) {}
+  recursive_directory_iterator(const path &p, std::error_code &ec)
+      : recursive_directory_iterator(p, directory_options::none, &ec) {}
 
   recursive_directory_iterator(const recursive_directory_iterator &) = default;
   recursive_directory_iterator(recursive_directory_iterator &&) = default;
@@ -594,9 +657,9 @@ class ASAP_FILESYSTEM_API recursive_directory_iterator {
   recursive_directory_iterator &operator++() { return do_increment(); }
 
   DirectoryEntryProxy_ operator++(int) {
-    DirectoryEntryProxy_ __p(**this);
+    DirectoryEntryProxy_ p(**this);
     do_increment();
-    return __p;
+    return p;
   }
 
   recursive_directory_iterator &increment(std::error_code &ec) {
@@ -615,7 +678,7 @@ class ASAP_FILESYSTEM_API recursive_directory_iterator {
   void disable_recursion_pending() { recursion_ = false; }
 
  private:
-  recursive_directory_iterator(const path &__p, directory_options __opt,
+  recursive_directory_iterator(const path &p, directory_options __opt,
                                std::error_code *ec);
 
   const directory_entry &dereference() const;
