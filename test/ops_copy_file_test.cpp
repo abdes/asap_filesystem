@@ -34,8 +34,8 @@ TEST_CASE("Ops / copy_file / not regular file",
   std::error_code ec;
 
   auto from = testing::nonexistent_path();
+  testing::scoped_file sfrom(from, testing::scoped_file::adopt_file);
   fs::create_directory(from);
-  testing::scoped_file from_d(from, testing::scoped_file::adopt_file);
   fs::file_status st = fs::status(from, ec);
   REQUIRE(st.type() != fs::file_type::regular);
 
@@ -52,7 +52,9 @@ TEST_CASE("Ops / copy_file / empty", "[common][filesystem][ops][copy_file]") {
   std::error_code ec;
 
   auto from = testing::nonexistent_path();
+  testing::scoped_file sfrom(from, testing::scoped_file::adopt_file);
   auto to = testing::nonexistent_path();
+  testing::scoped_file sto(to, testing::scoped_file::adopt_file);
 
   // test empty file
   std::ofstream{from};
@@ -71,9 +73,6 @@ TEST_CASE("Ops / copy_file / empty", "[common][filesystem][ops][copy_file]") {
   REQUIRE(!ec);
   REQUIRE(exists(to));
   REQUIRE(file_size(to) == 0);
-
-  remove(to);
-  remove(from);
 }
 
 
@@ -81,7 +80,9 @@ TEST_CASE("Ops / copy_file", "[common][filesystem][ops][copy_file]") {
   std::error_code ec;
 
   auto from = testing::nonexistent_path();
+  testing::scoped_file sfrom(from, testing::scoped_file::adopt_file);
   auto to = testing::nonexistent_path();
+  testing::scoped_file sto(to, testing::scoped_file::adopt_file);
 
   std::ofstream{from} << "Hello, filesystem!";
   REQUIRE(file_size(from) != 0);
@@ -99,7 +100,4 @@ TEST_CASE("Ops / copy_file", "[common][filesystem][ops][copy_file]") {
   REQUIRE(b);
   REQUIRE(exists(to));
   REQUIRE(file_size(to) == file_size(from));
-
-  remove(to);
-  remove(from);
 }

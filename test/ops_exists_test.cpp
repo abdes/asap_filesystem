@@ -59,7 +59,7 @@ TEST_CASE("Ops / exists / not (absolute)",
 
   std::error_code ec = std::make_error_code(std::errc::invalid_argument);
   REQUIRE(!exists(abs, ec));
-  REQUIRE(!ec);  // DR 2725
+  REQUIRE(!ec);
 }
 
 TEST_CASE("Ops / exists / permissions", "[common][filesystem][ops][exists]") {
@@ -67,6 +67,7 @@ TEST_CASE("Ops / exists / permissions", "[common][filesystem][ops][exists]") {
   using fs::perms;
   path p = testing::nonexistent_path();
   create_directory(p);
+  testing::scoped_file sp(p, testing::scoped_file::adopt_file);
   permissions(p, perms::all, perm_options::remove);
 
   auto unr = p / "unreachable";
@@ -79,7 +80,4 @@ TEST_CASE("Ops / exists / permissions", "[common][filesystem][ops][exists]") {
       exists(unr), fs::filesystem_error,
       testing::FilesystemErrorDetail(
           std::make_error_code(std::errc::permission_denied), unr));
-
-  permissions(p, perms::owner_all);
-  remove(p);
 }

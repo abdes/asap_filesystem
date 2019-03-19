@@ -77,6 +77,7 @@ TEST_CASE("Ops / temp_dir / TMP", "[common][filesystem][ops][temp_dir]") {
 TEST_CASE("Ops / temp_dir / permission",
           "[common][filesystem][ops][temp_dir]") {
   auto p = testing::nonexistent_path();
+  testing::scoped_file sp(p, testing::scoped_file::adopt_file);
   create_directories(p / "tmp");
   permissions(p, fs::perms::none);
 #if defined(ASAP_WINDOWS)
@@ -100,9 +101,6 @@ TEST_CASE("Ops / temp_dir / permission",
     ec2 = e.code();
   }
   REQUIRE(ec2 == ec);
-
-  permissions(p, fs::perms::owner_all, ec);
-  remove_all(p, ec);
 }
 
 TEST_CASE("Ops / temp_dir / not a directory",

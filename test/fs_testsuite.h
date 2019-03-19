@@ -149,13 +149,15 @@ struct scoped_file {
     if (!path_.empty()) {
       std::error_code ec;
       fs::permissions(path_, fs::perms::owner_all, ec);
-      fs::remove(path_);
+      if (fs::is_directory(path_))
+        fs::remove_all(path_, ec);
+      else
+        fs::remove(path_, ec);
     }
   }
 
   path path_{};
 };
-
 
 #if defined(ASAP_WINDOWS)
 // Symbolic links without privilege escalation require developer mode and

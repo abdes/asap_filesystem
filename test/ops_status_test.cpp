@@ -37,28 +37,28 @@ TEST_CASE("Ops / status / non-existing", "[common][filesystem][ops][status]") {
 
 TEST_CASE("Ops / status / directory", "[common][filesystem][ops][status]") {
   fs::path dir = testing::nonexistent_path();
+  testing::scoped_file sdir(dir, testing::scoped_file::adopt_file);
   fs::create_directory(dir);
-  testing::scoped_file d(dir, testing::scoped_file::adopt_file);
 
   std::error_code ec;
-  fs::file_status st = fs::status(d.path_, ec);
+  fs::file_status st = fs::status(dir, ec);
   REQUIRE(!ec);
   REQUIRE(st.type() == fs::file_type::directory);
 
-  fs::file_status st2 = fs::status(d.path_);
+  fs::file_status st2 = fs::status(dir);
   REQUIRE(st2.type() == fs::file_type::directory);
 }
 
 TEST_CASE("Ops / status / file", "[common][filesystem][ops][status]") {
   fs::path file = testing::nonexistent_path();
-  testing::scoped_file f(file);
+  testing::scoped_file sfile(file);
 
   std::error_code ec;
-  fs::file_status st = fs::status(f.path_, ec);
+  fs::file_status st = fs::status(file, ec);
   REQUIRE(!ec);
   REQUIRE(st.type() == fs::file_type::regular);
 
-  st = fs::status(f.path_, ec);
+  st = fs::status(file, ec);
   REQUIRE(!ec);
   REQUIRE(st.type() == fs::file_type::regular);
 }
@@ -72,35 +72,32 @@ TEST_CASE("Ops / status / symlink", "[common][filesystem][ops][status]") {
   std::error_code ec;
 
   fs::path tgt = testing::nonexistent_path();
+  testing::scoped_file stgt(tgt, testing::scoped_file::adopt_file);
   fs::create_directory(tgt);
-  testing::scoped_file d(tgt, testing::scoped_file::adopt_file);
-  auto symlink = testing::nonexistent_path();
-  create_directory_symlink(tgt, symlink, ec);  // create the symlink once
+  auto lnk = testing::nonexistent_path();
+  testing::scoped_file slnk(lnk, testing::scoped_file::adopt_file);
+  create_directory_symlink(tgt, lnk, ec);  // create the symlink once
   REQUIRE(!ec);
-  REQUIRE(exists(symlink));
-  REQUIRE(is_symlink(symlink));
+  REQUIRE(exists(lnk));
+  REQUIRE(is_symlink(lnk));
 
   ec = bad_ec;
-  fs::file_status st = fs::status(symlink, ec);
+  fs::file_status st = fs::status(lnk, ec);
   REQUIRE(!ec);
   REQUIRE(st.type() == fs::file_type::directory);
-  remove(symlink);
 }
 
 TEST_CASE("Ops / status / no permission", "[common][filesystem][ops][status]") {
   fs::path dir = testing::nonexistent_path();
   fs::create_directory(dir);
-  testing::scoped_file d(dir, testing::scoped_file::adopt_file);
-  testing::scoped_file f(dir / "file");
+  testing::scoped_file sdir(dir, testing::scoped_file::adopt_file);
   fs::permissions(dir, fs::perms::none);
 
   std::error_code ec;
-  fs::file_status st = fs::status(f.path_, ec);
+  fs::file_status st = fs::status(dir, ec);
   REQUIRE(ec.value() == (int)std::errc::permission_denied);
   REQUIRE(st.type() == fs::file_type::none);
 
-  REQUIRE_THROWS_MATCHES(fs::status(f.path_), fs::filesystem_error,
-                         testing::FilesystemErrorDetail(ec, f.path_));
-
-  fs::permissions(dir, fs::perms::owner_all, ec);
+  REQUIRE_THROWS_MATCHES(fs::status(dir), fs::filesystem_error,
+                         testing::FilesystemErrorDetail(ec, dir));
 }

@@ -86,6 +86,4 @@ TEST_CASE("Ops / symlink_status / permissions", "[common][filesystem][ops][symli
 
   fs::file_status st2 = symlink_status(link);
   REQUIRE(st2.type() == fs::file_type::symlink);
-
-  fs::permissions(dir, fs::perms::owner_all, ec);
 }

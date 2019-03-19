@@ -57,14 +57,16 @@ TEST_CASE("Ops / copy / symlinks", "[common][filesystem][ops][copy]") {
 
   const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
   auto from = testing::nonexistent_path();
+  testing::scoped_file sfrom(from, testing::scoped_file::adopt_file);
   auto to = testing::nonexistent_path();
+  testing::scoped_file sto(to, testing::scoped_file::adopt_file);
   std::error_code ec;
 
   ec = bad_ec;
 
   fs::path tgt = testing::nonexistent_path();
-  fs::create_directory(tgt);
   testing::scoped_file tgt_sf(tgt, testing::scoped_file::adopt_file);
+  fs::create_directory(tgt);
 
   fs::create_directory_symlink(tgt, from, ec);
   REQUIRE(!ec);
@@ -96,14 +98,13 @@ TEST_CASE("Ops / copy / symlinks", "[common][filesystem][ops][copy]") {
   ec.clear();
   fs::copy(from, to, fs::copy_options::copy_symlinks, ec);
   REQUIRE(ec);
-
-  remove(from, ec);
-  remove(to, ec);
 }
 
 TEST_CASE("Ops / copy / empty file", "[common][filesystem][ops][copy]") {
   auto from = testing::nonexistent_path();
+  testing::scoped_file sfrom(from, testing::scoped_file::adopt_file);
   auto to = testing::nonexistent_path();
+  testing::scoped_file sto(to, testing::scoped_file::adopt_file);
 
   // test empty file
   std::ofstream{from};
@@ -112,14 +113,13 @@ TEST_CASE("Ops / copy / empty file", "[common][filesystem][ops][copy]") {
   fs::copy(from, to);
   REQUIRE(fs::exists(to));
   REQUIRE(fs::file_size(to) == 0);
-
-  remove(from);
-  remove(to);
 }
 
 TEST_CASE("Ops / copy / regular file", "[common][filesystem][ops][copy]") {
   auto from = testing::nonexistent_path();
+  testing::scoped_file sfrom(from, testing::scoped_file::adopt_file);
   auto to = testing::nonexistent_path();
+  testing::scoped_file sto(to, testing::scoped_file::adopt_file);
 
   std::ofstream{from} << "Hello, filesystem!";
   REQUIRE(fs::file_size(from) != 0);
@@ -128,16 +128,16 @@ TEST_CASE("Ops / copy / regular file", "[common][filesystem][ops][copy]") {
   fs::copy(from, to);
   REQUIRE(fs::exists(to));
   REQUIRE(fs::file_size(to) == fs::file_size(from));
-
-  remove(from);
-  remove(to);
 }
 
 TEST_CASE("Ops / copy / directory", "[common][filesystem][ops][copy]") {
   const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
-  auto from = testing::nonexistent_path();
-  auto to = testing::nonexistent_path();
   std::error_code ec;
+
+  auto from = testing::nonexistent_path();
+  testing::scoped_file sfrom(from, testing::scoped_file::adopt_file);
+  auto to = testing::nonexistent_path();
+  testing::scoped_file sto(to, testing::scoped_file::adopt_file);
 
   create_directories(from / "a/b/c");
 
@@ -171,11 +171,6 @@ TEST_CASE("Ops / copy / directory", "[common][filesystem][ops][copy]") {
   REQUIRE(file_size(from / "a/b/f2") == file_size(to / "a/b/f2"));
   REQUIRE(is_directory(to / "a/b/c"));
   REQUIRE(is_empty(to / "a/b/c"));
-
-  f1.path_.clear();
-  f2.path_.clear();
-  remove_all(from, ec);
-  remove_all(to, ec);
 }
 
 TEST_CASE("Ops / copy / no-op", "[common][filesystem][ops][copy]") {
@@ -183,5 +178,5 @@ TEST_CASE("Ops / copy / no-op", "[common][filesystem][ops][copy]") {
   std::error_code ec = std::make_error_code(std::errc::invalid_argument);
 
   fs::copy("/", to, fs::copy_options::copy_symlinks, ec);
-  REQUIRE(!ec);  // Previous value should be cleared (LWG 2683)
+  REQUIRE(!ec);  // Previous value should be cleared
 }

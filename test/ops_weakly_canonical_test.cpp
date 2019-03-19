@@ -22,6 +22,7 @@ TEST_CASE("Ops / weakly_canonical",
 #endif
 
   auto dir = testing::nonexistent_path();
+  testing::scoped_file sdir(dir, testing::scoped_file::adopt_file);
   fs::create_directory(dir);
   const auto dirc = canonical(dir);
   fs::path foo = dir / "foo", bar = dir / "bar";
@@ -57,6 +58,4 @@ TEST_CASE("Ops / weakly_canonical",
                            ec);
   REQUIRE(!ec);
   REQUIRE(p == dirc / "bar/baz");
-
-  fs::remove_all(dir, ec);
 }

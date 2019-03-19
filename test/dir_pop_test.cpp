@@ -26,6 +26,7 @@ TEST_CASE("Dir / dir_pop / simple", "[common][filesystem][ops][dir_pop]") {
   const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
   std::error_code ec;
   const auto p = testing::nonexistent_path();
+  testing::scoped_file sp(p, testing::scoped_file::adopt_file);
   create_directories(p / "d1/d2/d3");
   for (int i = 0; i < 3; ++i) {
     CAPTURE(i);
@@ -46,13 +47,13 @@ TEST_CASE("Dir / dir_pop / simple", "[common][filesystem][ops][dir_pop]") {
     dir.pop();
     REQUIRE(dir == end(dir));
   }
-  remove_all(p, ec);
 }
 
 TEST_CASE("Dir / dir_pop / complex", "[common][filesystem][ops][dir_pop]") {
   const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
   std::error_code ec;
   const auto p = testing::nonexistent_path();
+  testing::scoped_file sp(p, testing::scoped_file::adopt_file);
   create_directories(p / "d1/d2/d3");
   create_directories(p / "d1/d2/e3");
   create_directories(p / "d1/e2/d3");
@@ -74,5 +75,4 @@ TEST_CASE("Dir / dir_pop / complex", "[common][filesystem][ops][dir_pop]") {
     dir.pop();
     if (dir != end(dir)) REQUIRE(dir.depth() == (i - 1));
   }
-  remove_all(p, ec);
 }

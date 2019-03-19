@@ -80,7 +80,7 @@ set(sources
   "ops_weakly_canonical_test.cpp"
   # directory iterators
   "dir_iterator_test.cpp"
-  "dir_reverse_iterator_test.cpp"
+  "dir_recursive_iterator.cpp"
   "dir_pop_test.cpp"
   "main.cpp"
   ${public_headers}

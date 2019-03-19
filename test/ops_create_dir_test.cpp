@@ -33,6 +33,8 @@ TEST_CASE("Ops / create_directories",
 
   // Test non-existent path.
   const auto p = testing::nonexistent_path();
+  testing::scoped_file sp(p, testing::scoped_file::adopt_file);
+
   ec = bad_ec;
   b = fs::create_directories(p, ec);
   REQUIRE(!ec);
@@ -60,9 +62,6 @@ TEST_CASE("Ops / create_directories",
   REQUIRE(!ec);
   REQUIRE(b);
   REQUIRE(is_directory(p / "./d4/../d5"));
-
-  std::uintmax_t count = remove_all(p, ec);
-  REQUIRE(count == 6);
 }
 
 // -----------------------------------------------------------------------------
@@ -82,6 +81,7 @@ TEST_CASE("Ops / create_directory",
 
   // Test non-existent path
   p = testing::nonexistent_path();
+  testing::scoped_file sp(p, testing::scoped_file::adopt_file);
   REQUIRE(!exists(p));
 
   ec = bad_ec;
@@ -90,13 +90,11 @@ TEST_CASE("Ops / create_directory",
   REQUIRE(b);
   REQUIRE(exists(p));
 
-  // Test existing path (libstdc++/71036).
+  // Test existing path
   ec = bad_ec;
   b = create_directory(p, ec);
   REQUIRE(!ec);
   REQUIRE(!b);
   b = create_directory(p);
   REQUIRE(!b);
-
-  remove_all(p, ec);
 }

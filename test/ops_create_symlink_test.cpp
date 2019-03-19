@@ -33,16 +33,14 @@ TEST_CASE("Ops / create_symlink / empty",
 }
 
 TEST_CASE("Ops / create_symlink", "[common][filesystem][ops][create_symlink]") {
-#if defined(ASAP_WINDOWS)
-  if (!testing::IsDeveloperModeEnabled()) return;
-#endif  // ASAP_WINDOWS
-  const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
+   const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
   std::error_code ec, ec2;
   testing::scoped_file f;
   auto tgt = f.path_;
 
   // Test non-existent path
   auto p = testing::nonexistent_path();
+  testing::scoped_file sp(p, testing::scoped_file::adopt_file);
   REQUIRE(!exists(p));
 
   ec = bad_ec;
@@ -60,8 +58,6 @@ TEST_CASE("Ops / create_symlink", "[common][filesystem][ops][create_symlink]") {
   REQUIRE(ec);
   REQUIRE_THROWS_MATCHES(create_symlink(tgt, p), fs::filesystem_error,
                          testing::FilesystemErrorDetail(ec, tgt, p));
-
-  remove(p);
 }
 
 // -----------------------------------------------------------------------------
@@ -92,14 +88,14 @@ TEST_CASE("Ops / create_directory_symlink",
 #endif  // ASAP_WINDOWS
   const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
   std::error_code ec, ec2;
-  testing::scoped_file f;
 
   fs::path tgt = testing::nonexistent_path();
   fs::create_directory(tgt);
-  testing::scoped_file d(tgt, testing::scoped_file::adopt_file);
+  testing::scoped_file stgt(tgt, testing::scoped_file::adopt_file);
 
   // Test non-existent path
   auto p = testing::nonexistent_path();
+  testing::scoped_file sp(p, testing::scoped_file::adopt_file);
   REQUIRE(!exists(p));
 
   ec = bad_ec;
@@ -117,6 +113,4 @@ TEST_CASE("Ops / create_directory_symlink",
   REQUIRE(ec);
   REQUIRE_THROWS_MATCHES(create_symlink(tgt, p), fs::filesystem_error,
                          testing::FilesystemErrorDetail(ec, tgt, p));
-
-  remove(p);
 }

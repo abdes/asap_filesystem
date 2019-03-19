@@ -8,11 +8,11 @@
 #include "fs_testsuite.h"
 
 // -----------------------------------------------------------------------------
-//  dir_reverse_iterator
+//  dir_recursive_iterator
 // -----------------------------------------------------------------------------
 
-TEST_CASE("Dir / dir_reverse_iterator",
-          "[common][filesystem][ops][dir_reverse_iterator]") {
+TEST_CASE("Dir / dir_recursive_iterator",
+          "[common][filesystem][ops][dir_recursive_iterator]") {
   const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
   std::error_code ec;
 
@@ -98,8 +98,8 @@ TEST_CASE("Dir / dir_reverse_iterator",
   remove_all(p, ec);
 }
 
-TEST_CASE("Dir / dir_reverse_iterator / ++",
-          "[common][filesystem][ops][dir_reverse_iterator]") {
+TEST_CASE("Dir / dir_recursive_iterator / ++",
+          "[common][filesystem][ops][dir_recursive_iterator]") {
   const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
   std::error_code ec;
   const auto p = testing::nonexistent_path();
@@ -125,8 +125,8 @@ TEST_CASE("Dir / dir_reverse_iterator / ++",
   remove_all(p, ec);
 }
 
-TEST_CASE("Dir / dir_reverse_iterator / noexcept",
-          "[common][filesystem][ops][dir_reverse_iterator]") {
+TEST_CASE("Dir / dir_recursive_iterator / noexcept",
+          "[common][filesystem][ops][dir_recursive_iterator]") {
   auto p = testing::nonexistent_path();
   create_directory(p);
   create_directory(p / "x");

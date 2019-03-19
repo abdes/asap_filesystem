@@ -57,7 +57,7 @@ TEST_CASE("Ops / copy_symlink / link to file",
   auto tgt = f.path_;
 
   auto from = testing::nonexistent_path();
-  testing::scoped_file from_sf(from, testing::scoped_file::adopt_file);
+  testing::scoped_file sfrom(from, testing::scoped_file::adopt_file);
   REQUIRE(!exists(from));
   create_symlink(tgt, from, ec);  // create the symlink
   REQUIRE(!ec);
@@ -66,7 +66,7 @@ TEST_CASE("Ops / copy_symlink / link to file",
 
   // copy the symlink and check that the copy is a symlink to the same target
   auto to = testing::nonexistent_path();
-  testing::scoped_file to_sf(to, testing::scoped_file::adopt_file);
+  testing::scoped_file sto(to, testing::scoped_file::adopt_file);
   copy_symlink(from, to, ec);
   REQUIRE(!ec);
   REQUIRE(exists(to));
@@ -88,11 +88,11 @@ TEST_CASE("Ops / copy_symlink / link to directory",
   std::error_code ec;
 
   fs::path tgt = testing::nonexistent_path();
+  testing::scoped_file stgt(tgt, testing::scoped_file::adopt_file);
   fs::create_directory(tgt);
-  testing::scoped_file d(tgt, testing::scoped_file::adopt_file);
 
   auto from = testing::nonexistent_path();
-  testing::scoped_file from_sf(from, testing::scoped_file::adopt_file);
+  testing::scoped_file sfrom(from, testing::scoped_file::adopt_file);
   REQUIRE(!exists(from));
   create_directory_symlink(tgt, from, ec);  // create the symlink
   REQUIRE(!ec);
@@ -101,7 +101,7 @@ TEST_CASE("Ops / copy_symlink / link to directory",
 
   // copy the symlink and check that the copy is a symlink to the same target
   auto to = testing::nonexistent_path();
-  testing::scoped_file to_sf(to, testing::scoped_file::adopt_file);
+  testing::scoped_file sto(to, testing::scoped_file::adopt_file);
   copy_symlink(from, to, ec);
   REQUIRE(!ec);
   REQUIRE(exists(to));

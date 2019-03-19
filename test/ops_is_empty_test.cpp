@@ -19,6 +19,7 @@ TEST_CASE("Ops / is_empty / permissions",
           "[common][filesystem][ops][is_empty]") {
   auto p = testing::nonexistent_path();
   create_directory(p);
+  testing::scoped_file sp(p, testing::scoped_file::adopt_file);
   permissions(p, fs::perms::none);
   std::error_code ec, ec2;
 
@@ -35,13 +36,11 @@ TEST_CASE("Ops / is_empty / permissions",
 
   REQUIRE_THROWS_MATCHES(fs::is_empty(p / "f"), fs::filesystem_error,
                          testing::FilesystemErrorDetail(ec, p / "f"));
-
-  permissions(p, fs::perms::owner_all, ec);
-  remove_all(p, ec);
 }
 
 TEST_CASE("Ops / is_empty", "[common][filesystem][ops][is_empty]") {
   auto p = testing::nonexistent_path();
+  testing::scoped_file sp(p, testing::scoped_file::adopt_file);
   create_directory(p);
   std::error_code ec, bad_ec = make_error_code(std::errc::invalid_argument);
   bool empty;
@@ -75,7 +74,4 @@ TEST_CASE("Ops / is_empty", "[common][filesystem][ops][is_empty]") {
   REQUIRE(!empty);
   empty = is_empty(p);
   REQUIRE(!empty);
-
-  f.path_.clear();
-  remove_all(p, ec);
 }

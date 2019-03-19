@@ -67,6 +67,7 @@ TEST_CASE("Ops / permissions / replace",
   REQUIRE(exists(f.path_));
 
   auto p = testing::nonexistent_path();
+  testing::scoped_file sp(p, testing::scoped_file::adopt_file);
   create_symlink(f.path_, p);
 
   std::error_code ec = make_error_code(std::errc::no_such_file_or_directory);
@@ -86,10 +87,9 @@ TEST_CASE("Ops / permissions / replace",
   if (ec) {
     REQUIRE(caught);
     REQUIRE(ec == ec2);
-  } else
+  } else {
     REQUIRE(!caught);
-
-  remove(p);
+  }
 }
 
 TEST_CASE("Ops / permissions / symlink",
@@ -121,6 +121,7 @@ TEST_CASE("Ops / permissions / error",
   using perms = fs::perms;
 
   auto p = testing::nonexistent_path();
+  testing::scoped_file sp(p, testing::scoped_file::adopt_file);
   create_symlink(testing::nonexistent_path(), p);
 
   std::error_code ec = make_error_code(std::errc::no_such_file_or_directory);
@@ -129,6 +130,4 @@ TEST_CASE("Ops / permissions / error",
 
   REQUIRE_THROWS_MATCHES(permissions(p, perms::owner_all), fs::filesystem_error,
                          testing::FilesystemErrorDetail(ec, p));
-
-  remove(p);
 }

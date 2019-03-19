@@ -87,6 +87,7 @@ TEST_CASE("Ops / canonical / with symlinks",
 #endif
 
   auto dir = testing::nonexistent_path();
+  testing::scoped_file sdir(dir, testing::scoped_file::adopt_file);
   fs::create_directory(dir);
   fs::path foo = dir / "foo", bar = dir / "bar";
   fs::create_directory(foo);
@@ -111,6 +112,4 @@ TEST_CASE("Ops / canonical / with symlinks",
   ComparePaths(p5, p4);
   auto p6 = fs::canonical(dir / "foo//./baz///..//./bar/.");
   ComparePaths(p6, p4);
-
-  remove_all(dir);
 }

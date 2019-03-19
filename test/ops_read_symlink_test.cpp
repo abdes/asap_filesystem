@@ -20,6 +20,8 @@ TEST_CASE("Ops / read_symlink / dir",
 #endif
 
   auto p = testing::nonexistent_path();
+  testing::scoped_file sp(p, testing::scoped_file::adopt_file);
+
   std::error_code ec;
 
   fs::read_symlink(p, ec);
@@ -31,8 +33,6 @@ TEST_CASE("Ops / read_symlink / dir",
   auto result = read_symlink(p, ec);
   REQUIRE(!ec);
   REQUIRE(result == tgt);
-
-  fs::remove(p);
 }
 
 TEST_CASE("Ops / read_symlink / file",
@@ -44,6 +44,8 @@ TEST_CASE("Ops / read_symlink / file",
 #endif
 
   auto p = testing::nonexistent_path();
+  testing::scoped_file sp(p, testing::scoped_file::adopt_file);
+
   std::error_code ec;
 
   fs::read_symlink(p, ec);
@@ -59,6 +61,4 @@ TEST_CASE("Ops / read_symlink / file",
   auto result = read_symlink(p, ec);
   REQUIRE(!ec);
   REQUIRE(result == tgt);
-
-  fs::remove(p);
 }
