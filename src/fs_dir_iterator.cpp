@@ -17,53 +17,53 @@ namespace filesystem {
 
 #ifndef ASAP_WINDOWS
 std::error_code directory_entry::DoRefresh_impl() noexcept {
-  cached_data_.Reset();
+  entry_data_.Reset();
   std::error_code failure_ec;
 
   StatT full_st;
   file_status st = detail::posix::GetLinkStatus(path_, full_st, &failure_ec);
   if (!status_known(st)) {
-    cached_data_.Reset();
+    entry_data_.Reset();
     return failure_ec;
   }
 
   if (!asap::filesystem::exists(st) || !asap::filesystem::is_symlink(st)) {
-    cached_data_.cache_type = CacheType_::REFRESH_NON_SYMLINK;
-    cached_data_.type = st.type();
-    cached_data_.non_symlink_perms = st.permissions();
+    entry_data_.cache_type = CacheType_::REFRESH_NON_SYMLINK;
+    entry_data_.type = st.type();
+    entry_data_.non_symlink_perms = st.permissions();
   } else {  // we have a symlink
-    cached_data_.symlink_perms = st.permissions();
+    entry_data_.symlink_perms = st.permissions();
     // Get the information about the linked entity.
     // Ignore errors from stat, since we don't want errors regarding symlink
     // resolution to be reported to the user.
     std::error_code ignored_ec;
     st = detail::posix::GetFileStatus(path_, full_st, &ignored_ec);
 
-    cached_data_.type = st.type();
-    cached_data_.non_symlink_perms = st.permissions();
+    entry_data_.type = st.type();
+    entry_data_.non_symlink_perms = st.permissions();
 
     // If we failed to resolve the link, then only partially populate the
     // cache.
     if (!status_known(st)) {
-      cached_data_.cache_type = CacheType_::REFRESH_SYMLINK_UNRESOLVED;
+      entry_data_.cache_type = CacheType_::REFRESH_SYMLINK_UNRESOLVED;
       return std::error_code{};
     }
     // Otherwise, we resolved the link, potentially as not existing.
     // That's OK.
-    cached_data_.cache_type = CacheType_::REFRESH_SYMLINK;
+    entry_data_.cache_type = CacheType_::REFRESH_SYMLINK;
   }
 
   if (asap::filesystem::is_regular_file(st))
-    cached_data_.size = static_cast<uintmax_t>(full_st.st_size);
+    entry_data_.size = static_cast<uintmax_t>(full_st.st_size);
 
   if (asap::filesystem::exists(st)) {
-    cached_data_.nlink = static_cast<uintmax_t>(full_st.st_nlink);
+    entry_data_.nlink = static_cast<uintmax_t>(full_st.st_nlink);
 
     // Attempt to extract the mtime, and fail if it's not representable using
     // file_time_type. For now we ignore the error, as we'll report it when
     // the value is actually used.
     std::error_code ignored_ec;
-    cached_data_.write_time =
+    entry_data_.write_time =
         detail::posix::ExtractLastWriteTime(path_, full_st, &ignored_ec);
   }
 
@@ -202,34 +202,36 @@ class DirectoryStream {
   DirectoryStream() = delete;
   DirectoryStream &operator=(const DirectoryStream &) = delete;
 
-  DirectoryStream(DirectoryStream &&__ds) noexcept
-      : __stream_(__ds.__stream_),
-        __root_(std::move(__ds.__root_)),
-        __entry_(std::move(__ds.__entry_)) {
-    __ds.__stream_ = INVALID_HANDLE_VALUE;
+  DirectoryStream(DirectoryStream &&other) noexcept
+      : stream_(other.stream_),
+        root_(std::move(other.root_)),
+        entry_(std::move(other.entry_)) {
+    other.stream_ = INVALID_HANDLE_VALUE;
   }
 
   DirectoryStream(const path &root, directory_options opts, std::error_code &ec)
-      : __stream_(INVALID_HANDLE_VALUE), __root_(root) {
+      : stream_(INVALID_HANDLE_VALUE), root_(root) {
     auto wdirpath = root.wstring();
-    // use a form of search Sebastian Martel reports will work with Win98
+    // This form of search will work with all versions of windows
     wdirpath += (wdirpath.empty() || (wdirpath[wdirpath.size() - 1] != L'\\' &&
                                       wdirpath[wdirpath.size() - 1] != L'/' &&
                                       wdirpath[wdirpath.size() - 1] != L':'))
                     ? L"\\*"
                     : L"*";
-    __stream_ = ::FindFirstFileW(wdirpath.c_str(), &cached_data_);
+    // FIXME: If the path points to a symbolic link, the WIN32_FIND_DATA buffer
+    // contains information about the symbolic link, not the target.
+    stream_ = ::FindFirstFileW(wdirpath.c_str(), &entry_data_);
     // Skip the '.' and '..'
-    if (__stream_ != INVALID_HANDLE_VALUE) {
-      while (!wcscmp(cached_data_.cFileName, L".") ||
-             !wcscmp(cached_data_.cFileName, L"..")) {
-        if (!::FindNextFileW(__stream_, &cached_data_)) {
+    if (stream_ != INVALID_HANDLE_VALUE) {
+      while (!wcscmp(entry_data_.cFileName, L".") ||
+             !wcscmp(entry_data_.cFileName, L"..")) {
+        if (!::FindNextFileW(stream_, &entry_data_)) {
           close();
           break;
         }
       }
     }
-    if (__stream_ == INVALID_HANDLE_VALUE) {
+    if (stream_ == INVALID_HANDLE_VALUE) {
       ec = std::error_code(::GetLastError(), std::generic_category());
       const bool ignore_permission_denied =
           bool(opts & directory_options::skip_permission_denied);
@@ -238,32 +240,32 @@ class DirectoryStream {
       // We consider the situation of no more files available as ok
       if (ec.value() == ERROR_NO_MORE_FILES) ec.clear();
     } else {
-      __entry_.AssignIterEntry(__root_ / cached_data_.cFileName,
-                               directory_entry::CreateIterResult(
-                                   detail::get_file_type(cached_data_)));
+      entry_.AssignIterEntry(root_ / entry_data_.cFileName,
+                             directory_entry::CreateIterResult(
+                                 detail::get_file_type(entry_data_)));
     }
   }
 
   ~DirectoryStream() noexcept {
-    if (__stream_ == INVALID_HANDLE_VALUE) return;
+    if (stream_ == INVALID_HANDLE_VALUE) return;
     close();
   }
 
-  bool good() const noexcept { return __stream_ != INVALID_HANDLE_VALUE; }
+  bool good() const noexcept { return stream_ != INVALID_HANDLE_VALUE; }
 
   bool advance(std::error_code &ec) {
-    while (::FindNextFileW(__stream_, &cached_data_)) {
-      if (!wcscmp(cached_data_.cFileName, L".") ||
-          !wcscmp(cached_data_.cFileName, L".."))
+    while (::FindNextFileW(stream_, &entry_data_)) {
+      if (!wcscmp(entry_data_.cFileName, L".") ||
+          !wcscmp(entry_data_.cFileName, L".."))
         continue;
       // FIXME: Cache more of this
       // directory_entry::CachedData_ cdata;
-      // cdata.type = get_file_type(cached_data_);
-      // cdata.size = get_file_size(cached_data_);
-      // cdata.write_time = get_write_time(cached_data_);
-      __entry_.AssignIterEntry(__root_ / cached_data_.cFileName,
-                               directory_entry::CreateIterResult(
-                                   detail::get_file_type(cached_data_)));
+      // cdata.type = get_file_type(entry_data_);
+      // cdata.size = get_file_size(entry_data_);
+      // cdata.write_time = get_write_time(entry_data_);
+      entry_.AssignIterEntry(root_ / entry_data_.cFileName,
+                             directory_entry::CreateIterResult(
+                                 detail::get_file_type(entry_data_)));
       return true;
     }
     ec = std::error_code(::GetLastError(), std::generic_category());
@@ -276,18 +278,18 @@ class DirectoryStream {
  private:
   std::error_code close() noexcept {
     std::error_code ec;
-    if (!::FindClose(__stream_))
+    if (!::FindClose(stream_))
       ec = std::error_code(::GetLastError(), std::generic_category());
-    __stream_ = INVALID_HANDLE_VALUE;
+    stream_ = INVALID_HANDLE_VALUE;
     return ec;
   }
 
-  HANDLE __stream_{INVALID_HANDLE_VALUE};
-  WIN32_FIND_DATAW cached_data_;
+  HANDLE stream_{INVALID_HANDLE_VALUE};
+  WIN32_FIND_DATAW entry_data_;
 
  public:
-  path __root_;
-  directory_entry __entry_;
+  path root_;
+  directory_entry entry_;
 };
 #else
 class DirectoryStream {
@@ -296,15 +298,15 @@ class DirectoryStream {
   DirectoryStream &operator=(const DirectoryStream &) = delete;
 
   DirectoryStream(DirectoryStream &&other) noexcept
-      : __stream_(other.__stream_),
-        __root_(std::move(other.__root_)),
-        __entry_(std::move(other.__entry_)) {
-    other.__stream_ = nullptr;
+      : stream_(other.stream_),
+        root_(std::move(other.root_)),
+        entry_(std::move(other.entry_)) {
+    other.stream_ = nullptr;
   }
 
   DirectoryStream(const path &root, directory_options opts, std::error_code &ec)
-      : __stream_(nullptr), __root_(root) {
-    if ((__stream_ = ::opendir(root.c_str())) == nullptr) {
+      : stream_(nullptr), root_(root) {
+    if ((stream_ = ::opendir(root.c_str())) == nullptr) {
       ec = detail::capture_errno();
       const auto allow_eacess =
           bool(opts & directory_options::skip_permission_denied);
@@ -315,14 +317,14 @@ class DirectoryStream {
   }
 
   ~DirectoryStream() noexcept {
-    if (__stream_) close();
+    if (stream_) close();
   }
 
-  bool good() const noexcept { return __stream_ != nullptr; }
+  bool good() const noexcept { return stream_ != nullptr; }
 
   bool advance(std::error_code &ec) {
     while (true) {
-      auto str_type_pair = detail::posix_readdir(__stream_, ec);
+      auto str_type_pair = detail::posix_readdir(stream_, ec);
       auto &str = str_type_pair.first;
       if (str == "." || str == "..") {
         continue;
@@ -330,9 +332,8 @@ class DirectoryStream {
         close();
         return false;
       } else {
-        __entry_.AssignIterEntry(
-            __root_ / str,
-            directory_entry::CreateIterResult(str_type_pair.second));
+        entry_.AssignIterEntry(root_ / str, directory_entry::CreateIterResult(
+                                                str_type_pair.second));
         return true;
       }
     }
@@ -341,16 +342,16 @@ class DirectoryStream {
  private:
   std::error_code close() noexcept {
     std::error_code m_ec;
-    if (::closedir(__stream_) == -1) m_ec = detail::capture_errno();
-    __stream_ = nullptr;
+    if (::closedir(stream_) == -1) m_ec = detail::capture_errno();
+    stream_ = nullptr;
     return m_ec;
   }
 
-  DIR *__stream_{nullptr};
+  DIR *stream_{nullptr};
 
  public:
-  path __root_;
-  directory_entry __entry_;
+  path root_;
+  directory_entry entry_;
 };
 #endif
 
@@ -374,7 +375,7 @@ directory_iterator &directory_iterator::do_increment(std::error_code *ec) {
   if (impl_) {
     std::error_code m_ec;
     if (!impl_->advance(m_ec)) {
-      path root = std::move(impl_->__root_);
+      path root = std::move(impl_->root_);
       impl_.reset();
       if (m_ec) err.report(m_ec, "at root \"" + root.string() + "\"");
     }
@@ -386,7 +387,7 @@ directory_iterator &directory_iterator::do_increment(std::error_code *ec) {
 
 directory_entry const &directory_iterator::dereference() const {
   ASAP_ASSERT(impl_ && "attempt to dereference an invalid iterator");
-  return impl_->__entry_;
+  return impl_->entry_;
 }
 
 // recursive_directory_iterator
@@ -439,7 +440,7 @@ int recursive_directory_iterator::depth() const {
 
 const directory_entry &recursive_directory_iterator::dereference() const {
   ASAP_ASSERT(impl_ && "attempt to dereference an invalid iterator");
-  return impl_->__stack_.top().__entry_;
+  return impl_->__stack_.top().entry_;
 }
 
 recursive_directory_iterator &recursive_directory_iterator::do_increment(
@@ -468,7 +469,7 @@ void recursive_directory_iterator::Advance(std::error_code *ec) {
   }
 
   if (m_ec) {
-    path root = std::move(stack.top().__root_);
+    path root = std::move(stack.top().root_);
     impl_.reset();
     err.report(m_ec, "at root \"{" + root.string() + "}\"");
   } else {
@@ -489,17 +490,17 @@ bool recursive_directory_iterator::TryRecursion(std::error_code *ec) {
   bool skip_rec = false;
   std::error_code m_ec;
   if (!rec_sym) {
-    file_status st(curr_it.__entry_.GetSymLinkFileType(&m_ec));
+    file_status st(curr_it.entry_.GetSymLinkFileType(&m_ec));
     if (m_ec && status_known(st)) m_ec.clear();
     if (m_ec || is_symlink(st) || !is_directory(st)) skip_rec = true;
   } else {
-    file_status st(curr_it.__entry_.GetFileType(&m_ec));
+    file_status st(curr_it.entry_.GetFileType(&m_ec));
     if (m_ec && status_known(st)) m_ec.clear();
     if (m_ec || !is_directory(st)) skip_rec = true;
   }
 
   if (!skip_rec) {
-    DirectoryStream new_it(curr_it.__entry_.path(), impl_->__options_, m_ec);
+    DirectoryStream new_it(curr_it.entry_.path(), impl_->__options_, m_ec);
     if (new_it.good()) {
       impl_->__stack_.push(std::move(new_it));
       return true;
@@ -511,7 +512,7 @@ bool recursive_directory_iterator::TryRecursion(std::error_code *ec) {
     if (m_ec.value() == EACCES && allow_eacess) {
       if (ec) ec->clear();
     } else {
-      path at_ent = std::move(curr_it.__entry_.path_);
+      path at_ent = std::move(curr_it.entry_.path_);
       impl_.reset();
       err.report(m_ec,
                  "attempting recursion into \"{" + at_ent.string() + "}\"");
