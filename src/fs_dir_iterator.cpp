@@ -17,53 +17,53 @@ namespace filesystem {
 
 #ifndef ASAP_WINDOWS
 std::error_code directory_entry::DoRefresh_impl() noexcept {
-  entry_data_.Reset();
+  cached_data_.Reset();
   std::error_code failure_ec;
 
-  StatT full_st;
+  detail::posix::StatT full_st;
   file_status st = detail::posix::GetLinkStatus(path_, full_st, &failure_ec);
   if (!status_known(st)) {
-    entry_data_.Reset();
+    cached_data_.Reset();
     return failure_ec;
   }
 
   if (!asap::filesystem::exists(st) || !asap::filesystem::is_symlink(st)) {
-    entry_data_.cache_type = CacheType_::REFRESH_NON_SYMLINK;
-    entry_data_.type = st.type();
-    entry_data_.non_symlink_perms = st.permissions();
+    cached_data_.cache_type = CacheType_::REFRESH_NON_SYMLINK;
+    cached_data_.type = st.type();
+    cached_data_.non_symlink_perms = st.permissions();
   } else {  // we have a symlink
-    entry_data_.symlink_perms = st.permissions();
+    cached_data_.symlink_perms = st.permissions();
     // Get the information about the linked entity.
     // Ignore errors from stat, since we don't want errors regarding symlink
     // resolution to be reported to the user.
     std::error_code ignored_ec;
     st = detail::posix::GetFileStatus(path_, full_st, &ignored_ec);
 
-    entry_data_.type = st.type();
-    entry_data_.non_symlink_perms = st.permissions();
+    cached_data_.type = st.type();
+    cached_data_.non_symlink_perms = st.permissions();
 
     // If we failed to resolve the link, then only partially populate the
     // cache.
     if (!status_known(st)) {
-      entry_data_.cache_type = CacheType_::REFRESH_SYMLINK_UNRESOLVED;
+      cached_data_.cache_type = CacheType_::REFRESH_SYMLINK_UNRESOLVED;
       return std::error_code{};
     }
     // Otherwise, we resolved the link, potentially as not existing.
     // That's OK.
-    entry_data_.cache_type = CacheType_::REFRESH_SYMLINK;
+    cached_data_.cache_type = CacheType_::REFRESH_SYMLINK;
   }
 
   if (asap::filesystem::is_regular_file(st))
-    entry_data_.size = static_cast<uintmax_t>(full_st.st_size);
+    cached_data_.size = static_cast<uintmax_t>(full_st.st_size);
 
   if (asap::filesystem::exists(st)) {
-    entry_data_.nlink = static_cast<uintmax_t>(full_st.st_nlink);
+    cached_data_.nlink = static_cast<uintmax_t>(full_st.st_nlink);
 
     // Attempt to extract the mtime, and fail if it's not representable using
     // file_time_type. For now we ignore the error, as we'll report it when
     // the value is actually used.
     std::error_code ignored_ec;
-    entry_data_.write_time =
+    cached_data_.write_time =
         detail::posix::ExtractLastWriteTime(path_, full_st, &ignored_ec);
   }
 
@@ -220,12 +220,12 @@ class DirectoryStream {
                     : L"*";
     // FIXME: If the path points to a symbolic link, the WIN32_FIND_DATA buffer
     // contains information about the symbolic link, not the target.
-    stream_ = ::FindFirstFileW(wdirpath.c_str(), &entry_data_);
+    stream_ = ::FindFirstFileW(wdirpath.c_str(), &cached_data_);
     // Skip the '.' and '..'
     if (stream_ != INVALID_HANDLE_VALUE) {
-      while (!wcscmp(entry_data_.cFileName, L".") ||
-             !wcscmp(entry_data_.cFileName, L"..")) {
-        if (!::FindNextFileW(stream_, &entry_data_)) {
+      while (!wcscmp(cached_data_.cFileName, L".") ||
+             !wcscmp(cached_data_.cFileName, L"..")) {
+        if (!::FindNextFileW(stream_, &cached_data_)) {
           close();
           break;
         }
@@ -240,9 +240,9 @@ class DirectoryStream {
       // We consider the situation of no more files available as ok
       if (ec.value() == ERROR_NO_MORE_FILES) ec.clear();
     } else {
-      entry_.AssignIterEntry(root_ / entry_data_.cFileName,
+      entry_.AssignIterEntry(root_ / cached_data_.cFileName,
                              directory_entry::CreateIterResult(
-                                 detail::get_file_type(entry_data_)));
+                                 detail::get_file_type(cached_data_)));
     }
   }
 
@@ -254,18 +254,18 @@ class DirectoryStream {
   bool good() const noexcept { return stream_ != INVALID_HANDLE_VALUE; }
 
   bool advance(std::error_code &ec) {
-    while (::FindNextFileW(stream_, &entry_data_)) {
-      if (!wcscmp(entry_data_.cFileName, L".") ||
-          !wcscmp(entry_data_.cFileName, L".."))
+    while (::FindNextFileW(stream_, &cached_data_)) {
+      if (!wcscmp(cached_data_.cFileName, L".") ||
+          !wcscmp(cached_data_.cFileName, L".."))
         continue;
       // FIXME: Cache more of this
       // directory_entry::CachedData_ cdata;
-      // cdata.type = get_file_type(entry_data_);
-      // cdata.size = get_file_size(entry_data_);
-      // cdata.write_time = get_write_time(entry_data_);
-      entry_.AssignIterEntry(root_ / entry_data_.cFileName,
+      // cdata.type = get_file_type(cached_data_);
+      // cdata.size = get_file_size(cached_data_);
+      // cdata.write_time = get_write_time(cached_data_);
+      entry_.AssignIterEntry(root_ / cached_data_.cFileName,
                              directory_entry::CreateIterResult(
-                                 detail::get_file_type(entry_data_)));
+                                 detail::get_file_type(cached_data_)));
       return true;
     }
     ec = std::error_code(::GetLastError(), std::generic_category());
@@ -285,7 +285,7 @@ class DirectoryStream {
   }
 
   HANDLE stream_{INVALID_HANDLE_VALUE};
-  WIN32_FIND_DATAW entry_data_;
+  WIN32_FIND_DATAW cached_data_;
 
  public:
   path root_;

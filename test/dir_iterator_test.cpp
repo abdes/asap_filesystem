@@ -13,7 +13,6 @@
 
 TEST_CASE("Dir / dir_iterator / dne",
           "[common][filesystem][ops][dir_iterator]") {
-  const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
   std::error_code ec;
 
   // Test non-existent path.
@@ -192,7 +191,7 @@ TEST_CASE("Dir / dir_iterator / no permission",
   ec = bad_ec;
   permissions(p, fs::perms::none, ec);
   REQUIRE(!ec);
-  iter = fs::directory_iterator(p, ec);
+  auto iter = fs::directory_iterator(p, ec);
   REQUIRE(ec);
   REQUIRE(iter == end(iter));
 
