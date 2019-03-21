@@ -20,6 +20,7 @@ TEST_CASE("Ops / create_symlink / empty",
 #if defined(ASAP_WINDOWS)
   if (!testing::IsDeveloperModeEnabled()) return;
 #endif  // ASAP_WINDOWS
+
   std::error_code ec;
   testing::scoped_file f;
   auto tgt = f.path_;
@@ -34,7 +35,11 @@ TEST_CASE("Ops / create_symlink / empty",
 
 TEST_CASE("Ops / create_symlink", "[common][filesystem][ops][create_symlink]") {
    const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
-  std::error_code ec, ec2;
+#if defined(ASAP_WINDOWS)
+  if (!testing::IsDeveloperModeEnabled()) return;
+#endif  // ASAP_WINDOWS
+
+  std::error_code ec;
   testing::scoped_file f;
   auto tgt = f.path_;
 

@@ -31,6 +31,7 @@ TEST_CASE("Ops / symlink_status / dot",
   REQUIRE(st2.type() == fs::file_type::directory);
 
   fs::path link = testing::nonexistent_path();
+  testing::scoped_file sfrom(link, testing::scoped_file::adopt_file);
   create_directory_symlink(dot, link);
 
   st1 = fs::symlink_status(link);
