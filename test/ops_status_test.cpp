@@ -86,18 +86,3 @@ TEST_CASE("Ops / status / symlink", "[common][filesystem][ops][status]") {
   REQUIRE(!ec);
   REQUIRE(st.type() == fs::file_type::directory);
 }
-
-TEST_CASE("Ops / status / no permission", "[common][filesystem][ops][status]") {
-  fs::path dir = testing::nonexistent_path();
-  fs::create_directory(dir);
-  testing::scoped_file sdir(dir, testing::scoped_file::adopt_file);
-  fs::permissions(dir, fs::perms::none);
-
-  std::error_code ec;
-  fs::file_status st = fs::status(dir, ec);
-  REQUIRE(ec.value() == (int)std::errc::permission_denied);
-  REQUIRE(st.type() == fs::file_type::none);
-
-  REQUIRE_THROWS_MATCHES(fs::status(dir), fs::filesystem_error,
-                         testing::FilesystemErrorDetail(ec, dir));
-}

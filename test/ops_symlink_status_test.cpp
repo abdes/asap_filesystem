@@ -54,37 +54,3 @@ TEST_CASE("Ops / symlink_status / non-existing",
   fs::file_status st2 = fs::symlink_status(p);
   REQUIRE(st2.type() == fs::file_type::not_found);
 }
-
-TEST_CASE("Ops / symlink_status / permissions", "[common][filesystem][ops][symlink_status]") {
-  // This test case requires symlinks and on windows, this will only work if
-  // developer mode is enabled or the test cases are run as administrator.
-#if defined(ASAP_WINDOWS)
-  if (!testing::IsDeveloperModeEnabled()) return;
-#endif
-
-  fs::path dir = testing::nonexistent_path();
-  fs::create_directory(dir);
-  testing::scoped_file d(dir, testing::scoped_file::adopt_file);
-  testing::scoped_file f(dir / "file");
-  fs::permissions(dir, fs::perms::none);
-  auto link = testing::nonexistent_path();
-  fs::create_symlink(f.path_, link);
-  testing::scoped_file l(link, testing::scoped_file::adopt_file);
-
-  std::error_code ec;
-  fs::file_status st = fs::symlink_status(f.path_, ec);
-  REQUIRE(ec.value() == (int)std::errc::permission_denied);
-  REQUIRE(st.type() == fs::file_type::none);
-
-  st = fs::symlink_status(link, ec);
-  REQUIRE(!ec);
-  REQUIRE(st.type() == fs::file_type::symlink);
-
-  REQUIRE_THROWS_MATCHES(
-      fs::symlink_status(f.path_), fs::filesystem_error,
-      testing::FilesystemErrorDetail(
-          std::make_error_code(std::errc::permission_denied), f.path_));
-
-  fs::file_status st2 = symlink_status(link);
-  REQUIRE(st2.type() == fs::file_type::symlink);
-}
