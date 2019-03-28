@@ -96,19 +96,53 @@ void directory_entry::UpdateBasicFileInformation(bool follow_symlinks,
       if (cached_data_.symlink) cached_data_.type_resolved = true;
     }
   }
-#else   // !ASAP_WINDOWS
-// TODO: Add implementation for UNIX
-#endif  // ASAP_WINDOWS
-
   cached_data_.cache_type = CacheType_::BASIC;
+#else   // !ASAP_WINDOWS
+  std::error_code m_ec;
+  detail::posix::StatT full_st;
+  file_status st;
+  if (cached_data_.cache_type == CacheType_::EMPTY) {
+    st = detail::posix::GetLinkStatus(path_, full_st, &m_ec);
+    if (m_ec || !status_known(st)) {
+      return err.report(m_ec);
+    }
+    cached_data_.symlink = filesystem::is_symlink(st);
+    cached_data_.type = st.type();
+    if (cached_data_.symlink) {
+      cached_data_.nlink = static_cast<uintmax_t>(full_st.st_nlink);
+      cached_data_.symlink_perms = st.permissions();
+    }
+  }
+  if ((cached_data_.symlink) && follow_symlinks) {
+    st = detail::posix::GetFileStatus(path_, full_st, &m_ec);
+    cached_data_.type = st.type();
+    cached_data_.non_symlink_perms = st.permissions();
+    cached_data_.type_resolved = true;
+    cached_data_.extra_resolved = true;
+    cached_data_.perms_resolved = true;
+  }
+
+  if (asap::filesystem::is_regular_file(st))
+    cached_data_.size = static_cast<uintmax_t>(full_st.st_size);
+  
+  if (asap::filesystem::exists(st)) {
+    // Attempt to extract the mtime, and fail if it's not representable using
+    // file_time_type. For now we ignore the error, as we'll report it when
+    // the value is actually used.
+    std::error_code ignored_ec;
+    cached_data_.write_time =
+    detail::posix::ExtractLastWriteTime(path_, full_st, &ignored_ec);
+  }
+  cached_data_.cache_type = CacheType_::FULL;
+#endif  // ASAP_WINDOWS
 }
 
 void directory_entry::UpdateExtraFileInformation(bool follow_symlinks,
                                                  std::error_code *ec) const {
   ErrorHandler<void> err("UpdateExtraFileInformation", ec, &path_);
-  ASAP_ASSERT(cached_data_.cache_type == CacheType_::BASIC);
 
 #if defined(ASAP_WINDOWS)
+  ASAP_ASSERT((cached_data_.cache_type == CacheType_::BASIC) || (cached_data_.cache_type == CacheType_::EXTRA));
   // Open the file handle without following symlinks to get the number of hard
   // links pointing to it.
   std::error_code m_ec;
@@ -164,7 +198,10 @@ void directory_entry::UpdateExtraFileInformation(bool follow_symlinks,
     cached_data_.extra_resolved = true;
   }
 #else   // !ASAP_WINDOWS
-// TODO: Add implementation for UNIX
+  ASAP_ASSERT(cached_data_.cache_type == CacheType_::FULL);
+  if (cached_data_.symlink && follow_symlinks && !cached_data_.extra_resolved) {
+    UpdateBasicFileInformation(true, ec);
+  }
 #endif  // ASAP_WINDOWS
 
   cached_data_.cache_type = CacheType_::EXTRA;
@@ -173,9 +210,9 @@ void directory_entry::UpdateExtraFileInformation(bool follow_symlinks,
 void directory_entry::UpdatePermissionsInformation(bool follow_symlinks,
                                                    std::error_code *ec) const {
   ErrorHandler<void> err("UpdatePermissionsInformation", ec, &path_);
-  ASAP_ASSERT(cached_data_.cache_type == CacheType_::EXTRA);
 
 #if defined(ASAP_WINDOWS)
+  ASAP_ASSERT((cached_data_.cache_type == CacheType_::EXTRA) || (cached_data_.cache_type == CacheType_::FULL));
   // Open the file handle without following symlinks
   std::error_code m_ec;
   {
@@ -221,7 +258,10 @@ void directory_entry::UpdatePermissionsInformation(bool follow_symlinks,
     cached_data_.perms_resolved = true;
   }
 #else   // !ASAP_WINDOWS
-// TODO: Add implementation for UNIX
+  ASAP_ASSERT(cached_data_.cache_type == CacheType_::FULL);
+  if (cached_data_.symlink && follow_symlinks && !cached_data_.perms_resolved) {
+    UpdateBasicFileInformation(true, ec);
+  }
 #endif  // ASAP_WINDOWS
 
   cached_data_.cache_type = CacheType_::FULL;
@@ -403,91 +443,18 @@ file_status directory_entry::GetSymLinkStatus(std::error_code *ec) const {
 std::error_code directory_entry::DoRefresh_impl() const noexcept {
   cached_data_.Reset();
   std::error_code failure_ec;
-
-  detail::posix::StatT full_st;
-  file_status st = detail::posix::GetLinkStatus(path_, full_st, &failure_ec);
-  if (failure_ec || !status_known(st)) {
-    cached_data_.Reset();
-    return failure_ec;
-  }
-
-  if (!asap::filesystem::is_symlink(st)) {
-    cached_data_.cache_type = CacheType_::REFRESH_NON_SYMLINK;
-    cached_data_.type = st.type();
-    cached_data_.non_symlink_perms = st.permissions();
-  } else {  // we have a symlink
-    cached_data_.symlink_perms = st.permissions();
-    // Get the information about the linked entity.
-    // Ignore errors from stat, since we don't want errors regarding symlink
-    // resolution to be reported to the user.
-    std::error_code ignored_ec;
-    st = detail::posix::GetFileStatus(path_, full_st, &ignored_ec);
-
-    cached_data_.type = st.type();
-    cached_data_.non_symlink_perms = st.permissions();
-
-    // If we failed to resolve the link, then only partially populate the
-    // cache.
-    if (!status_known(st)) {
-      cached_data_.cache_type = CacheType_::REFRESH_SYMLINK_UNRESOLVED;
-      return std::error_code{};
-    }
-    // Otherwise, we resolved the link, potentially as not existing.
-    // That's OK.
-    cached_data_.cache_type = CacheType_::REFRESH_SYMLINK;
-  }
-
-  if (asap::filesystem::is_regular_file(st))
-    cached_data_.size = static_cast<uintmax_t>(full_st.st_size);
-
-  if (asap::filesystem::exists(st)) {
-    cached_data_.nlink = static_cast<uintmax_t>(full_st.st_nlink);
-
-    // Attempt to extract the mtime, and fail if it's not representable using
-    // file_time_type. For now we ignore the error, as we'll report it when
-    // the value is actually used.
-    std::error_code ignored_ec;
-    cached_data_.write_time =
-        detail::posix::ExtractLastWriteTime(path_, full_st, &ignored_ec);
-  }
-
+  UpdateBasicFileInformation(true, &failure_ec);
   return failure_ec;
 }
 #else
 std::error_code directory_entry::DoRefresh_impl() const noexcept {
   cached_data_.Reset();
   std::error_code failure_ec;
-
-  file_status st = asap::filesystem::symlink_status(path_, failure_ec);
-  if (failure_ec || !status_known(st)) {
-    cached_data_.Reset();
-    return failure_ec;
-  }
-
-  if (!asap::filesystem::is_symlink(st)) {
-    cached_data_.type = st.type();
-    cached_data_.non_symlink_perms = st.permissions();
-  } else {  // we have a symlink
-    cached_data_.symlink = true;
-    cached_data_.symlink_perms = st.permissions();
-    // Get the information about the linked entity.
-    // Ignore errors from stat, since we don't want errors regarding
-    // symlink resolution to be reported to the user.
-    std::error_code ignored_ec;
-    st = asap::filesystem::status(path_, ignored_ec);
-    if (!ignored_ec && status_known(st)) {
-      // link resolution successful
-      cached_data_.type = st.type();
-      cached_data_.non_symlink_perms = st.permissions();
-    }
-  }
-
-  // FIXME: This is currently broken, and the implementation only a
-  // placeholder. We need to cache last_write_time, file_size, and
-  // hard_link_count here before the implementation actually works.
-
-  cached_data_.cache_type = CacheType_::FULL;
-
+  UpdateBasicFileInformation(true, &failure_ec);
+  if (failure_ec) return failure_ec;
+  UpdateExtraFileInformation(true, &failure_ec);
+  if (failure_ec) return failure_ec;
+  UpdatePermissionsInformation(true, &failure_ec);
   return failure_ec;
 }
 #endif
@@ -730,8 +697,13 @@ class DirectoryStream {
         close();
         return false;
       } else {
-        entry_.AssignIterEntry(
-            root_ / str, directory_entry::CreateIterResult(entry_data_.second));
+        entry_.path_ = root_ / str;
+        entry_.cached_data_.type = entry_data_.second;
+        entry_.cached_data_.cache_type = directory_entry::CacheType_::BASIC;
+        if (entry_.cached_data_.type == file_type::symlink) {
+          entry_.cached_data_.symlink = true;
+          // FIXME: check if read_dir follows sumlinks or not
+        }
         return true;
       }
     }
