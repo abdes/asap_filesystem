@@ -272,10 +272,12 @@ class ASAP_FILESYSTEM_API directory_entry {
   struct CachedData_ {
     CacheType_ cache_type;
 
-	bool symlink;
-    bool resolved;
+    bool symlink;
+    bool type_resolved;
+    bool extra_resolved;
+    bool perms_resolved;
 
-	// BASIC
+    // BASIC
     // The filesystem object type (symlinks are followed)
     file_type type;
 
@@ -286,15 +288,16 @@ class ASAP_FILESYSTEM_API directory_entry {
     uintmax_t size;
     // Time of last modification (symlinks are followed)
     file_time_type write_time;
-    
-	// FULL
+
+    // FULL
     perms symlink_perms;
     perms non_symlink_perms;
 
     CachedData_() noexcept { Reset(); }
 
     void Reset() {
-      symlink = resolved = false;
+      symlink = false;
+      type_resolved = extra_resolved = perms_resolved = false;
       cache_type = CacheType_::EMPTY;
       type = file_type::none;
       symlink_perms = non_symlink_perms = perms::unknown;
@@ -303,6 +306,7 @@ class ASAP_FILESYSTEM_API directory_entry {
     }
   };
 
+#if	0 // FIXME
   static CachedData_ CreateIterResult(file_type type) {
     CachedData_ data;
     data.type = type;
@@ -318,6 +322,7 @@ class ASAP_FILESYSTEM_API directory_entry {
     }();
     return data;
   }
+#endif
 
   void AssignIterEntry(path_type &&p, CachedData_ data) {
     path_ = std::move(p);
@@ -352,148 +357,26 @@ class ASAP_FILESYSTEM_API directory_entry {
                 /*allow_dne*/ true);
   }
 
-  file_type GetSymLinkFileType(std::error_code *ec = nullptr) const {
-    if (ec) ec->clear();
-    if (cached_data_.cache_type == CacheType_::EMPTY) {
-      // TODO: only get basic attributes
-      // TODO: links do NOT need to be followed
-      DoRefresh(ec);
-    }
-    if (ec) return file_type::none;
-    if (cached_data_.symlink) {
-      return file_type::symlink;
-    } else {
-      file_status st(cached_data_.type);
-      if (!asap::filesystem::exists(st)) {
-        HandleError("in directory_entry::GetSymLinkFileType", ec,
-                    make_error_code(std::errc::no_such_file_or_directory),
-                    /*allow_dne*/ false);
-      }
-      return cached_data_.type;
-    }
-  }
+  void UpdateBasicFileInformation(bool follow_symlinks,
+                                  std::error_code *ec = nullptr) const;
+  void UpdateExtraFileInformation(bool follow_symlinks,
+                                  std::error_code *ec = nullptr) const;
+  void UpdatePermissionsInformation(bool follow_symlinks,
+                                    std::error_code *ec = nullptr) const;
 
-  file_type GetFileType(std::error_code *ec = nullptr) const {
-    if (ec) ec->clear();
-    if (cached_data_.cache_type == CacheType_::EMPTY) {
-      // TODO: only get basic attributes
-      // TODO: links need to be followed
-      DoRefresh(ec);
-    }
-    if (ec) return file_type::none;
-    file_status st(cached_data_.type);
-    if (!asap::filesystem::exists(st)) {
-      HandleError("in directory_entry::GetFileType", ec,
-                  make_error_code(std::errc::no_such_file_or_directory),
-                  /*allow_dne*/ false);
-    }
-    return cached_data_.type;
-  }
+  file_type GetSymLinkFileType(std::error_code *ec = nullptr) const;
 
-  file_status GetStatus(std::error_code *ec = nullptr) const {
-    if (ec) ec->clear();
-    switch (cached_data_.cache_type) {
-      case CacheType_::EMPTY:
-        // TODO: make sure links are followed
-        DoRefresh(ec);
-        break;
-      case CacheType_::BASIC:
-      case CacheType_::EXTRA:
-        // TODO: Get permissions, make sure links are followed
-        break;
-      case CacheType_::FULL:
-        if (cached_data_.symlink && !cached_data_.resolved) {
-          // TODO:  Get permissions, make sure links are followed
-        }
-    }
-    ASAP_ASSERT(!cached_data_.symlink || cached_data_.resolved);
-    return file_status(GetFileType(ec), cached_data_.non_symlink_perms);
-  }
+  file_type GetFileType(std::error_code *ec = nullptr) const;
 
-  file_status GetSymLinkStatus(std::error_code *ec = nullptr) const {
-    if (ec) ec->clear();
-    switch (cached_data_.cache_type) {
-      case CacheType_::EMPTY:
-        // TODO: links do NOT need to be followed
-        DoRefresh(ec);
-        break;
-      case CacheType_::BASIC:
-      case CacheType_::EXTRA:
-        if (cached_data_.symlink) {
-          // TODO: Get permissions, links do NOT need to be followed
-        }
-    }
-    return file_status(GetSymLinkFileType(ec), cached_data_.symlink_perms);
-  }
+  file_status GetStatus(std::error_code *ec = nullptr) const;
 
-  uintmax_t GetSize(std::error_code *ec = nullptr) const {
-    if (ec) ec->clear();
-    if (cached_data_.cache_type == CacheType_::EMPTY) {
-      // TODO: only get basic/extra attributes
-      // TODO: make sure links are followed
-      DoRefresh(ec);
-    }
-    // Check that the entry type supports querying the size
-    std::error_code m_ec;
-    file_status st(GetFileType(&m_ec));
-    HandleError("in directory_entry::GetSize", ec, m_ec);
-    if (asap::filesystem::exists(st) &&
-        !asap::filesystem::is_regular_file(st)) {
-      std::errc err_kind = asap::filesystem::is_directory(st)
-                               ? std::errc::is_a_directory
-                               : std::errc::not_supported;
-      HandleError("in directory_entry::GetSize", ec, make_error_code(err_kind));
-    } else {
-      if (cached_data_.cache_type == CacheType_::BASIC) {
-        // TODO: only get extra attributes (POSIX not same than WINDOWS)
-        // TODO: make sure links are followed
-        DoRefresh(ec);
-      }
-    }
-    return cached_data_.size;
-  }
+  file_status GetSymLinkStatus(std::error_code *ec = nullptr) const;
 
-  uintmax_t GetHardLinkCount(std::error_code *ec = nullptr) const {
-    switch (cached_data_.cache_type) {
-      case CacheType_::EMPTY:
-      case CacheType_::ITER_NON_SYMLINK:
-      case CacheType_::ITER_SYMLINK:
-      case CacheType_::REFRESH_SYMLINK_UNRESOLVED:
-        return asap::filesystem::hard_link_count_impl(path_, ec);
+  uintmax_t GetSize(std::error_code *ec = nullptr) const;
 
-      case CacheType_::REFRESH_SYMLINK:
-      case CacheType_::REFRESH_NON_SYMLINK: {
-        std::error_code m_ec;
-        (void)GetFileType(&m_ec);
-        HandleError("in directory_entry::GetHardLinkCount", ec, m_ec);
-        return cached_data_.nlink;
-      }
-    }
-    ASAP_UNREACHABLE();
-  }
+  uintmax_t GetHardLinkCount(std::error_code *ec = nullptr) const;
 
-  file_time_type GetLastWriteTime(std::error_code *ec = nullptr) const {
-    switch (cached_data_.cache_type) {
-      case CacheType_::EMPTY:
-      case CacheType_::ITER_NON_SYMLINK:
-      case CacheType_::ITER_SYMLINK:
-      case CacheType_::REFRESH_SYMLINK_UNRESOLVED:
-        return asap::filesystem::last_write_time_impl(path_, ec);
-
-      case CacheType_::REFRESH_SYMLINK:
-      case CacheType_::REFRESH_NON_SYMLINK: {
-        std::error_code m_ec;
-        file_status st(GetFileType(&m_ec));
-        HandleError("in directory_entry::GetLastWriteTime", ec, m_ec);
-        if (asap::filesystem::exists(st) &&
-            cached_data_.write_time == file_time_type::min())
-          HandleError("in directory_entry::GetLastWriteTime", ec,
-                      make_error_code(std::errc::value_too_large));
-        return cached_data_.write_time;
-      }
-    }
-    ASAP_UNREACHABLE();
-  }
+  file_time_type GetLastWriteTime(std::error_code *ec = nullptr) const;
 
  private:
   path_type path_;

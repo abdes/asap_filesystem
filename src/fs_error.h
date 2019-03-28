@@ -16,6 +16,7 @@
 #include <Windows.h>
 #endif
 
+#include <filesystem/fs_file_type.h>
 #include <filesystem/fs_file_time_type.h>
 #include <filesystem/fs_path.h>
 #include <filesystem/filesystem_error.h>
@@ -69,6 +70,11 @@ inline constexpr file_time_type error_value<file_time_type>() {
 template <>
 inline path error_value<path>() {
   return {};
+}
+
+template <>
+inline file_type error_value<file_type>() {
+  return file_type::none;
 }
 
 template <class T>

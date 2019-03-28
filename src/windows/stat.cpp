@@ -142,7 +142,7 @@ path ReadSymlinkFromReparsePoint(const path &p, std::error_code *ec) {
 }
 
 file_status ProcessStatusFailure(std::error_code m_ec, const path &p,
-                                   std::error_code *ec) {
+                                 std::error_code *ec = nullptr) {
   if (ec) *ec = m_ec;
   if (m_ec) {
     if (IsNotFoundError(m_ec.value())) {

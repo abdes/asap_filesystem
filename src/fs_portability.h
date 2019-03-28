@@ -123,6 +123,7 @@ using ::GetFileAttributesW;
 using ::GetFileInformationByHandle;
 using ::GetFileInformationByHandleEx;
 using ::GetFileTime;
+using ::GetFileType;
 using ::GetLastError;
 using ::GetTempPathW;
 using ::RemoveDirectoryW;
@@ -215,9 +216,9 @@ file_time_type ExtractLastWriteTime(const path &p, const StatT &st,
 namespace win32 {
 bool IsNotFoundError(int errval);
 
-bool IsReparsePointSymlink(const path &p, std::error_code *ec);
+bool IsReparsePointSymlink(const path &p, std::error_code *ec = nullptr);
 
-path ReadSymlinkFromReparsePoint(const path &p, std::error_code *ec);
+path ReadSymlinkFromReparsePoint(const path &p, std::error_code *ec = nullptr);
 
 file_status ProcessStatusFailure(std::error_code m_ec, const path &p,
                                    std::error_code *ec);
