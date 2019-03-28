@@ -16,18 +16,18 @@ namespace filesystem {
 // -----------------------------------------------------------------------------
 
 #ifndef ASAP_WINDOWS
-std::error_code directory_entry::DoRefresh_impl() noexcept {
+std::error_code directory_entry::DoRefresh_impl() const noexcept {
   cached_data_.Reset();
   std::error_code failure_ec;
 
   detail::posix::StatT full_st;
   file_status st = detail::posix::GetLinkStatus(path_, full_st, &failure_ec);
-  if (!status_known(st)) {
+  if (failure_ec || !status_known(st)) {
     cached_data_.Reset();
     return failure_ec;
   }
 
-  if (!asap::filesystem::exists(st) || !asap::filesystem::is_symlink(st)) {
+  if (!asap::filesystem::is_symlink(st)) {
     cached_data_.cache_type = CacheType_::REFRESH_NON_SYMLINK;
     cached_data_.type = st.type();
     cached_data_.non_symlink_perms = st.permissions();
@@ -70,43 +70,40 @@ std::error_code directory_entry::DoRefresh_impl() noexcept {
   return failure_ec;
 }
 #else
-std::error_code directory_entry::DoRefresh_impl() noexcept {
+std::error_code directory_entry::DoRefresh_impl() const noexcept {
   cached_data_.Reset();
   std::error_code failure_ec;
 
   file_status st = asap::filesystem::symlink_status(path_, failure_ec);
-  if (!status_known(st)) {
+  if (failure_ec || !status_known(st)) {
     cached_data_.Reset();
     return failure_ec;
   }
 
-  if (!asap::filesystem::exists(st) || !asap::filesystem::is_symlink(st)) {
-    cached_data_.cache_type = CacheType_::REFRESH_NON_SYMLINK;
+  if (!asap::filesystem::is_symlink(st)) {
     cached_data_.type = st.type();
     cached_data_.non_symlink_perms = st.permissions();
   } else {  // we have a symlink
+    cached_data_.symlink = true;
     cached_data_.symlink_perms = st.permissions();
     // Get the information about the linked entity.
     // Ignore errors from stat, since we don't want errors regarding
     // symlink resolution to be reported to the user.
     std::error_code ignored_ec;
     st = asap::filesystem::status(path_, ignored_ec);
-
-    cached_data_.type = st.type();
-    cached_data_.non_symlink_perms = st.permissions();
-
-    // If we failed to resolve the link, then only partially populate the
-    // cache.
-    if (!status_known(st)) {
-      cached_data_.cache_type = CacheType_::REFRESH_SYMLINK_UNRESOLVED;
-      return std::error_code{};
+    if (!ignored_ec && status_known(st)) {
+      // link resolution successful
+      cached_data_.resolved = true;
+      cached_data_.type = st.type();
+      cached_data_.non_symlink_perms = st.permissions();
     }
-    cached_data_.cache_type = CacheType_::REFRESH_SYMLINK;
   }
 
   // FIXME: This is currently broken, and the implementation only a
   // placeholder. We need to cache last_write_time, file_size, and
   // hard_link_count here before the implementation actually works.
+
+  cached_data_.cache_type = CacheType_::FULL;
 
   return failure_ec;
 }
@@ -218,14 +215,12 @@ class DirectoryStream {
                                       wdirpath[wdirpath.size() - 1] != L':'))
                     ? L"\\*"
                     : L"*";
-    // FIXME: If the path points to a symbolic link, the WIN32_FIND_DATA buffer
-    // contains information about the symbolic link, not the target.
-    stream_ = ::FindFirstFileW(wdirpath.c_str(), &cached_data_);
+    stream_ = ::FindFirstFileW(wdirpath.c_str(), &entry_data_);
     // Skip the '.' and '..'
     if (stream_ != INVALID_HANDLE_VALUE) {
-      while (!wcscmp(cached_data_.cFileName, L".") ||
-             !wcscmp(cached_data_.cFileName, L"..")) {
-        if (!::FindNextFileW(stream_, &cached_data_)) {
+      while (!wcscmp(entry_data_.cFileName, L".") ||
+             !wcscmp(entry_data_.cFileName, L"..")) {
+        if (!::FindNextFileW(stream_, &entry_data_)) {
           close();
           break;
         }
@@ -240,9 +235,20 @@ class DirectoryStream {
       // We consider the situation of no more files available as ok
       if (ec.value() == ERROR_NO_MORE_FILES) ec.clear();
     } else {
-      entry_.AssignIterEntry(root_ / cached_data_.cFileName,
-                             directory_entry::CreateIterResult(
-                                 detail::get_file_type(cached_data_)));
+      entry_.path_ = root_ / entry_data_.cFileName;
+      entry_.cached_data_.type = detail::get_file_type(entry_data_);
+      if (entry_.cached_data_.type == file_type::symlink) {
+        entry_.cached_data_.symlink = true;
+        // FIXME: If the path points to a symbolic link, the WIN32_FIND_DATA
+        // buffer contains information about the symbolic link, not the target.
+      }
+      entry_.cached_data_.cache_type = directory_entry::CacheType_::BASIC;
+
+      // FIXME: Cache more of this
+      // directory_entry::CachedData_ cdata;
+      // cdata.type = get_file_type(cached_data_);
+      // cdata.size = get_file_size(cached_data_);
+      // cdata.write_time = get_write_time(cached_data_);
     }
   }
 
@@ -254,18 +260,25 @@ class DirectoryStream {
   bool good() const noexcept { return stream_ != INVALID_HANDLE_VALUE; }
 
   bool advance(std::error_code &ec) {
-    while (::FindNextFileW(stream_, &cached_data_)) {
-      if (!wcscmp(cached_data_.cFileName, L".") ||
-          !wcscmp(cached_data_.cFileName, L".."))
+    while (::FindNextFileW(stream_, &entry_data_)) {
+      if (!wcscmp(entry_data_.cFileName, L".") ||
+          !wcscmp(entry_data_.cFileName, L".."))
         continue;
+
+      entry_.path_ = root_ / entry_data_.cFileName;
+      entry_.cached_data_.type = detail::get_file_type(entry_data_);
+      if (entry_.cached_data_.type == file_type::symlink) {
+        entry_.cached_data_.symlink = true;
+        // FIXME: If the path points to a symbolic link, the WIN32_FIND_DATA
+        // buffer contains information about the symbolic link, not the target.
+      }
+      entry_.cached_data_.cache_type = directory_entry::CacheType_::BASIC;
+
       // FIXME: Cache more of this
       // directory_entry::CachedData_ cdata;
       // cdata.type = get_file_type(cached_data_);
       // cdata.size = get_file_size(cached_data_);
       // cdata.write_time = get_write_time(cached_data_);
-      entry_.AssignIterEntry(root_ / cached_data_.cFileName,
-                             directory_entry::CreateIterResult(
-                                 detail::get_file_type(cached_data_)));
       return true;
     }
     ec = std::error_code(::GetLastError(), std::generic_category());
@@ -285,7 +298,7 @@ class DirectoryStream {
   }
 
   HANDLE stream_{INVALID_HANDLE_VALUE};
-  WIN32_FIND_DATAW cached_data_;
+  WIN32_FIND_DATAW entry_data_;
 
  public:
   path root_;
@@ -324,16 +337,16 @@ class DirectoryStream {
 
   bool advance(std::error_code &ec) {
     while (true) {
-      auto str_type_pair = detail::posix_readdir(stream_, ec);
-      auto &str = str_type_pair.first;
+      auto entry_data_ = detail::posix_readdir(stream_, ec);
+      auto &str = entry_data_.first;
       if (str == "." || str == "..") {
         continue;
       } else if (ec || str.empty()) {
         close();
         return false;
       } else {
-        entry_.AssignIterEntry(root_ / str, directory_entry::CreateIterResult(
-                                                str_type_pair.second));
+        entry_.AssignIterEntry(
+            root_ / str, directory_entry::CreateIterResult(entry_data_.second));
         return true;
       }
     }
