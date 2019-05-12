@@ -39,6 +39,13 @@ TEST_CASE("Dir / dir_iterator / empty",
   REQUIRE(iter == end(iter));
 }
 
+// It is not crystal clear in the C++ standard what is the exact interpretation
+// of the follow_directory_symlink in directory_options. Our interpretation is
+// that it is not significant for dir_iterator and it is only used for
+// dir_recursive_iterator.
+//
+// This is in line with the default behavior of 'ls' command and with the fact
+// that POSIX opendir always follows symlinks in the given path.
 TEST_CASE("Dir / dir_iterator / over symlink",
           "[common][filesystem][ops][dir_iterator]") {
 #if defined(ASAP_WINDOWS)
@@ -76,11 +83,15 @@ TEST_CASE("Dir / dir_iterator / over symlink",
   ++iter;
   REQUIRE(iter == end(iter));
 
-  // Iterate over the link and check it is skipped when follow_directory_symlink
-  // is not specified
+  // Iterate over the link with follow_directory_symlink not specified and check
+  // it finds the file inside
   ec = bad_ec;
   iter = fs::directory_iterator(lnk, ec);
   REQUIRE(!ec);
+  REQUIRE(iter != fs::directory_iterator());
+  REQUIRE(iter->path() == lnk / f);
+  REQUIRE(iter->is_regular_file());
+  ++iter;
   REQUIRE(iter == end(iter));
 }
 
