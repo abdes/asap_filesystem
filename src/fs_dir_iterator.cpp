@@ -328,6 +328,7 @@ uintmax_t directory_entry::GetSize(std::error_code *ec) const {
       }
       // continue to update extra file attributes
     }
+    /* FALLTHRU */
     case CacheType_::BASIC:
       UpdateExtraFileInformation(true, ec);
       break;
@@ -351,6 +352,7 @@ uintmax_t directory_entry::GetHardLinkCount(std::error_code *ec) const {
     case CacheType_::EMPTY:
       UpdateBasicFileInformation(false, ec);
       // continue to update extra file attributes
+      /* FALLTHRU */
     case CacheType_::BASIC:
       UpdateExtraFileInformation(false, ec);
       break;
@@ -371,6 +373,7 @@ file_time_type directory_entry::GetLastWriteTime(std::error_code *ec) const {
     case CacheType_::EMPTY:
       UpdateBasicFileInformation(true, ec);
       // continue to update extra file attributes
+      /* FALLTHRU */
     case CacheType_::BASIC:
       UpdateExtraFileInformation(true, ec);
       break;
@@ -398,11 +401,13 @@ file_status directory_entry::GetStatus(std::error_code *ec) const {
     case CacheType_::EMPTY:
       UpdateBasicFileInformation(true, ec);
       // continue to update extra file attributes
+      /* FALLTHRU */
     case CacheType_::BASIC:
       // Don't resolve links for extra information as we may not need it if the
       // caller is just asking for permissions information.
       UpdateExtraFileInformation(false, ec);
       // continue to update permissions
+      /* FALLTHRU */
     case CacheType_::EXTRA:
       UpdatePermissionsInformation(true, ec);
       break;
@@ -425,9 +430,11 @@ file_status directory_entry::GetSymLinkStatus(std::error_code *ec) const {
     case CacheType_::EMPTY:
       UpdateBasicFileInformation(false, ec);
       // continue to update extra file attributes
+      /* FALLTHRU */
     case CacheType_::BASIC:
       UpdateExtraFileInformation(false, ec);
       // continue to update permissions
+      /* FALLTHRU */
     case CacheType_::EXTRA:
       UpdatePermissionsInformation(false, ec);
       break;
