@@ -38,9 +38,11 @@ set(public_headers
   )
 
 if (WIN32)
-  set(platform_specific_sources
+  set(platform_specific_test_sources
     "windows/win_permissions_test.cpp"
     )
+else ()
+  set(platform_specific_test_sources)
 endif ()
 
 set(sources
@@ -89,7 +91,7 @@ set(sources
   "dir_recursive_iterator.cpp"
   "dir_pop_test.cpp"
   # platformspecific
-  ${platform_specific_sources}
+  ${platform_specific_test_sources}
   "main.cpp"
   ${public_headers}
 )
