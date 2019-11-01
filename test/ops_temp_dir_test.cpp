@@ -101,8 +101,6 @@ TEST_CASE("Ops / temp_dir / permission",
     ec2 = e.code();
   }
   REQUIRE(ec2 == ec);
-
-  permissions(p / "tmp", fs::perms::owner_all);
 }
 
 TEST_CASE("Ops / temp_dir / not a directory",

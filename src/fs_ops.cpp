@@ -445,7 +445,7 @@ bool copy_file_impl(const path &from, const path &to, copy_options options,
       FileDescriptor::Create(&from, m_ec, O_RDONLY | O_NONBLOCK);
   if (m_ec) return err.report(m_ec);
 
-  fd.RefreshStatus(false, m_ec);
+  from_fd.RefreshStatus(false, m_ec);
   if (m_ec) return err.report(m_ec);
 
   auto from_st = from_fd.Status();
@@ -491,7 +491,7 @@ bool copy_file_impl(const path &from, const path &to, copy_options options,
       &to, m_ec, to_open_flags, from_stat.st_mode);
   if (m_ec) return err.report(m_ec);
 
-  fd.RefreshStatus(false, m_ec);
+  to_fd.RefreshStatus(false, m_ec);
   if (m_ec) return err.report(m_ec);
 
   if (to_exists) {
