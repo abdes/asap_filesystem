@@ -410,7 +410,7 @@ void SetPermissions(const path &p, perms prms, bool follow_symlinks,
   DWORD access = 0L;
   if (FlagTest(prms, perms::others_read)) FlagSet(access, (DWORD)GENERIC_READ);
   if (FlagTest(prms, perms::others_write))
-    FlagSet(access, (DWORD)GENERIC_WRITE);
+    FlagSet(access, (DWORD)GENERIC_WRITE | FILE_DELETE_CHILD | DELETE);
   if (FlagTest(prms, perms::others_exec))
     FlagSet(access, (DWORD)GENERIC_EXECUTE);
 
@@ -442,7 +442,7 @@ void SetPermissions(const path &p, perms prms, bool follow_symlinks,
       FlagSet(access, (DWORD)GENERIC_READ);
     if (FlagTest(prms, perms::group_write) &&
         !FlagTest(prms, perms::others_write))
-      FlagSet(access, (DWORD)GENERIC_WRITE);
+      FlagSet(access, (DWORD)GENERIC_WRITE | FILE_DELETE_CHILD | DELETE);
     if (FlagTest(prms, perms::group_exec) &&
         !FlagTest(prms, perms::others_exec))
       FlagSet(access, (DWORD)GENERIC_EXECUTE);
@@ -462,7 +462,7 @@ void SetPermissions(const path &p, perms prms, bool follow_symlinks,
       FlagSet(access, (DWORD)GENERIC_READ);
     if (!FlagTest(prms, perms::group_write) &&
         FlagTest(prms, perms::others_write))
-      FlagSet(access, (DWORD)GENERIC_WRITE);
+      FlagSet(access, (DWORD)GENERIC_WRITE | FILE_DELETE_CHILD | DELETE);
     if (!FlagTest(prms, perms::group_exec) &&
         FlagTest(prms, perms::others_exec))
       FlagSet(access, (DWORD)GENERIC_EXECUTE);
@@ -487,7 +487,7 @@ void SetPermissions(const path &p, perms prms, bool follow_symlinks,
   if (FlagTest(prms, perms::owner_write) &&
       !(FlagTest(prms, perms::group_write) ||
         FlagTest(prms, perms::others_write)))
-    FlagSet(access, (DWORD)GENERIC_WRITE | FILE_DELETE_CHILD);
+    FlagSet(access, (DWORD)GENERIC_WRITE | FILE_DELETE_CHILD | DELETE);
   if (FlagTest(prms, perms::owner_exec) &&
       !(FlagTest(prms, perms::group_exec) ||
         FlagTest(prms, perms::others_exec)))
@@ -509,7 +509,7 @@ void SetPermissions(const path &p, perms prms, bool follow_symlinks,
   if (!FlagTest(prms, perms::owner_write) &&
       (FlagTest(prms, perms::group_write) ||
        FlagTest(prms, perms::others_write)))
-    FlagSet(access, (DWORD)GENERIC_WRITE);
+    FlagSet(access, (DWORD)GENERIC_WRITE | FILE_DELETE_CHILD | DELETE);
   if (!FlagTest(prms, perms::owner_exec) &&
       (FlagTest(prms, perms::group_exec) || FlagTest(prms, perms::others_exec)))
     FlagSet(access, (DWORD)GENERIC_EXECUTE);
