@@ -442,7 +442,10 @@ bool copy_file_impl(const path &from, const path &to, copy_options options,
   return true;
 #else   // ASAP_WINDOWS
   FileDescriptor from_fd =
-      FileDescriptor::CreateWithStatus(&from, m_ec, O_RDONLY | O_NONBLOCK);
+      FileDescriptor::Create(&from, m_ec, O_RDONLY | O_NONBLOCK);
+  if (m_ec) return err.report(m_ec);
+
+  fd.RefreshStatus(false, m_ec);
   if (m_ec) return err.report(m_ec);
 
   auto from_st = from_fd.Status();
@@ -484,8 +487,11 @@ bool copy_file_impl(const path &from, const path &to, copy_options options,
   // originally looked at; we'll check this later.
   int to_open_flags = O_WRONLY;
   if (!to_exists) to_open_flags |= O_CREAT;
-  FileDescriptor to_fd = FileDescriptor::CreateWithStatus(
+  FileDescriptor to_fd = FileDescriptor::Create(
       &to, m_ec, to_open_flags, from_stat.st_mode);
+  if (m_ec) return err.report(m_ec);
+
+  fd.RefreshStatus(false, m_ec);
   if (m_ec) return err.report(m_ec);
 
   if (to_exists) {
@@ -1016,32 +1022,9 @@ void permissions_impl(const path &p, perms prms, perm_options opts,
   }
 
 #if defined(ASAP_WINDOWS)
-  // TODO: check permissions setting on windows
-  // if not going to alter FILE_ATTRIBUTE_READONLY, just return
-  if (!(!(add_perms | remove_perms) ||
-        (detail::is_set(prms, perms::owner_write) ||
-         detail::is_set(prms, perms::group_write) ||
-         detail::is_set(prms, perms::others_write))))
-    return;
-
-  auto wpath = p.wstring();
-  DWORD attr = detail::win32::GetFileAttributesW(wpath.c_str());
-  if (attr == INVALID_FILE_ATTRIBUTES) return err.report(capture_errno());
-
-  if (add_perms)
-    attr &= ~FILE_ATTRIBUTE_READONLY;
-  else if (remove_perms)
-    attr |= FILE_ATTRIBUTE_READONLY;
-  else if (detail::is_set(prms, perms::owner_write) ||
-           detail::is_set(prms, perms::group_write) ||
-           detail::is_set(prms, perms::others_write))
-    attr &= ~FILE_ATTRIBUTE_READONLY;
-  else
-    attr |= FILE_ATTRIBUTE_READONLY;
-
-  attr = detail::win32::SetFileAttributesW(wpath.c_str(), attr);
-  if (attr == INVALID_FILE_ATTRIBUTES) return err.report(capture_errno());
-
+  std::error_code m_ec;
+  detail::win32::SetPermissions(p, prms, set_sym_perms, &m_ec);
+  if (m_ec) return err.report(m_ec);
 #else  // ASAP_WINDOWS
   const auto real_perms = static_cast< ::mode_t>(prms & perms::mask);
 
@@ -1264,11 +1247,12 @@ file_status status_impl(const path &p, std::error_code *ec) {
     return detail::win32::ProcessStatusFailure(capture_errno(), p, ec);
   }
 
+  std::error_code m_ec;
+
   // Handle the case of reparse point.
   // Since GetFileAttributesW does not resolve symlinks, try to open the file
   // handle to discover if it exists.
   if (attrs & FILE_ATTRIBUTE_REPARSE_POINT) {
-    std::error_code m_ec;
     // Becasue we do not specify the flag FILE_FLAG_OPEN_REPARSE_POINT, symlinks
     // will be followed and the target is opened.
     auto file1 = detail::FileDescriptor::Create(
@@ -1287,11 +1271,14 @@ file_status status_impl(const path &p, std::error_code *ec) {
     }
   }
 
+  auto prms = detail::win32::GetPermissions(p, attrs, true, &m_ec);
+  if (m_ec) {
+    return detail::win32::ProcessStatusFailure(m_ec, p, ec);
+  }
+
   return (attrs & FILE_ATTRIBUTE_DIRECTORY)
-             ? file_status(file_type::directory,
-                           detail::win32::MakePermissions(p, attrs))
-             : file_status(file_type::regular,
-                           detail::win32::MakePermissions(p, attrs));
+             ? file_status(file_type::directory, prms)
+             : file_status(file_type::regular, prms);
 #else
   StatT path_stat;
   return detail::posix::GetFileStatus(p, path_stat, ec);
@@ -1307,18 +1294,20 @@ file_status symlink_status_impl(const path &p, std::error_code *ec) {
     return detail::win32::ProcessStatusFailure(capture_errno(), p, ec);
   }
 
+  std::error_code m_ec;
+  auto prms = detail::win32::GetPermissions(p, attr, false, &m_ec);
+  if (m_ec) {
+    return detail::win32::ProcessStatusFailure(m_ec, p, ec);
+  }
+
   if (attr & FILE_ATTRIBUTE_REPARSE_POINT)
     return detail::win32::IsReparsePointSymlink(p, ec)
-               ? file_status(file_type::symlink,
-                             detail::win32::MakePermissions(p, attr))
-               : file_status(file_type::reparse_file,
-                             detail::win32::MakePermissions(p, attr));
+               ? file_status(file_type::symlink, prms)
+               : file_status(file_type::reparse_file, prms);
 
   return (attr & FILE_ATTRIBUTE_DIRECTORY)
-             ? file_status(file_type::directory,
-                           detail::win32::MakePermissions(p, attr))
-             : file_status(file_type::regular,
-                           detail::win32::MakePermissions(p, attr));
+             ? file_status(file_type::directory, prms)
+             : file_status(file_type::regular, prms);
 #else
   StatT path_stat;
   return detail::posix::GetLinkStatus(p, path_stat, ec);

@@ -18,6 +18,7 @@
 
 #include <filesystem/fs_file_type.h>
 #include <filesystem/fs_file_time_type.h>
+#include <filesystem/fs_perms.h>
 #include <filesystem/fs_path.h>
 #include <filesystem/filesystem_error.h>
 // clang-format on
@@ -75,6 +76,11 @@ inline path error_value<path>() {
 template <>
 inline file_type error_value<file_type>() {
   return file_type::none;
+}
+
+template <>
+inline perms error_value<perms>() {
+  return perms::unknown;
 }
 
 template <class T>

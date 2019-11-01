@@ -18,6 +18,8 @@ TEST_CASE("Dir / dir_recursive_iterator",
 
   // Test non-existent path.
   const auto p = testing::nonexistent_path();
+  testing::scoped_file sfrom(p, testing::scoped_file::adopt_file);
+
   fs::recursive_directory_iterator iter(p, ec);
   REQUIRE(ec);
   REQUIRE(iter == end(iter));

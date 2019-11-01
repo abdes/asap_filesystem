@@ -152,8 +152,18 @@ file_status ProcessStatusFailure(std::error_code m_ec, const path &p,
     } else {
       if (ec) {
         ErrorHandler<void> err("file_stat", ec, &p);
+#if defined(ASAP_WINDOWS)
+        if (m_ec.value() == ERROR_ACCESS_DENIED) {
+          err.report(std::errc::permission_denied,
+                     "failed to determine attributes for the specified path");
+        } else {
+          err.report(m_ec,
+                     "failed to determine attributes for the specified path");
+        }
+#else   // ASAP_WINDOWS
         err.report(m_ec,
                    "failed to determine attributes for the specified path");
+#endif  // ASAP_WINDOWS
       }
     }
   }

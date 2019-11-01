@@ -124,14 +124,14 @@ void directory_entry::UpdateBasicFileInformation(bool follow_symlinks,
 
   if (asap::filesystem::is_regular_file(st))
     cached_data_.size = static_cast<uintmax_t>(full_st.st_size);
-  
+
   if (asap::filesystem::exists(st)) {
     // Attempt to extract the mtime, and fail if it's not representable using
     // file_time_type. For now we ignore the error, as we'll report it when
     // the value is actually used.
     std::error_code ignored_ec;
     cached_data_.write_time =
-    detail::posix::ExtractLastWriteTime(path_, full_st, &ignored_ec);
+        detail::posix::ExtractLastWriteTime(path_, full_st, &ignored_ec);
   }
   cached_data_.cache_type = CacheType_::FULL;
 #endif  // ASAP_WINDOWS
@@ -142,7 +142,8 @@ void directory_entry::UpdateExtraFileInformation(bool follow_symlinks,
   ErrorHandler<void> err("UpdateExtraFileInformation", ec, &path_);
 
 #if defined(ASAP_WINDOWS)
-  ASAP_ASSERT((cached_data_.cache_type == CacheType_::BASIC) || (cached_data_.cache_type == CacheType_::EXTRA));
+  ASAP_ASSERT((cached_data_.cache_type == CacheType_::BASIC) ||
+              (cached_data_.cache_type == CacheType_::EXTRA));
   // Open the file handle without following symlinks to get the number of hard
   // links pointing to it.
   std::error_code m_ec;
@@ -212,7 +213,8 @@ void directory_entry::UpdatePermissionsInformation(bool follow_symlinks,
   ErrorHandler<void> err("UpdatePermissionsInformation", ec, &path_);
 
 #if defined(ASAP_WINDOWS)
-  ASAP_ASSERT((cached_data_.cache_type == CacheType_::EXTRA) || (cached_data_.cache_type == CacheType_::FULL));
+  ASAP_ASSERT((cached_data_.cache_type == CacheType_::EXTRA) ||
+              (cached_data_.cache_type == CacheType_::FULL));
   // Open the file handle without following symlinks
   std::error_code m_ec;
   {
@@ -229,11 +231,14 @@ void directory_entry::UpdatePermissionsInformation(bool follow_symlinks,
       return err.report(detail::capture_errno());
     }
     if (cached_data_.symlink) {
-      cached_data_.symlink_perms =
-          detail::win32::MakePermissions(path_, file_info.FileAttributes);
+      cached_data_.symlink_perms = detail::win32::GetPermissions(
+          path_, file_info.FileAttributes, follow_symlinks, &m_ec);
     } else {
-      cached_data_.non_symlink_perms =
-          detail::win32::MakePermissions(path_, file_info.FileAttributes);
+      cached_data_.non_symlink_perms = detail::win32::GetPermissions(
+          path_, file_info.FileAttributes, follow_symlinks, &m_ec);
+    }
+    if (m_ec) {
+      return err.report(m_ec);
     }
   }
 
@@ -253,8 +258,11 @@ void directory_entry::UpdatePermissionsInformation(bool follow_symlinks,
             file.fd_, FileAttributeTagInfo, &file_info, sizeof(file_info))) {
       return err.report(detail::capture_errno());
     }
-    cached_data_.non_symlink_perms =
-        detail::win32::MakePermissions(path_, file_info.FileAttributes);
+    cached_data_.non_symlink_perms = detail::win32::GetPermissions(
+        path_, file_info.FileAttributes, follow_symlinks, &m_ec);
+    if (m_ec) {
+      return err.report(m_ec);
+    }
     cached_data_.perms_resolved = true;
   }
 #else   // !ASAP_WINDOWS
@@ -587,8 +595,14 @@ class DirectoryStream {
       ec = std::error_code(::GetLastError(), std::generic_category());
       const bool ignore_permission_denied =
           bool(opts & directory_options::skip_permission_denied);
-      if (ignore_permission_denied && ec.value() == ERROR_ACCESS_DENIED)
-        ec.clear();
+      if (ec.value() == ERROR_ACCESS_DENIED) {
+        if (ignore_permission_denied)
+          ec.clear();
+        else
+          ec.assign(static_cast<typename std::underlying_type<std::errc>::type>(
+                        std::errc::permission_denied),
+                    std::generic_category());
+      }
       // We consider the situation of no more files available as ok
       if (ec.value() == ERROR_NO_MORE_FILES) ec.clear();
     } else {

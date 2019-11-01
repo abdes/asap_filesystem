@@ -37,6 +37,12 @@ set(public_headers
   "fs_testsuite.h"
   )
 
+if (WIN32)
+  set(platform_specific_sources
+    "windows/win_permissions_test.cpp"
+    )
+endif ()
+
 set(sources
   "path_traits_test.cpp"
   "path_append_test.cpp"
@@ -82,6 +88,8 @@ set(sources
   "dir_iterator_test.cpp"
   "dir_recursive_iterator.cpp"
   "dir_pop_test.cpp"
+  # platformspecific
+  ${platform_specific_sources}
   "main.cpp"
   ${public_headers}
 )

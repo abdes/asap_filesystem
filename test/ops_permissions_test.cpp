@@ -24,9 +24,9 @@ TEST_CASE("Ops / permissions / read",
   REQUIRE(exists(p));
   permissions(p, perms::owner_all);
   REQUIRE(status(p).permissions() == perms::owner_all);
-  permissions(p, perms::group_read, perm_options::add);
-  REQUIRE(status(p).permissions() == (perms::owner_all | perms::group_read));
-  permissions(p, perms::group_read, perm_options::remove);
+  permissions(p, perms::others_read, perm_options::add);
+  REQUIRE(status(p).permissions() == (perms::owner_all | perms::others_read));
+  permissions(p, perms::others_read, perm_options::remove);
   REQUIRE(status(p).permissions() == perms::owner_all);
 }
 
@@ -38,8 +38,6 @@ TEST_CASE("Ops / permissions / add", "[common][filesystem][ops][permissions]") {
   auto p = testing::nonexistent_path();
 
   std::error_code ec;
-  permissions(p, perms::owner_all, ec);
-  REQUIRE(ec);
 
   testing::scoped_file f(p);
   REQUIRE(exists(p));
@@ -49,16 +47,16 @@ TEST_CASE("Ops / permissions / add", "[common][filesystem][ops][permissions]") {
   REQUIRE(!ec);
   REQUIRE(status(p).permissions() == perms::owner_all);
   ec = bad_ec;
-  permissions(p, perms::group_read, perm_options::add, ec);
+  permissions(p, perms::others_read, perm_options::add, ec);
   REQUIRE(!ec);
-  REQUIRE(status(p).permissions() == (perms::owner_all | perms::group_read));
+  REQUIRE(status(p).permissions() == (perms::owner_all | perms::others_read));
   ec = bad_ec;
-  permissions(p, perms::group_read, perm_options::remove, ec);
+  permissions(p, perms::others_read, perm_options::remove, ec);
   REQUIRE(!ec);
   REQUIRE(status(p).permissions() == perms::owner_all);
 }
 
-TEST_CASE("Ops / permissions / replace",
+TEST_CASE("Ops / permissions / symlink",
           "[common][filesystem][ops][permissions]") {
   using fs::perm_options;
   using fs::perms;
@@ -92,7 +90,7 @@ TEST_CASE("Ops / permissions / replace",
   }
 }
 
-TEST_CASE("Ops / permissions / symlink",
+TEST_CASE("Ops / permissions / file",
           "[common][filesystem][ops][permissions]") {
   const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
   using fs::perm_options;
@@ -116,13 +114,45 @@ TEST_CASE("Ops / permissions / symlink",
   REQUIRE(st.permissions() == p);
 }
 
+TEST_CASE("Ops / permissions / directory",
+          "[common][filesystem][ops][permissions]") {
+  const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
+  using fs::perm_options;
+  using fs::perms;
+  std::error_code ec;
+
+  auto p = testing::nonexistent_path();
+  testing::scoped_file sfrom(p, testing::scoped_file::adopt_file);
+
+  ec = bad_ec;
+  create_directory(p, ec);
+  REQUIRE(!ec);
+  REQUIRE(exists(p));
+
+  ec = bad_ec;
+  permissions(p, perms::owner_read, perm_options::replace, ec);
+  REQUIRE(!ec);
+  auto st = status(p);
+  REQUIRE(st.permissions() == perms::owner_read);
+
+  ec = bad_ec;
+  permissions(p, perms::owner_write | perms::owner_exec, perm_options::add, ec);
+  REQUIRE(!ec);
+  st = status(p);
+  REQUIRE(st.permissions() == (perms::owner_all));
+
+  ec = bad_ec;
+  permissions(p, perms::owner_write, perm_options::remove, ec);
+  REQUIRE(!ec);
+  st = status(p);
+  REQUIRE(st.permissions() == (perms::owner_read | perms::owner_exec));
+}
+
 TEST_CASE("Ops / permissions / error",
           "[common][filesystem][ops][permissions]") {
   using perms = fs::perms;
 
   auto p = testing::nonexistent_path();
-  testing::scoped_file sp(p, testing::scoped_file::adopt_file);
-  create_symlink(testing::nonexistent_path(), p);
 
   std::error_code ec = make_error_code(std::errc::no_such_file_or_directory);
   permissions(p, perms::owner_all, ec);

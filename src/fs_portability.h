@@ -38,6 +38,7 @@
 
 #if defined(ASAP_WINDOWS)
 # include <windows.h>
+#include <aclapi.h>
 #endif
 
 #include <filesystem/filesystem.h>
@@ -221,9 +222,12 @@ bool IsReparsePointSymlink(const path &p, std::error_code *ec = nullptr);
 path ReadSymlinkFromReparsePoint(const path &p, std::error_code *ec = nullptr);
 
 file_status ProcessStatusFailure(std::error_code m_ec, const path &p,
-                                   std::error_code *ec);
+                                 std::error_code *ec);
 
-perms MakePermissions(const path &p, DWORD attr);
+perms GetPermissions(const path &p, DWORD attr, bool follow_symlinks,
+                     std::error_code *ec);
+void SetPermissions(const path &p, perms prms, bool follow_symlinks,
+                     std::error_code *ec);
 }  // namespace win32
 #endif  // ASAP_WINDOWS
 
@@ -278,21 +282,12 @@ struct FileDescriptor {
     return FileDescriptor(p, fd);
   }
 
-  template <class... Args>
-  static FileDescriptor CreateWithStatus(const path *p, std::error_code &ec,
-                                         Args... args) {
-    FileDescriptor fd = Create(p, ec, args...);
-    if (!ec) fd.RefreshStatus(ec);
-
-    return fd;
-  }
-
   file_status Status() const { return status_; }
 #if defined(ASAP_POSIX)
   posix::StatT const &PosixStatus() const { return stat_; }
 #endif
 
-  file_status RefreshStatus(std::error_code &ec);
+  file_status RefreshStatus(bool follow_symlinks, std::error_code &ec);
 
  private:
   explicit FileDescriptor(const path *p,
