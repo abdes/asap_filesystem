@@ -100,9 +100,9 @@ void directory_entry::UpdateBasicFileInformation(bool follow_symlinks,
 #else   // !ASAP_WINDOWS
   std::error_code m_ec;
   detail::posix::StatT full_st;
-  file_status st;
+  file_status st = detail::posix::GetFileStatus(path_, full_st, &m_ec);
+
   if (cached_data_.cache_type == CacheType_::EMPTY) {
-    st = detail::posix::GetLinkStatus(path_, full_st, &m_ec);
     if (m_ec || !status_known(st)) {
       return err.report(m_ec);
     }
@@ -113,8 +113,8 @@ void directory_entry::UpdateBasicFileInformation(bool follow_symlinks,
       cached_data_.symlink_perms = st.permissions();
     }
   }
+  
   if ((cached_data_.symlink) && follow_symlinks) {
-    st = detail::posix::GetFileStatus(path_, full_st, &m_ec);
     cached_data_.type = st.type();
     cached_data_.non_symlink_perms = st.permissions();
     cached_data_.type_resolved = true;
