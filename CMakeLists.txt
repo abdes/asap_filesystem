@@ -189,7 +189,7 @@ add_doxygen_target(${target})
 add_sphinx_target(${target})
 
 install(
-  DIRECTORY ${DOXYGEN_BUILD_DIR}/${target}
+  DIRECTORY ${SPHINX_BUILD_DIR}/${target}
   DESTINATION ${INSTALL_DOC}
   COMPONENT docs
 )
