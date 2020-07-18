@@ -4,7 +4,6 @@
 //   https://opensource.org/licenses/BSD-3-Clause)
 
 #include <catch2/catch.hpp>
-
 #include <fstream>
 
 #include "fs_testsuite.h"
@@ -19,7 +18,7 @@ TEST_CASE("Ops / file_size / special", "[common][filesystem][ops][file_size]") {
   std::error_code ec;
   size_t size = fs::file_size(".", ec);
   REQUIRE(ec == std::errc::is_a_directory);
-  REQUIRE(size == -1);
+  REQUIRE(size == static_cast<std::uintmax_t>(-1));
 
   REQUIRE_THROWS_MATCHES(
       fs::file_size("."), fs::filesystem_error,
@@ -34,7 +33,7 @@ TEST_CASE("Ops / file_size / not existing",
   std::error_code ec;
   size_t size = fs::file_size(p, ec);
   REQUIRE(ec);
-  REQUIRE(size == -1);
+  REQUIRE(size == static_cast<std::uintmax_t>(-1));
 
   try {
     size = fs::file_size(p);
@@ -43,5 +42,5 @@ TEST_CASE("Ops / file_size / not existing",
     ec = e.code();
   }
   REQUIRE(ec);
-  REQUIRE(size == -1);
+  REQUIRE(size == static_cast<std::uintmax_t>(-1));
 }
