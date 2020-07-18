@@ -66,7 +66,7 @@ void path::SplitComponents() {
     }
   }
 #ifdef ASAP_WINDOWS
-  else if (len > 1 && pathname_[1] == L':') {
+  else if (len > 1 && pathname_[1] == ':') {
     // got disk designator
     AddRootName(2);
     if (len > 2 && IsDirSeparator(pathname_[2])) AddRootDir(2);
@@ -324,7 +324,7 @@ void path::AddRootName(size_t len) {
   auto rootname = pathname_.substr(0, len);
 #if defined(ASAP_WINDOWS)
   // Replace separator with preferred separator '\'
-  std::replace(rootname.begin(), rootname.end(), L'/', L'\\');
+  std::replace(rootname.begin(), rootname.end(), slash, preferred_separator);
 #endif
   components_.emplace_back(rootname, Type::ROOT_NAME, 0);
 }
@@ -333,7 +333,7 @@ void path::AddRootDir(size_t pos) {
   auto rootdir = pathname_.substr(pos, 1);
 #if defined(ASAP_WINDOWS)
   // Replace separator with preferred separator '\'
-  if (rootdir[0] == L'/') rootdir[0] = L'\\';
+  if (rootdir[0] == slash) rootdir[0] = preferred_separator;
 #endif
   components_.emplace_back(rootdir, Type::ROOT_DIR, pos);
 }
@@ -358,7 +358,7 @@ path::iterator path::end() const {
 
 path::iterator &path::iterator::operator++() {
   ASAP_ASSERT(path_ != nullptr);
-  if (path_->type_ == Type::MULTI) {
+  if (path_ && (path_->type_ == Type::MULTI)) {
     ASAP_ASSERT(cur_ != path_->components_.end());
     ++cur_;
   } else {
@@ -370,7 +370,7 @@ path::iterator &path::iterator::operator++() {
 
 path::iterator &path::iterator::operator--() {
   ASAP_ASSERT(path_ != nullptr);
-  if (path_->type_ == Type::MULTI) {
+  if (path_ && (path_->type_ == Type::MULTI)) {
     ASAP_ASSERT(cur_ != path_->components_.begin());
     --cur_;
   } else {
@@ -382,7 +382,7 @@ path::iterator &path::iterator::operator--() {
 
 path::iterator::reference path::iterator::operator*() const {
   ASAP_ASSERT(path_ != nullptr);
-  if (path_->type_ == Type::MULTI) {
+  if (path_ && (path_->type_ == Type::MULTI)) {
     ASAP_ASSERT(cur_ != path_->components_.end());
     return *cur_;
   }
