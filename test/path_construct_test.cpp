@@ -53,11 +53,11 @@ TEST_CASE("Path / construct / path(string_type&&, format)",
   // path(string_type&&, format)
   auto s = [&]() -> path::string_type { return path("foo/bar").native(); };
   path p0(s());
-  path p1(s(), path::auto_format);
+  path p1(s(), path::format::auto_format);
   REQUIRE(p1 == p0);
-  path p2(s(), path::native_format);
+  path p2(s(), path::format::native_format);
   REQUIRE(p2 == p0);
-  path p3(s(), path::generic_format);
+  path p3(s(), path::format::generic_format);
   REQUIRE(p3 == p0);
 }
 
@@ -67,43 +67,43 @@ TEST_CASE("Path / construct / path(const Source&, format)",
   SECTION("Source = path::string_type") {
     const path::string_type s = path("foo/bar").native();
     path p0(s);
-    path p1(s, path::auto_format);
+    path p1(s, path::format::auto_format);
     REQUIRE(p1 == p0);
-    path p2(s, path::native_format);
+    path p2(s, path::format::native_format);
     REQUIRE(p2 == p0);
-    path p3(s, path::generic_format);
+    path p3(s, path::format::generic_format);
     REQUIRE(p3 == p0);
   }
   SECTION("Source = std::string") {
     const std::string s = "foo/bar";
     path p0(s);
-    path p1(s, path::auto_format);
+    path p1(s, path::format::auto_format);
     REQUIRE(p1 == p0);
-    path p2(s, path::native_format);
+    path p2(s, path::format::native_format);
     REQUIRE(p2 == p0);
-    path p3(s, path::generic_format);
+    path p3(s, path::format::generic_format);
     REQUIRE(p3 == p0);
   }
   SECTION("Source = path::wstring") {
     // path(const Source&, format)
     const std::wstring s = L"要らない.txt";
     path p0(s);
-    path p1(s, path::auto_format);
+    path p1(s, path::format::auto_format);
     REQUIRE(p1 == p0);
-    path p2(s, path::native_format);
+    path p2(s, path::format::native_format);
     REQUIRE(p2 == p0);
-    path p3(s, path::generic_format);
+    path p3(s, path::format::generic_format);
     REQUIRE(p3 == p0);
   }
   SECTION("Source = const char *") {
     // path(const Source&, format)
     const char *s = "foo/bar";
     path p0(s);
-    path p1(s, path::auto_format);
+    path p1(s, path::format::auto_format);
     REQUIRE(p1 == p0);
-    path p2(s, path::native_format);
+    path p2(s, path::format::native_format);
     REQUIRE(p2 == p0);
-    path p3(s, path::generic_format);
+    path p3(s, path::format::generic_format);
     REQUIRE(p3 == p0);
   }
 }
@@ -116,13 +116,13 @@ TEST_CASE("Path / construct / path(InputIterator, InputIterator, format)",
   auto c0 = c;
   path p0(std::begin(c0), std::end(c0));
   auto c1 = c;
-  path p1(std::begin(c1), std::end(c1), path::auto_format);
+  path p1(std::begin(c1), std::end(c1), path::format::auto_format);
   REQUIRE(p1 == p0);
   auto c2 = c;
-  path p2(std::begin(c2), std::end(c2), path::native_format);
+  path p2(std::begin(c2), std::end(c2), path::format::native_format);
   REQUIRE(p2 == p0);
   auto c3 = c;
-  path p3(std::begin(c3), std::end(c3), path::generic_format);
+  path p3(std::begin(c3), std::end(c3), path::format::generic_format);
   REQUIRE(p3 == p0);
 }
 
