@@ -45,7 +45,7 @@ class ASAP_FILESYSTEM_API path {
   static constexpr value_type preferred_separator = '/';
 #endif
 
-  enum format { native_format, generic_format, auto_format };
+  enum class format { native_format, generic_format, auto_format };
 
   /// @name Constructors and destructor
   //@{
@@ -59,7 +59,7 @@ class ASAP_FILESYSTEM_API path {
    */
   path(const path &p) = default;
 
-  path(string_type &&source, format = auto_format)
+  path(string_type &&source, format /*fmt*/ = format::auto_format)
       : pathname_(std::move(source)) {
     SplitComponents();
   }
@@ -82,13 +82,14 @@ class ASAP_FILESYSTEM_API path {
    * @param source
    */
   template <typename Source, typename = IsPathable<Source>>
-  path(const Source &source, format = auto_format)
+  path(const Source &source, format /*fmt*/ = format::auto_format)
       : pathname_(convert(range_begin(source), range_end(source))) {
     SplitComponents();
   }
 
   template <typename InputIterator, typename = IsPathable<InputIterator>>
-  path(InputIterator first, InputIterator last, format = auto_format)
+  path(InputIterator first, InputIterator last,
+       format /*fmt*/ = format::auto_format)
       : pathname_(convert(first, last)) {
     SplitComponents();
   }
