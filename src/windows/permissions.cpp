@@ -3,10 +3,10 @@
 //    (See accompanying file LICENSE or copy at
 //   https://opensource.org/licenses/BSD-3-Clause)
 
+#include <common/flag_ops.h>
+
 #include <deque>
 #include <vector>
-
-#include <common/flag_ops.h>
 
 #include "../fs_portability.h"
 
@@ -215,11 +215,17 @@ perms GetOwnerPermissions(PSID pSidOwner, PACL DACL, DWORD attr,
   ACCESS_MASK mask = 0;
   auto retval = GetEffectiveRightsFromAcl(DACL, &trustee, &mask);
   if (retval != ERROR_SUCCESS) {
-    ec = capture_errno();
+    // The GetEffectiveRightsFromAcl function fails and returns
+    // ERROR_INVALID_ACL if the specified ACL contains an inherited
+    // access-denied ACE. When this happens the last error code is
+    // useless and we just need to report this as a permission denied error.
+    if (retval == ERROR_INVALID_ACL)
+      ec = std::make_error_code(std::errc::permission_denied);
+    else
+      ec = capture_errno();
     // TODO: DEBUG CODE
     std::cout << "GetOwnerPermissions: GetEffectiveRightsFromAcl failed, ret: "
-              << retval << ", error code : "
-              << ec.value() << std::endl;
+              << retval << ", error code : " << ec.value() << std::endl;
     return perms::none;
   }
 
@@ -248,8 +254,19 @@ perms GetGroupPermissions(PSID pSidGroup, PACL DACL, DWORD attr,
   trustee.ptstrName = (LPCH)(pSidGroup);
 
   ACCESS_MASK mask = 0;
-  if (GetEffectiveRightsFromAcl(DACL, &trustee, &mask) != ERROR_SUCCESS) {
-    ec = capture_errno();
+  auto retval = GetEffectiveRightsFromAcl(DACL, &trustee, &mask);
+  if (retval != ERROR_SUCCESS) {
+    // The GetEffectiveRightsFromAcl function fails and returns
+    // ERROR_INVALID_ACL if the specified ACL contains an inherited
+    // access-denied ACE. When this happens the last error code is
+    // useless and we just need to report this as a permission denied error.
+    if (retval == ERROR_INVALID_ACL)
+      ec = std::make_error_code(std::errc::permission_denied);
+    else
+      ec = capture_errno();
+    // TODO: DEBUG CODE
+    std::cout << "GetOwnerPermissions: GetEffectiveRightsFromAcl failed, ret: "
+              << retval << ", error code : " << ec.value() << std::endl;
     return perms::none;
   }
 
@@ -277,8 +294,19 @@ perms GetOthersPermissions(PACL DACL, DWORD attr, std::error_code &ec) {
   trustee.ptstrName = "EVERYONE";
 
   ACCESS_MASK mask = 0;
-  if (GetEffectiveRightsFromAcl(DACL, &trustee, &mask) != ERROR_SUCCESS) {
-    ec = capture_errno();
+  auto retval = GetEffectiveRightsFromAcl(DACL, &trustee, &mask);
+  if (retval != ERROR_SUCCESS) {
+    // The GetEffectiveRightsFromAcl function fails and returns
+    // ERROR_INVALID_ACL if the specified ACL contains an inherited
+    // access-denied ACE. When this happens the last error code is
+    // useless and we just need to report this as a permission denied error.
+    if (retval == ERROR_INVALID_ACL)
+      ec = std::make_error_code(std::errc::permission_denied);
+    else
+      ec = capture_errno();
+    // TODO: DEBUG CODE
+    std::cout << "GetOwnerPermissions: GetEffectiveRightsFromAcl failed, ret: "
+              << retval << ", error code : " << ec.value() << std::endl;
     return perms::none;
   }
 
@@ -333,7 +361,8 @@ perms GetPermissions(const path &p, DWORD attr, bool follow_symlinks,
   prms |= GetOwnerPermissions(pSidOwner, DACL, attr, m_ec);
   if (m_ec) {
     // TODO: DEBUG CODE
-    std::cout << "GetPermissions - GetOwnerPermissions failed, error: " << m_ec.value() << std::endl;
+    std::cout << "GetPermissions - GetOwnerPermissions failed, error: "
+              << m_ec.value() << std::endl;
     return ProcessPermissionsFailure(m_ec, p, ec);
   }
 
