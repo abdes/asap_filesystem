@@ -88,6 +88,14 @@ TEST_CASE("Ops / temp_dir / permission",
   // Use TMP as it is the first env variable to be checked, making sure that
   // it will be the value used to return a temporary path
   set_env("TMP", (fs::current_path() / p / "tmp").string());
+
+  // TODO: DEBUG CODE
+  auto buff = std::unique_ptr<WCHAR[]>(new WCHAR[MAX_PATH + 1]);
+  ::SetLastError(0);
+  DWORD gtp_ret = ::GetTempPathW(static_cast<DWORD>(MAX_PATH),
+                                 reinterpret_cast<LPWSTR>(buff.get()));
+  INFO("GetTempPathW returned " << gtp_ret << ", last error code " << ::GetLastError());
+  // TODO: END DEBUG CODE
 #else
   // Use TMPDIR as it is the first env variable to be checked, making sure that
   // it will be the value used to return a temporary path
