@@ -1244,14 +1244,8 @@ file_status status_impl(const path &p, std::error_code *ec) {
   auto wpath = p.wstring();
   auto attrs = detail::win32::GetFileAttributesW(wpath.c_str());
   if (attrs == INVALID_FILE_ATTRIBUTES) {
-    // TODO: DEBUG CODE
-    std::cout << "status_impl: GetFileAttributesW (" << wpath << ") failed, error code : "
-              << ::GetLastError() << std::endl;
     return detail::win32::ProcessStatusFailure(capture_errno(), p, ec);
   }
-  // TODO: DEBUG CODE
-  std::cout << "status_impl: GetFileAttributesW (" << wpath
-            << ") ok, attributes : " << attrs << std::endl;
 
   std::error_code m_ec;
 
@@ -1259,8 +1253,6 @@ file_status status_impl(const path &p, std::error_code *ec) {
   // Since GetFileAttributesW does not resolve symlinks, try to open the file
   // handle to discover if it exists.
   if (attrs & FILE_ATTRIBUTE_REPARSE_POINT) {
-    // TODO: DEBUG CODE
-    std::cout << "status_impl: have reparse point" << std::endl;
     // Becasue we do not specify the flag FILE_FLAG_OPEN_REPARSE_POINT, symlinks
     // will be followed and the target is opened.
     auto file1 = detail::FileDescriptor::Create(
@@ -1281,13 +1273,8 @@ file_status status_impl(const path &p, std::error_code *ec) {
 
   auto prms = detail::win32::GetPermissions(p, attrs, true, &m_ec);
   if (m_ec) {
-    // TODO: DEBUG CODE
-    std::cout << "status_impl: GetPermissions failed, error code: "
-              << m_ec.value() << std::endl;
     return detail::win32::ProcessStatusFailure(m_ec, p, ec);
   }
-
-  std::cout << "status_impl: no error" << std::endl;
 
   return (attrs & FILE_ATTRIBUTE_DIRECTORY)
              ? file_status(file_type::directory, prms)
@@ -1373,17 +1360,10 @@ path temp_directory_path_impl(std::error_code *ec) {
   path p;
 #ifdef ASAP_WINDOWS
   auto buff = std::unique_ptr<WCHAR[]>(new WCHAR[MAX_PATH + 1]);
-  // TODO: DEBUG CODE
-  ::SetLastError(0);
   auto gtp_ret = detail::win32::GetTempPathW(
       static_cast<DWORD>(MAX_PATH), reinterpret_cast<LPWSTR>(buff.get()));
-  std::cout << "temp_directory_path_impl: GetTempPathW returned " << gtp_ret
-            << ", last error code " << ::GetLastError() << std::endl;
   if (gtp_ret > MAX_PATH || gtp_ret == 0)
     return err.report(capture_errno(), "call to GetTempPathW failed");
-
-  std::cout << "temp_directory_path_impl: GetTempPathW buffer: "
-            << std::wstring(buff.get()) << std::endl;
 
   p = path(buff.get());
 #else
@@ -1399,12 +1379,9 @@ path temp_directory_path_impl(std::error_code *ec) {
   std::error_code status_ec;
   file_status st = status(p, status_ec);
   if (!status_known(st)) {
-    std::cout << "temp_directory_path_impl: status is unknown, error code: "
-              << status_ec.value() << std::endl; 
     return err.report(status_ec, "cannot access path \"{" + p.string() + "}\"");
   }
   if (!exists(st) || !is_directory(st)) {
-    std::cout << "temp_directory_path_impl: status is does not exist or not directory" << std::endl;
     return err.report(std::errc::not_a_directory,
                       "path \"{" + p.string() + "}\" is not a directory");
   }

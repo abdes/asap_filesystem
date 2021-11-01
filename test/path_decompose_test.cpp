@@ -122,7 +122,6 @@ TEST_CASE("Path / decompose / relative_path",
       if (!cmpt.has_root_path()) after_root = true;
       if (after_root) rel /= cmpt;
     }
-    if (prel != rel) std::cout << prel << ' ' << rel << '\n';
     REQUIRE(prel == rel);
   }
 }

@@ -223,9 +223,6 @@ perms GetOwnerPermissions(PSID pSidOwner, PACL DACL, DWORD attr,
       ec = std::make_error_code(std::errc::permission_denied);
     else
       ec = capture_errno();
-    // TODO: DEBUG CODE
-    std::cout << "GetOwnerPermissions: GetEffectiveRightsFromAcl failed, ret: "
-              << retval << ", error code : " << ec.value() << std::endl;
     return perms::none;
   }
 
@@ -264,9 +261,6 @@ perms GetGroupPermissions(PSID pSidGroup, PACL DACL, DWORD attr,
       ec = std::make_error_code(std::errc::permission_denied);
     else
       ec = capture_errno();
-    // TODO: DEBUG CODE
-    std::cout << "GetOwnerPermissions: GetEffectiveRightsFromAcl failed, ret: "
-              << retval << ", error code : " << ec.value() << std::endl;
     return perms::none;
   }
 
@@ -304,9 +298,6 @@ perms GetOthersPermissions(PACL DACL, DWORD attr, std::error_code &ec) {
       ec = std::make_error_code(std::errc::permission_denied);
     else
       ec = capture_errno();
-    // TODO: DEBUG CODE
-    std::cout << "GetOwnerPermissions: GetEffectiveRightsFromAcl failed, ret: "
-              << retval << ", error code : " << ec.value() << std::endl;
     return perms::none;
   }
 
@@ -341,9 +332,6 @@ perms GetPermissions(const path &p, DWORD attr, bool follow_symlinks,
                                 DACL_SECURITY_INFORMATION,
                             &pSidOwner, &pSidGroup, &DACL, NULL,
                             &pSecurityDescriptor) != ERROR_SUCCESS) {
-    // TODO: DEBUG CODE
-    std::cout << "GetPermissions (" << wpath
-              << ") failed, error code : " << ::GetLastError() << std::endl;
     return err.report(capture_errno());
   }
   std::unique_ptr<VOID, decltype(&::LocalFree)> ptr_secDesc(pSecurityDescriptor,
@@ -352,17 +340,12 @@ perms GetPermissions(const path &p, DWORD attr, bool follow_symlinks,
   //
   // Map permissions
   //
-  // TODO: DEBUG CODE
-  std::cout << "GetPermissions - mapping permissions" << std::endl;
 
   perms prms = perms::none;
 
   // For the owner
   prms |= GetOwnerPermissions(pSidOwner, DACL, attr, m_ec);
   if (m_ec) {
-    // TODO: DEBUG CODE
-    std::cout << "GetPermissions - GetOwnerPermissions failed, error: "
-              << m_ec.value() << std::endl;
     return ProcessPermissionsFailure(m_ec, p, ec);
   }
 
@@ -370,9 +353,6 @@ perms GetPermissions(const path &p, DWORD attr, bool follow_symlinks,
   if (!EqualSid(pSidOwner, pSidGroup)) {
     prms |= GetGroupPermissions(pSidGroup, DACL, attr, m_ec);
     if (m_ec) {
-      // TODO: DEBUG CODE
-      std::cout << "GetPermissions - GetGroupPermissions failed, error: "
-                << m_ec.value() << std::endl;
       return ProcessPermissionsFailure(m_ec, p, ec);
     }
   }
@@ -380,9 +360,6 @@ perms GetPermissions(const path &p, DWORD attr, bool follow_symlinks,
   // For others
   prms |= GetOthersPermissions(DACL, attr, m_ec);
   if (m_ec) {
-    // TODO: DEBUG CODE
-    std::cout << "GetPermissions - GetOthersPermissions failed, error: "
-              << m_ec.value() << std::endl;
     return ProcessPermissionsFailure(m_ec, p, ec);
   }
 
