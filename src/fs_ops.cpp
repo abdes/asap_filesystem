@@ -1249,6 +1249,9 @@ file_status status_impl(const path &p, std::error_code *ec) {
               << ::GetLastError() << std::endl;
     return detail::win32::ProcessStatusFailure(capture_errno(), p, ec);
   }
+  // TODO: DEBUG CODE
+  std::cout << "status_impl: GetFileAttributesW (" << wpath
+            << ") ok, attributes : " << attrs << std::endl;
 
   std::error_code m_ec;
 
@@ -1256,6 +1259,8 @@ file_status status_impl(const path &p, std::error_code *ec) {
   // Since GetFileAttributesW does not resolve symlinks, try to open the file
   // handle to discover if it exists.
   if (attrs & FILE_ATTRIBUTE_REPARSE_POINT) {
+    // TODO: DEBUG CODE
+    std::cout << "status_impl: have reparse point" << std::endl;
     // Becasue we do not specify the flag FILE_FLAG_OPEN_REPARSE_POINT, symlinks
     // will be followed and the target is opened.
     auto file1 = detail::FileDescriptor::Create(
@@ -1276,8 +1281,11 @@ file_status status_impl(const path &p, std::error_code *ec) {
 
   auto prms = detail::win32::GetPermissions(p, attrs, true, &m_ec);
   if (m_ec) {
+    std::cout << "status_impl: haveGetPermissions failed, error code: " << m_ec.value() << std::endl;
     return detail::win32::ProcessStatusFailure(m_ec, p, ec);
   }
+
+  std::cout << "status_impl: no error" << std::endl;
 
   return (attrs & FILE_ATTRIBUTE_DIRECTORY)
              ? file_status(file_type::directory, prms)
