@@ -319,22 +319,38 @@ perms GetPermissions(const path &p, DWORD attr, bool follow_symlinks,
   //
   // Map permissions
   //
+  // TODO: DEBUG CODE
+  std::cout << "GetPermissions - mapping permissions" << std::endl;
 
   perms prms = perms::none;
 
   // For the owner
   prms |= GetOwnerPermissions(pSidOwner, DACL, attr, m_ec);
-  if (m_ec) return ProcessPermissionsFailure(m_ec, p, ec);
+  if (m_ec) {
+    // TODO: DEBUG CODE
+    std::cout << "GetPermissions - GetOwnerPermissions failed, error: " << m_ec.value() << std::endl;
+    return ProcessPermissionsFailure(m_ec, p, ec);
+  }
 
   // For the primary group
   if (!EqualSid(pSidOwner, pSidGroup)) {
     prms |= GetGroupPermissions(pSidGroup, DACL, attr, m_ec);
-    if (m_ec) return ProcessPermissionsFailure(m_ec, p, ec);
+    if (m_ec) {
+      // TODO: DEBUG CODE
+      std::cout << "GetPermissions - GetGroupPermissions failed, error: "
+                << m_ec.value() << std::endl;
+      return ProcessPermissionsFailure(m_ec, p, ec);
+    }
   }
 
   // For others
   prms |= GetOthersPermissions(DACL, attr, m_ec);
-  if (m_ec) return ProcessPermissionsFailure(m_ec, p, ec);
+  if (m_ec) {
+    // TODO: DEBUG CODE
+    std::cout << "GetPermissions - GetOthersPermissions failed, error: "
+              << m_ec.value() << std::endl;
+    return ProcessPermissionsFailure(m_ec, p, ec);
+  }
 
   return prms;
 }

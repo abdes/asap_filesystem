@@ -1281,7 +1281,7 @@ file_status status_impl(const path &p, std::error_code *ec) {
 
   auto prms = detail::win32::GetPermissions(p, attrs, true, &m_ec);
   if (m_ec) {
-    std::cout << "status_impl: haveGetPermissions failed, error code: " << m_ec.value() << std::endl;
+    std::cout << "status_impl: GetPermissions failed, error code: " << m_ec.value() << std::endl;
     return detail::win32::ProcessStatusFailure(m_ec, p, ec);
   }
 
