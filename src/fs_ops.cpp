@@ -1244,6 +1244,9 @@ file_status status_impl(const path &p, std::error_code *ec) {
   auto wpath = p.wstring();
   auto attrs = detail::win32::GetFileAttributesW(wpath.c_str());
   if (attrs == INVALID_FILE_ATTRIBUTES) {
+    // TODO: DEBUG CODE
+    std::cout << "status_impl: GetFileAttributesW (" << wpath << ") failed, error code : "
+              << ::GetLastError() << std::endl;
     return detail::win32::ProcessStatusFailure(capture_errno(), p, ec);
   }
 
