@@ -215,6 +215,9 @@ perms GetOwnerPermissions(PSID pSidOwner, PACL DACL, DWORD attr,
   ACCESS_MASK mask = 0;
   if (GetEffectiveRightsFromAcl(DACL, &trustee, &mask) != ERROR_SUCCESS) {
     ec = capture_errno();
+    // TODO: DEBUG CODE
+    std::cout << "GetOwnerPermissions: GetEffectiveRightsFromAcl failed, error code: "
+              << ec.value() << std::endl;
     return perms::none;
   }
 
