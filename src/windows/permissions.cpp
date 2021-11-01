@@ -213,10 +213,12 @@ perms GetOwnerPermissions(PSID pSidOwner, PACL DACL, DWORD attr,
   trustee.ptstrName = (LPCH)(pSidOwner);
 
   ACCESS_MASK mask = 0;
-  if (GetEffectiveRightsFromAcl(DACL, &trustee, &mask) != ERROR_SUCCESS) {
+  auto retval = GetEffectiveRightsFromAcl(DACL, &trustee, &mask);
+  if (retval != ERROR_SUCCESS) {
     ec = capture_errno();
     // TODO: DEBUG CODE
-    std::cout << "GetOwnerPermissions: GetEffectiveRightsFromAcl failed, error code: "
+    std::cout << "GetOwnerPermissions: GetEffectiveRightsFromAcl failed, ret: "
+              << retval << ", error code : "
               << ec.value() << std::endl;
     return perms::none;
   }
