@@ -188,8 +188,10 @@ add_doxygen_target(${target})
 
 add_sphinx_target(${target})
 
-install(
-  DIRECTORY ${SPHINX_BUILD_DIR}/${target}
-  DESTINATION ${INSTALL_DOC}
-  COMPONENT docs
-)
+if(SPHINX_FOUND)
+  install(
+    DIRECTORY ${SPHINX_BUILD_DIR}/${target}
+    DESTINATION ${INSTALL_DOC}
+    COMPONENT docs
+  )
+endif()
