@@ -79,11 +79,15 @@ TEST_CASE("Ops / temp_dir / permission",
   auto p = testing::nonexistent_path();
   testing::scoped_file sp(p, testing::scoped_file::adopt_file);
   create_directories(p / "tmp");
+
+  // TODO: DEBUG CODE
+  INFO("tmp directory at: " << (fs::current_path() / p / "tmp").string());
+
   permissions(p, fs::perms::none);
 #if defined(ASAP_WINDOWS)
   // Use TMP as it is the first env variable to be checked, making sure that
   // it will be the value used to return a temporary path
-  set_env("TMP", (p / "tmp").string());
+  set_env("TMP", (fs::current_path() / p / "tmp").string());
 #else
   // Use TMPDIR as it is the first env variable to be checked, making sure that
   // it will be the value used to return a temporary path
