@@ -18,7 +18,7 @@ namespace filesystem {
 ///
 /// @see https://en.cppreference.com/w/cpp/filesystem/file_type
 ///
-enum class file_type : signed char {
+enum class file_type {
   none = 0,        // file status has not been evaluated yet, or an error
                    // occurred when evaluating it
   not_found = -1,  // file was not found (this is not considered an error)
