@@ -1360,14 +1360,18 @@ path temp_directory_path_impl(std::error_code *ec) {
   path p;
 #ifdef ASAP_WINDOWS
   auto buff = std::unique_ptr<WCHAR[]>(new WCHAR[MAX_PATH + 1]);
+
+  // TODO: DEBUG CODE
+  ::SetLastError(0);
+
   if (detail::win32::GetTempPathW(static_cast<DWORD>(MAX_PATH),
                                   reinterpret_cast<LPWSTR>(buff.get())) == 0) {
-    //TODO: DEBUG CODE
-    std::cerr << "GetTempPathW returned error: " << ::GetLastError()
-              << std::endl;
-
     return err.report(capture_errno(), "call to GetTempPathW failed");
   }
+
+  // TODO: DEBUG CODE
+  printf("GetTempPathW returned with error code: %d\n", ::GetLastError());
+
   p = path(buff.get());
 #else
   const char *env_paths[] = {"TMPDIR", "TMP", "TEMP", "TEMPDIR"};
