@@ -79,32 +79,37 @@ TEST_CASE("Ops / temp_dir / permission",
   auto p = testing::nonexistent_path();
   testing::scoped_file sp(p, testing::scoped_file::adopt_file);
   create_directories(p / "tmp");
-
-  // TODO: DEBUG CODE
-  INFO("tmp directory at: " << (fs::current_path() / p / "tmp").string());
-
   permissions(p, fs::perms::none);
+
 #if defined(ASAP_WINDOWS)
   // Use TMP as it is the first env variable to be checked, making sure that
   // it will be the value used to return a temporary path
-  set_env("TMP", (fs::current_path() / p / "tmp").string());
-
-  // TODO: DEBUG CODE
-  auto buff = std::unique_ptr<WCHAR[]>(new WCHAR[MAX_PATH + 1]);
-  ::SetLastError(0);
-  DWORD gtp_ret = ::GetTempPathW(static_cast<DWORD>(MAX_PATH),
-                                 reinterpret_cast<LPWSTR>(buff.get()));
-  INFO("GetTempPathW returned " << gtp_ret << ", last error code " << ::GetLastError());
-  // TODO: END DEBUG CODE
+  set_env("TMP", (p / "tmp").string());
 #else
   // Use TMPDIR as it is the first env variable to be checked, making sure that
   // it will be the value used to return a temporary path
   set_env("TMPDIR", (p / "tmp").string());
 #endif
+
   std::error_code ec;
-  auto r = fs::temp_directory_path(ec);
-  REQUIRE(ec == std::make_error_code(std::errc::permission_denied));
-  REQUIRE(r == fs::path());
+  {
+    // TODO: DEBUG CODE
+    INFO("tmp directory at: " << p.string());
+    // TODO: TEMP DEBUG CODE
+    std::ostringstream oss;
+    std::streambuf* p_cout_streambuf = std::cout.rdbuf();
+    std::cout.rdbuf(oss.rdbuf());
+
+    auto r = fs::temp_directory_path(ec);
+
+    // TODO: TEMP DEBUG CODE
+    std::cout.rdbuf(p_cout_streambuf);  // restore
+
+    INFO(oss.str());
+
+    REQUIRE(ec == std::make_error_code(std::errc::permission_denied));
+    REQUIRE(r == fs::path());
+  }
 
   std::error_code ec2;
   try {
@@ -113,6 +118,7 @@ TEST_CASE("Ops / temp_dir / permission",
     ec2 = e.code();
   }
   REQUIRE(ec2 == ec);
+
 }
 
 TEST_CASE("Ops / temp_dir / not a directory",

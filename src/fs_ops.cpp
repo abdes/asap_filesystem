@@ -487,8 +487,8 @@ bool copy_file_impl(const path &from, const path &to, copy_options options,
   // originally looked at; we'll check this later.
   int to_open_flags = O_WRONLY;
   if (!to_exists) to_open_flags |= O_CREAT;
-  FileDescriptor to_fd = FileDescriptor::Create(
-      &to, m_ec, to_open_flags, from_stat.st_mode);
+  FileDescriptor to_fd =
+      FileDescriptor::Create(&to, m_ec, to_open_flags, from_stat.st_mode);
   if (m_ec) return err.report(m_ec);
 
   to_fd.RefreshStatus(false, m_ec);
@@ -1360,9 +1360,17 @@ path temp_directory_path_impl(std::error_code *ec) {
   path p;
 #ifdef ASAP_WINDOWS
   auto buff = std::unique_ptr<WCHAR[]>(new WCHAR[MAX_PATH + 1]);
-  if (detail::win32::GetTempPathW(static_cast<DWORD>(MAX_PATH),
-                                  reinterpret_cast<LPWSTR>(buff.get())) == 0)
+  // TODO: DEBUG CODE
+  ::SetLastError(0);
+  auto gtp_ret = detail::win32::GetTempPathW(
+      static_cast<DWORD>(MAX_PATH), reinterpret_cast<LPWSTR>(buff.get()));
+  std::cout << "temp_directory_path_impl: GetTempPathW returned " << gtp_ret
+            << ", last error code " << ::GetLastError() << std::endl;
+  if (gtp_ret > MAX_PATH || gtp_ret == 0)
     return err.report(capture_errno(), "call to GetTempPathW failed");
+
+  std::cout << "temp_directory_path_impl: GetTempPathW buffer: "
+            << std::wstring(buff.get()) << std::endl;
 
   p = path(buff.get());
 #else
@@ -1377,13 +1385,16 @@ path temp_directory_path_impl(std::error_code *ec) {
 
   std::error_code status_ec;
   file_status st = status(p, status_ec);
-  if (!status_known(st))
+  if (!status_known(st)) {
+    std::cout << "temp_directory_path_impl: status is unknown, error code: "
+              << status_ec.value() << std::endl; 
     return err.report(status_ec, "cannot access path \"{" + p.string() + "}\"");
-
-  if (!exists(st) || !is_directory(st))
+  }
+  if (!exists(st) || !is_directory(st)) {
+    std::cout << "temp_directory_path_impl: status is does not exist or not directory" << std::endl;
     return err.report(std::errc::not_a_directory,
                       "path \"{" + p.string() + "}\" is not a directory");
-
+  }
   return p;
 }
 
