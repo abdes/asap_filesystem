@@ -308,6 +308,9 @@ perms GetPermissions(const path &p, DWORD attr, bool follow_symlinks,
                                 DACL_SECURITY_INFORMATION,
                             &pSidOwner, &pSidGroup, &DACL, NULL,
                             &pSecurityDescriptor) != ERROR_SUCCESS) {
+    // TODO: DEBUG CODE
+    std::cout << "GetPermissions (" << wpath
+              << ") failed, error code : " << ::GetLastError() << std::endl;
     return err.report(capture_errno());
   }
   std::unique_ptr<VOID, decltype(&::LocalFree)> ptr_secDesc(pSecurityDescriptor,
