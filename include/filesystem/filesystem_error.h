@@ -9,6 +9,8 @@
 #include <string>
 #include <system_error>
 
+#include <hedley/hedley.h>
+
 #include <filesystem/asap_filesystem_api.h>
 #include <filesystem/fs_path.h>
 
@@ -35,7 +37,7 @@ overloads of the functions in the filesystem library.
 @see https://en.cppreference.com/w/cpp/filesystem/filesystem_error
 */
 class
-#if !ASAP_COMPILER_IS_MSVC
+#if !HEDLEY_MSVC_VERSION
     ASAP_FILESYSTEM_API
 #endif
         filesystem_error : public std::system_error {

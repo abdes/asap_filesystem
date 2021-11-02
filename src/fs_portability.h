@@ -5,6 +5,8 @@
 
 #pragma once
 
+#include <hedley/hedley.h>
+
 // clang-format off
 #include <filesystem/config.h>
 
@@ -171,7 +173,7 @@ namespace posix {
 
 // Use typedef instead of using to avoid gcc warning on struct ::stat not
 // declaring anything. (alternative is: "using StatT = struct ::stat;" )
-#if ASAP_COMPILER_IS_GNU
+#if HEDLEY_GNUC_VERSION
 typedef struct ::stat StatT;
 #else
 using StatT = struct ::stat;

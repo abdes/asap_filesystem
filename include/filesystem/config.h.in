@@ -5,7 +5,6 @@
 
 #pragma once
 
-#include <asap/asap-features.h>
 #include <common/config.h>
 #include <common/platform.h>
 
