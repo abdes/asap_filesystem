@@ -32,7 +32,7 @@ TEST_CASE("Path / concat / basic", "[common][filesystem][path][concat]") {
 }
 
 TEST_CASE("Path / concat / path", "[common][filesystem][path][compare]") {
-  for (path p : TEST_PATHS) {
+  for (path p : TEST_PATHS()) {
     auto prior_native = p.native();
     path x("//blah/di/blah");
     p += x;

@@ -16,7 +16,7 @@ using testing::ComparePaths;
 
 TEST_CASE("Ops / file_size / special", "[common][filesystem][ops][file_size]") {
   std::error_code ec;
-  size_t size = fs::file_size(".", ec);
+  auto size = fs::file_size(".", ec);
   REQUIRE(ec == std::errc::is_a_directory);
   REQUIRE(size == static_cast<std::uintmax_t>(-1));
 
@@ -31,7 +31,7 @@ TEST_CASE("Ops / file_size / not existing",
   fs::path p = testing::nonexistent_path();
 
   std::error_code ec;
-  size_t size = fs::file_size(p, ec);
+  auto size = fs::file_size(p, ec);
   REQUIRE(ec);
   REQUIRE(size == static_cast<std::uintmax_t>(-1));
 

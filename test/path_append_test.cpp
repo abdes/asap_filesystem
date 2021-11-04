@@ -13,11 +13,11 @@ using testing::TEST_PATHS;
 // path::operator/=(const path&)
 
 namespace {
-  fs::path Append(fs::path l, const fs::path& r) {
-    l /= r;
-    return l;
-  }
+fs::path Append(fs::path l, const fs::path& r) {
+  l /= r;
+  return l;
 }
+}  // namespace
 
 // -----------------------------------------------------------------------------
 //  Append
@@ -73,7 +73,7 @@ TEST_CASE("Path / append / path", "[common][filesystem][path][append]") {
 
   // path("foo") / "c:"; // yields "c:"
   ComparePaths(Append("foo", "c:"), "c:");
-#endif // ASAP_WINDOWS
+#endif  // ASAP_WINDOWS
 }
 
 // path::operator/=(const Source& source)
@@ -131,8 +131,8 @@ TEST_CASE("Path / append / source", "[common][filesystem][fs::path][append]") {
 
 TEST_CASE("Path / append / source / TEST_PATHS",
           "[common][filesystem][fs::path][append]") {
-  for (const fs::path p : TEST_PATHS) {
-    for (const fs::path q : TEST_PATHS) {
+  for (const fs::path p : TEST_PATHS()) {
+    for (const fs::path q : TEST_PATHS()) {
       test(p, q.c_str());
     }
   }

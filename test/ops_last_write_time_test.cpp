@@ -3,10 +3,10 @@
 //    (See accompanying file LICENSE or copy at
 //   https://opensource.org/licenses/BSD-3-Clause)
 
-#include <catch2/catch.hpp>
-
 #include <fcntl.h> /* Definition of AT_* constants */
 #include <sys/stat.h>
+
+#include <catch2/catch.hpp>
 #include <fstream>
 
 #include "fs_testsuite.h"
@@ -42,11 +42,13 @@ TEST_CASE("Ops / last_write_time / read",
   REQUIRE(mtime == last_write_time(p));
 }
 
+namespace {
 bool approx_equal(time_type file_time, time_type expected) {
   auto delta = expected - file_time;
   if (delta < delta.zero()) delta = -delta;
   return delta < std::chrono::seconds(1);
 }
+}  // namespace
 
 TEST_CASE("Ops / last_write_time / write",
           "[common][filesystem][ops][last_write_time]") {

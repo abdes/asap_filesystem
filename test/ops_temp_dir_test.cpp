@@ -9,6 +9,7 @@
 
 #include "fs_testsuite.h"
 
+namespace {
 void clean_env() {
 #if defined(ASAP_WINDOWS)
   ::_putenv("TMP=");
@@ -31,6 +32,7 @@ bool set_env(const char* name, std::string value) {
   return !::setenv(name, value.c_str(), 1);
 #endif
 }
+}  // namespace
 
 // -----------------------------------------------------------------------------
 //  temp_dir

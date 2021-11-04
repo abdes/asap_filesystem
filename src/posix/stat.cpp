@@ -15,11 +15,11 @@
 namespace asap {
 namespace filesystem {
 namespace detail {
-namespace posix {
+namespace posix_port {
 
 file_status CreateFileStatus(std::error_code &m_ec, path const &p,
-                               const posix::StatT &path_stat,
-                               std::error_code *ec) {
+                             const posix_port::StatT &path_stat,
+                             std::error_code *ec) {
   if (ec) *ec = m_ec;
   if (m_ec && (m_ec.value() == ENOENT || m_ec.value() == ENOTDIR)) {
     return file_status(file_type::not_found);
@@ -53,21 +53,23 @@ file_status CreateFileStatus(std::error_code &m_ec, path const &p,
   return fs_tmp;
 }
 
-file_status GetFileStatus(path const &p, posix::StatT &path_stat,
-                      std::error_code *ec) {
+file_status GetFileStatus(path const &p, posix_port::StatT &path_stat,
+                          std::error_code *ec) {
   std::error_code m_ec;
-  if (detail::posix::stat(p.c_str(), &path_stat) == -1) m_ec = capture_errno();
+  if (detail::posix_port::stat(p.c_str(), &path_stat) == -1)
+    m_ec = capture_errno();
   return CreateFileStatus(m_ec, p, path_stat, ec);
 }
 
-file_status GetLinkStatus(path const &p, posix::StatT &path_stat,
-                      std::error_code *ec) {
+file_status GetLinkStatus(path const &p, posix_port::StatT &path_stat,
+                          std::error_code *ec) {
   std::error_code m_ec;
-  if (detail::posix::lstat(p.c_str(), &path_stat) == -1) m_ec = capture_errno();
+  if (detail::posix_port::lstat(p.c_str(), &path_stat) == -1)
+    m_ec = capture_errno();
   return CreateFileStatus(m_ec, p, path_stat, ec);
 }
 
-}  // namespace posix
+}  // namespace posix_port
 }  // namespace detail
 }  // namespace filesystem
 }  // namespace asap

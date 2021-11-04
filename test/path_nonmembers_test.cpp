@@ -17,9 +17,11 @@ using testing::TEST_PATHS;
 // operator/(const path&, const path&)
 // Equivalent to: return path(lhs) /= rhs;
 
+namespace {
 void test(const path& lhs, const path& rhs) {
   ComparePaths(lhs / rhs, path(lhs) /= rhs);
 }
+}  // namespace
 
 TEST_CASE("Path / nonmembers / '/' / special",
           "[common][filesystem][path][nonmembers]") {
@@ -50,9 +52,9 @@ TEST_CASE("Path / nonmembers / '/' / special",
 
 TEST_CASE("Path / nonmembers / '/' / suite",
           "[common][filesystem][path][nonmembers]") {
-  for (path p : TEST_PATHS) {
+  for (path p : TEST_PATHS()) {
     CAPTURE(p);
-    for (path q : TEST_PATHS) {
+    for (path q : TEST_PATHS()) {
       CAPTURE(q);
       test(p, q);
     }
@@ -67,7 +69,7 @@ TEST_CASE("Path / nonmembers / hash_value / sanity",
 
 TEST_CASE("Path / nonmembers / hash_value / suite",
           "[common][filesystem][path][nonmembers]") {
-  for (path p : TEST_PATHS) {
+  for (path p : TEST_PATHS()) {
     path pp = p.native();
     REQUIRE(hash_value(p) == hash_value(pp));
   }

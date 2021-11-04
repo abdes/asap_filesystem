@@ -14,21 +14,30 @@
 namespace asap {
 namespace filesystem {
 namespace detail {
-namespace posix {
+namespace posix_port {
 
 namespace {
+// We know this may create an overflow and also that the tests may always be
+// true. This is here for cases where the representation of
+// std::chrono::duration is smaller than the TimeSpec representation.
+HEDLEY_DIAGNOSTIC_PUSH
+#if defined(HEDLEY_GCC_VERSION)
+HEDLEY_PRAGMA(GCC diagnostic ignored "-Woverflow")
+#endif  // HEDLEY_GCC_VERSION
+#if defined(__clang__)
+HEDLEY_PRAGMA(clang diagnostic ignored "-Wtautological-type-limit-compare")
+#endif  // __clang__
 bool FileTimeIsRepresentable(TimeSpec tm) {
   using namespace std::chrono;
   if (tm.tv_sec >= 0) {
-    return tm.tv_sec < seconds::max().count() ||
-           (tm.tv_sec == seconds::max().count() &&
-            tm.tv_nsec <= nanoseconds::max().count());
+    return tm.tv_sec <= seconds::max().count();
   } else if (tm.tv_sec == (seconds::min().count() - 1)) {
     return tm.tv_nsec >= nanoseconds::min().count();
   } else {
     return tm.tv_sec >= seconds::min().count();
   }
 }
+HEDLEY_DIAGNOSTIC_POP
 }  // namespace
 
 file_time_type FileTimeTypeFromPosixTimeSpec(TimeSpec tm) {
@@ -51,16 +60,16 @@ file_time_type FileTimeTypeFromPosixTimeSpec(TimeSpec tm) {
 }
 
 file_time_type ExtractLastWriteTime(const path &p, const StatT &st,
-                                       std::error_code *ec) {
+                                    std::error_code *ec) {
   ErrorHandler<file_time_type> err("last_write_time", ec, &p);
 
-  auto ts = detail::posix::ExtractModificationTime(st);
-  if (!detail::posix::FileTimeIsRepresentable(ts))
+  auto ts = detail::posix_port::ExtractModificationTime(st);
+  if (!detail::posix_port::FileTimeIsRepresentable(ts))
     return err.report(std::errc::value_too_large);
-  return detail::posix::FileTimeTypeFromPosixTimeSpec(ts);
+  return detail::posix_port::FileTimeTypeFromPosixTimeSpec(ts);
 }
 
-}  // namespace posix
+}  // namespace posix_port
 }  // namespace detail
 }  // namespace filesystem
 }  // namespace asap

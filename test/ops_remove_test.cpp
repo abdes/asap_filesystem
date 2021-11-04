@@ -24,8 +24,7 @@ TEST_CASE("Ops / remove / nonexistent path",
   REQUIRE(!n);
 }
 
-TEST_CASE("Ops / remove / empty path",
-          "[common][filesystem][ops][remove]") {
+TEST_CASE("Ops / remove / empty path", "[common][filesystem][ops][remove]") {
   std::error_code ec;
   const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
   bool n;
@@ -51,7 +50,8 @@ TEST_CASE("Ops / remove / file", "[common][filesystem][ops][remove]") {
   REQUIRE(n);
 }
 
-TEST_CASE("Ops / remove / empty directory", "[common][filesystem][ops][remove]") {
+TEST_CASE("Ops / remove / empty directory",
+          "[common][filesystem][ops][remove]") {
   std::error_code ec;
   const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
   bool n;
@@ -68,7 +68,8 @@ TEST_CASE("Ops / remove / empty directory", "[common][filesystem][ops][remove]")
   REQUIRE(n);
 }
 
-TEST_CASE("Ops / remove / symlink to nonexistent path", "[common][filesystem][ops][remove]") {
+TEST_CASE("Ops / remove / symlink to nonexistent path",
+          "[common][filesystem][ops][remove]") {
   // This test case requires symlinks and on windows, this will only work if
   // developer mode is enabled or the test cases are run as administrator.
 #if defined(ASAP_WINDOWS)
@@ -89,7 +90,8 @@ TEST_CASE("Ops / remove / symlink to nonexistent path", "[common][filesystem][op
   REQUIRE(!exists(symlink_status(link)));
 }
 
-TEST_CASE("Ops / remove / symlink to actual path", "[common][filesystem][ops][remove]") {
+TEST_CASE("Ops / remove / symlink to actual path",
+          "[common][filesystem][ops][remove]") {
   // This test case requires symlinks and on windows, this will only work if
   // developer mode is enabled or the test cases are run as administrator.
 #if defined(ASAP_WINDOWS)
@@ -142,7 +144,7 @@ TEST_CASE("Ops / remove / non-empty directory",
 // permissions on the file itself are not sued
 TEST_CASE("Ops / remove / file permissions",
           "[common][filesystem][ops][remove]") {
-#if 0 // FIXME
+#if 0   // FIXME
   //  std::error_code ec;
   const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
   bool n;
@@ -165,7 +167,7 @@ TEST_CASE("Ops / remove / file permissions",
   REQUIRE(!ec);
   REQUIRE(n);
   REQUIRE(!exists(p));
-#endif // FIXME
+#endif  // FIXME
 }
 
 // FIXME: need to add test cases for permission scenarios involving files and
@@ -198,7 +200,8 @@ TEST_CASE("Ops / remove_all / nonexistent path",
   REQUIRE(n == 0);
 }
 
-TEST_CASE("Ops / remove_all / symlink to nonexistent path", "[common][filesystem][ops][remove_all]") {
+TEST_CASE("Ops / remove_all / symlink to nonexistent path",
+          "[common][filesystem][ops][remove_all]") {
   // This test case requires symlinks and on windows, this will only work if
   // developer mode is enabled or the test cases are run as administrator.
 #if defined(ASAP_WINDOWS)
@@ -219,7 +222,8 @@ TEST_CASE("Ops / remove_all / symlink to nonexistent path", "[common][filesystem
   REQUIRE(!exists(symlink_status(link)));  // DR 2721
 }
 
-TEST_CASE("Ops / remove_all / symlink to actual path", "[common][filesystem][ops][remove_all]") {
+TEST_CASE("Ops / remove_all / symlink to actual path",
+          "[common][filesystem][ops][remove_all]") {
   // This test case requires symlinks and on windows, this will only work if
   // developer mode is enabled or the test cases are run as administrator.
 #if defined(ASAP_WINDOWS)

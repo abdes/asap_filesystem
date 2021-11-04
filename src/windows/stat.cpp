@@ -63,7 +63,7 @@ typedef struct _REPARSE_DATA_BUFFER {
 namespace asap {
 namespace filesystem {
 namespace detail {
-namespace win32 {
+namespace win32_port {
 
 bool IsNotFoundError(int errval) {
   return errval == ERROR_FILE_NOT_FOUND || errval == ERROR_PATH_NOT_FOUND ||
@@ -95,7 +95,7 @@ bool IsReparsePointSymlink(const path &p, std::error_code *ec) {
 
   // Query the reparse data
   DWORD dwRetLen;
-  BOOL result = detail::win32::DeviceIoControl(
+  BOOL result = detail::win32_port::DeviceIoControl(
       file.fd_, FSCTL_GET_REPARSE_POINT, nullptr, 0, info.buf,
       MAXIMUM_REPARSE_DATA_BUFFER_SIZE, &dwRetLen, nullptr);
   if (!result) return err.report(capture_errno());
@@ -128,7 +128,7 @@ path ReadSymlinkFromReparsePoint(const path &p, std::error_code *ec) {
 
   // Query the reparse data
   DWORD dwRetLen;
-  BOOL result = detail::win32::DeviceIoControl(
+  BOOL result = detail::win32_port::DeviceIoControl(
       file.fd_, FSCTL_GET_REPARSE_POINT, nullptr, 0, info.buf,
       MAXIMUM_REPARSE_DATA_BUFFER_SIZE, &dwRetLen, nullptr);
   if (!result) return err.report(capture_errno());
@@ -170,7 +170,7 @@ file_status ProcessStatusFailure(std::error_code m_ec, const path &p,
   return file_status(file_type::none);
 }
 
-}  // namespace win32
+}  // namespace win32_port
 }  // namespace detail
 }  // namespace filesystem
 }  // namespace asap

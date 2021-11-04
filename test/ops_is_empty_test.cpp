@@ -4,7 +4,6 @@
 //   https://opensource.org/licenses/BSD-3-Clause)
 
 #include <catch2/catch.hpp>
-
 #include <fstream>
 
 #include "fs_testsuite.h"

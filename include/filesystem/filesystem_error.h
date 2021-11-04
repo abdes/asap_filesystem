@@ -5,14 +5,13 @@
 
 #pragma once
 
+#include <filesystem/asap_filesystem_api.h>
+#include <filesystem/fs_path.h>
+#include <hedley/hedley.h>
+
 #include <memory>  // for shared_ptr
 #include <string>
 #include <system_error>
-
-#include <hedley/hedley.h>
-
-#include <filesystem/asap_filesystem_api.h>
-#include <filesystem/fs_path.h>
 
 namespace asap {
 namespace filesystem {
@@ -20,6 +19,11 @@ namespace filesystem {
 // -----------------------------------------------------------------------------
 //                          class filesystem_error
 // -----------------------------------------------------------------------------
+
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wweak-vtables"
+#endif  // __clang__
 
 /*
 MSVC will issue a C4275 warning and erors will follow due to the fact that
@@ -37,7 +41,7 @@ overloads of the functions in the filesystem library.
 @see https://en.cppreference.com/w/cpp/filesystem/filesystem_error
 */
 class
-#if !HEDLEY_MSVC_VERSION
+#if !defined(HEDLEY_MSVC_VERSION)
     ASAP_FILESYSTEM_API
 #endif
         filesystem_error : public std::system_error {
@@ -69,13 +73,18 @@ class
   ASAP_FILESYSTEM_API void create_what(int num_paths);
 
   struct Data {
-    Data(path p1, path p2) : path1_(std::move(p1)), path2_(std::move(p2)) {}
+    Data(path p1, path p2) noexcept
+        : path1_(std::move(p1)), path2_(std::move(p2)) {}
     path path1_;
     path path2_;
     std::string what_;
   };
   std::shared_ptr<Data> data_;
 };
+
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#endif  // __clang__
 
 }  // namespace filesystem
 }  // namespace asap

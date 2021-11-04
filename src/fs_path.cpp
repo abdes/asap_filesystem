@@ -152,10 +152,7 @@ bool path::has_root_path() const { return !root_path().empty(); }
 
 bool path::has_relative_path() const { return !relative_path().empty(); }
 
-bool path::has_parent_path() const {
-  return !parent_path().empty();
-  ;
-}
+bool path::has_parent_path() const { return !parent_path().empty(); }
 
 bool path::has_filename() const { return !filename().empty(); }
 
@@ -503,7 +500,7 @@ path &path::operator/=(const path &p) {
            p.components_.front().type_ == Type::ROOT_NAME)
     rhs.erase(0, p.components_.front().pathname_.size());
 
-  const size_t len = lhs.size() + (int)add_sep + rhs.size();
+  const size_t len = lhs.size() + static_cast<size_t>(add_sep) + rhs.size();
   const size_t maxcmpts = components_.size() + p.components_.size();
   if (pathname_.capacity() < len || components_.capacity() < maxcmpts) {
     // Construct new path and swap (strong exception-safety guarantee).

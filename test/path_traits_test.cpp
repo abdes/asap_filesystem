@@ -3,9 +3,9 @@
 //    (See accompanying file LICENSE or copy at
 //   https://opensource.org/licenses/BSD-3-Clause)
 
-#include <catch2/catch.hpp>
-
 #include <filesystem/fs_path.h>
+
+#include <catch2/catch.hpp>
 
 using asap::filesystem::path_traits::IsConstructibleFrom;
 using asap::filesystem::path_traits::IsEncodedChar;

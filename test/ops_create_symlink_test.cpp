@@ -4,7 +4,6 @@
 //   https://opensource.org/licenses/BSD-3-Clause)
 
 #include <catch2/catch.hpp>
-
 #include <fstream>
 
 #include "fs_testsuite.h"
@@ -34,7 +33,7 @@ TEST_CASE("Ops / create_symlink / empty",
 }
 
 TEST_CASE("Ops / create_symlink", "[common][filesystem][ops][create_symlink]") {
-   const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
+  const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
 #if defined(ASAP_WINDOWS)
   if (!testing::IsDeveloperModeEnabled()) return;
 #endif  // ASAP_WINDOWS

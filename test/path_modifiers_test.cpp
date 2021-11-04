@@ -15,7 +15,7 @@ using testing::TEST_PATHS;
 // -----------------------------------------------------------------------------
 
 TEST_CASE("Path / modifiers / clear", "[common][filesystem][path][modifiers]") {
-  for (path p : TEST_PATHS) {
+  for (path p : TEST_PATHS()) {
     path empty;
     p.clear();
     REQUIRE(p.empty());
@@ -42,7 +42,7 @@ TEST_CASE("Path / modifiers / remove_file_name / special",
 
 TEST_CASE("Path / modifiers / remove_file_name / suite",
           "[common][filesystem][path][modifiers]") {
-  for (path p : TEST_PATHS) {
+  for (path p : TEST_PATHS()) {
     path p2(p);
     p2.remove_filename();
     p2 /= p.filename();
@@ -59,7 +59,7 @@ TEST_CASE("Path / modifiers / replace_extension / special",
 
 TEST_CASE("Path / modifiers / replace_extension / suite",
           "[common][filesystem][path][modifiers]") {
-  for (path p : TEST_PATHS) {
+  for (path p : TEST_PATHS()) {
     path p2(p);
     ComparePaths(p2.replace_extension(p2.extension()), p);
   }
@@ -73,7 +73,7 @@ TEST_CASE("Path / modifiers / replace_filename / special",
 
 TEST_CASE("Path / modifiers / replace_filename / suite",
           "[common][filesystem][path][modifiers]") {
-  for (path p : TEST_PATHS) {
+  for (path p : TEST_PATHS()) {
     path p2(p);
     p2.replace_filename(p.filename());
     ComparePaths(p2, p);

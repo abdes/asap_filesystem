@@ -36,7 +36,7 @@ TEST_CASE("Path / decompose / extension",
 
 TEST_CASE("Path / decompose / stem + extension = filename",
           "[common][filesystem][path][decompose]") {
-  for (const path p : TEST_PATHS) {
+  for (const path p : TEST_PATHS()) {
     auto stem = p.stem();
     auto ext = p.extension();
     auto file = p.filename();
@@ -50,7 +50,7 @@ TEST_CASE("Path / decompose / stem + extension = filename",
 
 TEST_CASE("Path / decompose / filename",
           "[common][filesystem][path][decompose]") {
-  for (const path p : TEST_PATHS) {
+  for (const path p : TEST_PATHS()) {
     CAPTURE(p);
     path f = p.filename();
     if (p.empty())
@@ -113,7 +113,7 @@ TEST_CASE("Path / decompose / relative_path basic",
 
 TEST_CASE("Path / decompose / relative_path",
           "[common][filesystem][path][decompose]") {
-  for (const path p : TEST_PATHS) {
+  for (const path p : TEST_PATHS()) {
     bool after_root = false;
     const path prel = p.relative_path();
     REQUIRE(!prel.has_root_name());
@@ -158,7 +158,7 @@ TEST_CASE("Path / decompose / root_directory special cases",
 
 TEST_CASE("Path / decompose / root_directory",
           "[common][filesystem][path][decompose]") {
-  for (const path p : TEST_PATHS) {
+  for (const path p : TEST_PATHS()) {
     CAPTURE(p);
     path rootdir = p.root_directory();
     REQUIRE(!rootdir.has_relative_path());

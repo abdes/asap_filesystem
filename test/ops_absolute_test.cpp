@@ -14,7 +14,7 @@ using testing::TEST_PATHS;
 // -----------------------------------------------------------------------------
 
 TEST_CASE("Ops / absolute / suite", "[common][filesystem][ops][absolute]") {
-  for (const path p : TEST_PATHS) {
+  for (const path p : TEST_PATHS()) {
     std::error_code ec;
     path abs = absolute(p, ec);
     REQUIRE((ec || abs.is_absolute()));

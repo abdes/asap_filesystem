@@ -3,9 +3,8 @@
 //    (See accompanying file LICENSE or copy at
 //   https://opensource.org/licenses/BSD-3-Clause)
 
-#include <catch2/catch.hpp>
-
 #include <algorithm>
+#include <catch2/catch.hpp>
 #include <vector>
 
 #include "fs_testsuite.h"
@@ -18,14 +17,14 @@ using testing::TEST_PATHS;
 
 TEST_CASE("Path / iterator / components",
           "[common][filesystem][path][iterator]") {
-  for (const path p : TEST_PATHS) {
+  for (const path p : TEST_PATHS()) {
     CAPTURE(p);
     if (p.empty())
       REQUIRE(std::distance(p.begin(), p.end()) == 0);
     else
       REQUIRE(std::distance(p.begin(), p.end()) != 0);
 
-    for (const path &cmpt : p) {
+    for (const path& cmpt : p) {
       if (cmpt.empty())
         REQUIRE(std::distance(cmpt.begin(), cmpt.end()) == 0);
       else
@@ -111,7 +110,7 @@ TEST_CASE("Path / iterator / reverse", "[common][filesystem][path][iterator]") {
   using reverse_iterator = std::reverse_iterator<path::iterator>;
   std::vector<path> fwd, rev;
 
-  for (const path p : TEST_PATHS) {
+  for (const path p : TEST_PATHS()) {
     const auto begin = p.begin(), end = p.end();
     fwd.assign(begin, end);
     rev.assign(reverse_iterator(end), reverse_iterator(begin));
@@ -123,7 +122,7 @@ TEST_CASE("Path / iterator / reverse", "[common][filesystem][path][iterator]") {
 TEST_CASE("Path / iterator / special cases",
           "[common][filesystem][path][iterator]") {
   path paths[] = {"single", "multiple/elements", "trailing/slash/", "/."};
-  for (const path p : paths) {
+  for (const path& p : paths) {
     for (auto iter = p.begin(); iter != p.end(); ++iter) {
       auto iter2 = iter;
       ++iter;

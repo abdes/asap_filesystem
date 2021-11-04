@@ -5,11 +5,11 @@
 
 #pragma once
 
-#include <memory>  // for std::shared_ptr
-
 #include <common/assert.h>
 #include <filesystem/asap_filesystem_api.h>
 #include <filesystem/filesystem.h>
+
+#include <memory>  // for std::shared_ptr
 
 namespace asap {
 namespace filesystem {
@@ -79,7 +79,6 @@ class ASAP_FILESYSTEM_API directory_entry {
       DoRefresh(&ec);
     } catch (...) {
       // The above will never throw when we pass a non null ec
-      ASAP_UNREACHABLE();
     }
   }
 
@@ -306,7 +305,7 @@ class ASAP_FILESYSTEM_API directory_entry {
     }
   };
 
-#if	0 // FIXME
+#if 0  // FIXME
   static CachedData_ CreateIterResult(file_type type) {
     CachedData_ data;
     data.type = type;

@@ -29,7 +29,7 @@ TEST_CASE("Path / native / strings", "[common][filesystem][path][native]") {
   path p(s);
 
   auto str = p.string();
-  REQUIRE(str == u8"abc");
+  REQUIRE(str == "abc");
   REQUIRE(str == p.u8string());
 
   auto strw = p.string<wchar_t>();

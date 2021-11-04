@@ -4,7 +4,6 @@
 //   https://opensource.org/licenses/BSD-3-Clause)
 
 #include <catch2/catch.hpp>
-
 #include <fstream>
 
 #include "fs_testsuite.h"
@@ -74,7 +73,6 @@ TEST_CASE("Ops / copy_file / empty", "[common][filesystem][ops][copy_file]") {
   REQUIRE(exists(to));
   REQUIRE(file_size(to) == 0);
 }
-
 
 TEST_CASE("Ops / copy_file", "[common][filesystem][ops][copy_file]") {
   std::error_code ec;

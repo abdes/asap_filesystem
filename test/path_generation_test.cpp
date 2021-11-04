@@ -14,14 +14,6 @@ using testing::TEST_PATHS;
 //  Generation - normal
 // -----------------------------------------------------------------------------
 
-void ComparePathsNormal(path p, std::string expected) {
-#if defined(ASAP_WINDOWS)
-  for (auto& c : expected)
-    if (c == '/') c = '\\';
-#endif
-  ComparePaths(p, expected);
-}
-
 TEST_CASE("Path / generation / normal",
           "[common][filesystem][path][generation]") {
   // Empty stays empty
@@ -31,7 +23,8 @@ TEST_CASE("Path / generation / normal",
   CHECK(path(".").lexically_normal() == ".");
 
   // dotdot
-  // 7. If the last filename is dot-dot, remove any trailing directory-separator.
+  // 7. If the last filename is dot-dot, remove any trailing
+  // directory-separator.
   CHECK(path("..").lexically_normal() == "..");
   CHECK(path("../").lexically_normal() == "..");
   CHECK(path("../../").lexically_normal() == "../..");
@@ -53,7 +46,8 @@ TEST_CASE("Path / generation / normal",
   CHECK(path("/././").lexically_normal() == "/");
   CHECK(path("/././.").lexically_normal() == "/");
 
-  // 4. Remove each dot filename and any immediately following directory-separator.
+  // 4. Remove each dot filename and any immediately following
+  // directory-separator.
   // 8. If the path is empty, add a dot.
   CHECK(path("./").lexically_normal() == ".");
   CHECK(path("./.").lexically_normal() == ".");

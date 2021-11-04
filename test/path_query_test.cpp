@@ -14,58 +14,58 @@ using testing::TEST_PATHS;
 // -----------------------------------------------------------------------------
 
 TEST_CASE("Path / query / empty", "[common][filesystem][path][query]") {
-  for (const std::string& s : TEST_PATHS) {
+  for (const std::string& s : TEST_PATHS()) {
     REQUIRE(s.empty() == path(s).empty());
   }
 }
 
 TEST_CASE("Path / query / has_extension", "[common][filesystem][path][query]") {
-  for (const path p : TEST_PATHS) {
+  for (const path p : TEST_PATHS()) {
     REQUIRE(p.has_extension() == !p.extension().empty());
   }
 }
 
 TEST_CASE("Path / query / has_filename", "[common][filesystem][path][query]") {
-  for (const path p : TEST_PATHS) {
+  for (const path p : TEST_PATHS()) {
     REQUIRE(p.has_filename() == !p.filename().empty());
   }
 }
 
 TEST_CASE("Path / query / has_parent_path",
           "[common][filesystem][path][query]") {
-  for (const path p : TEST_PATHS) {
+  for (const path p : TEST_PATHS()) {
     REQUIRE(p.has_parent_path() == !p.parent_path().empty());
   }
 }
 
 TEST_CASE("Path / query / has_relative_path",
           "[common][filesystem][path][query]") {
-  for (const path p : TEST_PATHS) {
+  for (const path p : TEST_PATHS()) {
     REQUIRE(p.has_relative_path() == !p.relative_path().empty());
   }
 }
 
 TEST_CASE("Path / query / has_root_directory",
           "[common][filesystem][path][query]") {
-  for (const path p : TEST_PATHS) {
+  for (const path p : TEST_PATHS()) {
     REQUIRE(p.has_root_directory() == !p.root_directory().empty());
   }
 }
 
 TEST_CASE("Path / query / has_root_name", "[common][filesystem][path][query]") {
-  for (const path p : TEST_PATHS) {
+  for (const path p : TEST_PATHS()) {
     REQUIRE(p.has_root_name() == !p.root_name().empty());
   }
 }
 
 TEST_CASE("Path / query / has_root_path", "[common][filesystem][path][query]") {
-  for (const path p : TEST_PATHS) {
+  for (const path p : TEST_PATHS()) {
     REQUIRE(p.has_root_path() == !p.root_path().empty());
   }
 }
 
 TEST_CASE("Path / query / has_stem", "[common][filesystem][path][query]") {
-  for (const path p : TEST_PATHS) {
+  for (const path p : TEST_PATHS()) {
     REQUIRE(p.has_stem() == !p.stem().empty());
   }
 }
@@ -107,7 +107,7 @@ TEST_CASE("Path / query / is_absolute", "[common][filesystem][path][query]") {
 }
 
 TEST_CASE("Path / query / is_relative", "[common][filesystem][path][query]") {
-  for (const path p : TEST_PATHS) {
+  for (const path p : TEST_PATHS()) {
     REQUIRE(p.is_relative() == !p.is_absolute());
   }
 }

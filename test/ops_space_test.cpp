@@ -7,10 +7,12 @@
 
 #include "fs_testsuite.h"
 
+namespace {
 bool check(fs::space_info const& s) {
   const std::uintmax_t err = static_cast<uintmax_t>(-1);
   return s.capacity != err || s.free != err || s.available != err;
 }
+}  // namespace
 
 // -----------------------------------------------------------------------------
 //  space

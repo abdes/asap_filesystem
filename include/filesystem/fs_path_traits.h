@@ -5,11 +5,12 @@
 
 #pragma once
 
+#include <common/traits/logical.h>
+#include <hedley/hedley.h>
+
 #include <list>
 #include <string>
 #include <vector>
-
-#include <common/traits/logical.h>
 
 namespace asap {
 namespace filesystem {
@@ -26,6 +27,10 @@ using IsPathableIter =
     asap::conjunction<IsEncodedChar<typename Iter_traits::value_type>,
                       std::is_base_of<std::input_iterator_tag,
                                       typename Iter_traits::iterator_category>>;
+#if HEDLEY_HAS_WARNING("-Wunused-template")
+HEDLEY_DIAGNOSTIC_PUSH
+HEDLEY_PRAGMA(clang diagnostic ignored "-Wunused-template")
+#endif
 
 template <typename Iter>
 static IsPathableIter<Iter> IsPathable(Iter, int);
@@ -36,6 +41,10 @@ static IsEncodedChar<CharT> IsPathable(
 
 template <typename Unknown>
 static std::false_type IsPathable(const Unknown &, ...);
+
+#if HEDLEY_HAS_WARNING("-Wunused-template")
+HEDLEY_DIAGNOSTIC_POP
+#endif
 
 template <typename Tp1, typename Tp2>
 struct IsConstructibleFrom;

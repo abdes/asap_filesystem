@@ -90,9 +90,9 @@ struct ErrorHandler {
   const path *p1 = nullptr;
   const path *p2 = nullptr;
 
-  ErrorHandler(const char *fname, std::error_code *ec, const path *p1 = nullptr,
-               const path *p2 = nullptr)
-      : func_name(fname), ec(ec), p1(p1), p2(p2) {
+  ErrorHandler(const char *fname, std::error_code *eec, const path *pp1 = nullptr,
+               const path *pp2 = nullptr)
+      : func_name(fname), ec(eec), p1(pp1), p2(pp2) {
     if (ec) ec->clear();
   }
   ErrorHandler(ErrorHandler const &) = delete;
@@ -104,13 +104,14 @@ struct ErrorHandler {
       return error_value<T>();
     }
     std::string what = std::string("in ") + func_name;
-    switch (bool(p1) + bool(p2)) {
-      case 0:
-        throw filesystem_error(what, m_ec);
-      case 1:
-        throw filesystem_error(what, *p1, m_ec);
-      case 2:
+    if (p1) {
+      if (p2) {
         throw filesystem_error(what, *p1, *p2, m_ec);
+      } else {
+        throw filesystem_error(what, *p1, m_ec);
+      }
+    } else {
+      throw filesystem_error(what, m_ec);
     }
     // Unreachable
     ASAP_UNREACHABLE();
@@ -123,13 +124,14 @@ struct ErrorHandler {
     }
     std::string what =
         std::string("in ").append(func_name).append(": ").append(msg);
-    switch (bool(p1) + bool(p2)) {
-      case 0:
-        throw filesystem_error(what, m_ec);
-      case 1:
-        throw filesystem_error(what, *p1, m_ec);
-      case 2:
+    if (p1) {
+      if (p2) {
         throw filesystem_error(what, *p1, *p2, m_ec);
+      } else {
+        throw filesystem_error(what, *p1, m_ec);
+      }
+    } else {
+      throw filesystem_error(what, m_ec);
     }
     // Unreachable
     ASAP_UNREACHABLE();

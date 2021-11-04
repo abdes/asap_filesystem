@@ -3,9 +3,11 @@
 //    (See accompanying file LICENSE or copy at
 //   https://opensource.org/licenses/BSD-3-Clause)
 
+#include <filesystem/filesystem.h>
+#include <hedley/hedley.h>
+
 #include <stack>
 
-#include <filesystem/filesystem.h>
 #include "fs_error.h"
 #include "fs_portability.h"
 
@@ -24,14 +26,14 @@ void directory_entry::UpdateBasicFileInformation(bool follow_symlinks,
 
 #if defined(ASAP_WINDOWS)
   auto wpath = path_.wstring();
-  DWORD attr(detail::win32::GetFileAttributesW(wpath.c_str()));
+  DWORD attr(detail::win32_port::GetFileAttributesW(wpath.c_str()));
   if (attr == INVALID_FILE_ATTRIBUTES) {
     return err.report(detail::capture_errno());
   } else {
     // Check if we have a symbolic link
     if (attr & FILE_ATTRIBUTE_REPARSE_POINT) {
       try {
-        if (detail::win32::IsReparsePointSymlink(path_)) {
+        if (detail::win32_port::IsReparsePointSymlink(path_)) {
           cached_data_.symlink = true;
           cached_data_.type = file_type::symlink;
         } else {
@@ -61,7 +63,7 @@ void directory_entry::UpdateBasicFileInformation(bool follow_symlinks,
         return err.report(m_ec);
       } else {
         BY_HANDLE_FILE_INFORMATION info;
-        if (!detail::win32::GetFileInformationByHandle(file.fd_, &info)) {
+        if (!detail::win32_port::GetFileInformationByHandle(file.fd_, &info)) {
           return err.report(detail::capture_errno());
         } else {
           if (attr & FILE_ATTRIBUTE_REPARSE_POINT) {
@@ -73,7 +75,7 @@ void directory_entry::UpdateBasicFileInformation(bool follow_symlinks,
           } else {
             // Call GetFileType to try to figure out precisely (as much as
             // possible) what is the real file type
-            switch (detail::win32::GetFileType(file.fd_)) {
+            switch (detail::win32_port::GetFileType(file.fd_)) {
               case FILE_TYPE_CHAR:
                 cached_data_.type = file_type::character;
                 break;
@@ -99,8 +101,8 @@ void directory_entry::UpdateBasicFileInformation(bool follow_symlinks,
   cached_data_.cache_type = CacheType_::BASIC;
 #else   // !ASAP_WINDOWS
   std::error_code m_ec;
-  detail::posix::StatT full_st;
-  file_status st = detail::posix::GetFileStatus(path_, full_st, &m_ec);
+  detail::posix_port::StatT full_st;
+  file_status st = detail::posix_port::GetFileStatus(path_, full_st, &m_ec);
 
   if (cached_data_.cache_type == CacheType_::EMPTY) {
     if (m_ec || !status_known(st)) {
@@ -113,7 +115,7 @@ void directory_entry::UpdateBasicFileInformation(bool follow_symlinks,
       cached_data_.symlink_perms = st.permissions();
     }
   }
-  
+
   if ((cached_data_.symlink) && follow_symlinks) {
     cached_data_.type = st.type();
     cached_data_.non_symlink_perms = st.permissions();
@@ -131,7 +133,7 @@ void directory_entry::UpdateBasicFileInformation(bool follow_symlinks,
     // the value is actually used.
     std::error_code ignored_ec;
     cached_data_.write_time =
-        detail::posix::ExtractLastWriteTime(path_, full_st, &ignored_ec);
+        detail::posix_port::ExtractLastWriteTime(path_, full_st, &ignored_ec);
   }
   cached_data_.cache_type = CacheType_::FULL;
 #endif  // ASAP_WINDOWS
@@ -156,7 +158,7 @@ void directory_entry::UpdateExtraFileInformation(bool follow_symlinks,
     }
 
     BY_HANDLE_FILE_INFORMATION info;
-    if (!detail::win32::GetFileInformationByHandle(file.fd_, &info)) {
+    if (!detail::win32_port::GetFileInformationByHandle(file.fd_, &info)) {
       return err.report(detail::capture_errno());
     }
 
@@ -175,7 +177,7 @@ void directory_entry::UpdateExtraFileInformation(bool follow_symlinks,
     }
 
     BY_HANDLE_FILE_INFORMATION info;
-    if (!detail::win32::GetFileInformationByHandle(file.fd_, &info)) {
+    if (!detail::win32_port::GetFileInformationByHandle(file.fd_, &info)) {
       return err.report(detail::capture_errno());
     }
 
@@ -190,10 +192,10 @@ void directory_entry::UpdateExtraFileInformation(bool follow_symlinks,
 
     // Last write time
     FILETIME lwt;
-    if (!detail::win32::GetFileTime(file.fd_, 0, 0, &lwt))
+    if (!detail::win32_port::GetFileTime(file.fd_, 0, 0, &lwt))
       return err.report(detail::capture_errno());
     cached_data_.write_time =
-        detail::win32::FileTimeTypeFromWindowsFileTime(lwt, m_ec);
+        detail::win32_port::FileTimeTypeFromWindowsFileTime(lwt, m_ec);
     if (m_ec) return err.report(m_ec);
 
     cached_data_.extra_resolved = true;
@@ -226,15 +228,15 @@ void directory_entry::UpdatePermissionsInformation(bool follow_symlinks,
     }
 
     FILE_ATTRIBUTE_TAG_INFO file_info;
-    if (!detail::win32::GetFileInformationByHandleEx(
+    if (!detail::win32_port::GetFileInformationByHandleEx(
             file.fd_, FileAttributeTagInfo, &file_info, sizeof(file_info))) {
       return err.report(detail::capture_errno());
     }
     if (cached_data_.symlink) {
-      cached_data_.symlink_perms = detail::win32::GetPermissions(
+      cached_data_.symlink_perms = detail::win32_port::GetPermissions(
           path_, file_info.FileAttributes, follow_symlinks, &m_ec);
     } else {
-      cached_data_.non_symlink_perms = detail::win32::GetPermissions(
+      cached_data_.non_symlink_perms = detail::win32_port::GetPermissions(
           path_, file_info.FileAttributes, follow_symlinks, &m_ec);
     }
     if (m_ec) {
@@ -254,11 +256,11 @@ void directory_entry::UpdatePermissionsInformation(bool follow_symlinks,
     }
 
     FILE_ATTRIBUTE_TAG_INFO file_info;
-    if (!detail::win32::GetFileInformationByHandleEx(
+    if (!detail::win32_port::GetFileInformationByHandleEx(
             file.fd_, FileAttributeTagInfo, &file_info, sizeof(file_info))) {
       return err.report(detail::capture_errno());
     }
-    cached_data_.non_symlink_perms = detail::win32::GetPermissions(
+    cached_data_.non_symlink_perms = detail::win32_port::GetPermissions(
         path_, file_info.FileAttributes, follow_symlinks, &m_ec);
     if (m_ec) {
       return err.report(m_ec);
@@ -336,6 +338,9 @@ uintmax_t directory_entry::GetSize(std::error_code *ec) const {
       }
       // continue to update extra file attributes
     }
+#if defined(__clang__)
+      [[clang::fallthrough]];
+#endif  // __clang__
     /* FALLTHRU */
     case CacheType_::BASIC:
       UpdateExtraFileInformation(true, ec);
@@ -360,6 +365,9 @@ uintmax_t directory_entry::GetHardLinkCount(std::error_code *ec) const {
     case CacheType_::EMPTY:
       UpdateBasicFileInformation(false, ec);
       // continue to update extra file attributes
+#if defined(__clang__)
+      [[clang::fallthrough]];
+#endif  // __clang__
       /* FALLTHRU */
     case CacheType_::BASIC:
       UpdateExtraFileInformation(false, ec);
@@ -381,6 +389,9 @@ file_time_type directory_entry::GetLastWriteTime(std::error_code *ec) const {
     case CacheType_::EMPTY:
       UpdateBasicFileInformation(true, ec);
       // continue to update extra file attributes
+#if defined(__clang__)
+      [[clang::fallthrough]];
+#endif  // __clang__
       /* FALLTHRU */
     case CacheType_::BASIC:
       UpdateExtraFileInformation(true, ec);
@@ -409,12 +420,18 @@ file_status directory_entry::GetStatus(std::error_code *ec) const {
     case CacheType_::EMPTY:
       UpdateBasicFileInformation(true, ec);
       // continue to update extra file attributes
+#if defined(__clang__)
+      [[clang::fallthrough]];
+#endif  // __clang__
       /* FALLTHRU */
     case CacheType_::BASIC:
       // Don't resolve links for extra information as we may not need it if the
       // caller is just asking for permissions information.
       UpdateExtraFileInformation(false, ec);
       // continue to update permissions
+#if defined(__clang__)
+      [[clang::fallthrough]];
+#endif  // __clang__
       /* FALLTHRU */
     case CacheType_::EXTRA:
       UpdatePermissionsInformation(true, ec);
@@ -422,10 +439,12 @@ file_status directory_entry::GetStatus(std::error_code *ec) const {
     case CacheType_::FULL:
       if (!cached_data_.perms_resolved) UpdatePermissionsInformation(true, ec);
       break;
-
+#if !defined(__clang__)
+    // clang properly sees that the switch covers all enum values and therefore
+    // the default case is unnecessary
     default:
-      // Nothing to do
-      break;
+      HEDLEY_UNREACHABLE();
+#endif  // __clang__
   }
   return file_status(cached_data_.type, cached_data_.non_symlink_perms);
 }
@@ -438,10 +457,16 @@ file_status directory_entry::GetSymLinkStatus(std::error_code *ec) const {
     case CacheType_::EMPTY:
       UpdateBasicFileInformation(false, ec);
       // continue to update extra file attributes
+#if defined(__clang__)
+      [[clang::fallthrough]];
+#endif  // __clang__
       /* FALLTHRU */
     case CacheType_::BASIC:
       UpdateExtraFileInformation(false, ec);
       // continue to update permissions
+#if defined(__clang__)
+      [[clang::fallthrough]];
+#endif  // __clang__
       /* FALLTHRU */
     case CacheType_::EXTRA:
       UpdatePermissionsInformation(false, ec);
@@ -500,6 +525,8 @@ file_type get_file_type(DirEntT *ent) {
       // we correctly set the cache to empty.
     case DT_UNKNOWN:
       break;
+    default:
+      HEDLEY_UNREACHABLE();
   }
   return file_type::none;
 }
@@ -509,7 +536,7 @@ std::pair<std::string, file_type> posix_readdir(DIR *dir_stream,
   struct dirent *dir_entry_ptr = nullptr;
   errno = 0;  // zero errno in order to detect errors
   ec.clear();
-  if ((dir_entry_ptr = posix::readdir(dir_stream)) == nullptr) {
+  if ((dir_entry_ptr = posix_port::readdir(dir_stream)) == nullptr) {
     if (errno) ec = detail::capture_errno();
     return {};
   } else {

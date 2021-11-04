@@ -5,18 +5,17 @@
 
 #pragma once
 
+#include <common/platform.h>
+#include <common/unicode/convert.h>
+#include <filesystem/asap_filesystem_api.h>
+#include <filesystem/fs_path_traits.h>
+
 #include <algorithm>
 #include <iomanip>   // for std::quoted
 #include <iostream>  // for operator >> and operator <<
 #include <iterator>  // for std::iterator_traits
 #include <string>
 #include <type_traits>  // for std::enable_if
-
-#include <common/platform.h>
-#include <common/unicode/convert.h>
-
-#include <filesystem/asap_filesystem_api.h>
-#include <filesystem/fs_path_traits.h>
 
 namespace asap {
 namespace filesystem {
@@ -51,7 +50,7 @@ class ASAP_FILESYSTEM_API path {
   //@{
 
   /// Constructs an empty path.
-  path() noexcept {};
+  path() noexcept {}
 
   /*!
    * @brief Copy constructor.
@@ -78,8 +77,8 @@ class ASAP_FILESYSTEM_API path {
    * @brief Constructs the path from a character sequence provided by source,
    * which is a pointer or an input iterator to a null-terminated character/wide
    * character sequence or an std::basic_string.
-   * @tparam Source
-   * @param source
+   * @tparam Source the source type
+   * @param source the source character sequence
    */
   template <typename Source, typename = IsPathable<Source>>
   path(const Source &source, format /*fmt*/ = format::auto_format)
@@ -509,7 +508,7 @@ std::basic_istream<CharT, Traits> &operator>>(
 }
 
 struct path::Component : path {
-  Component(string_type pathname, Type type, size_t pos)
+  Component(string_type pathname, Type type, size_t pos) noexcept
       : path(std::move(pathname), type), pos_(pos) {}
 
   size_t pos_;

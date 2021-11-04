@@ -4,7 +4,6 @@
 //   https://opensource.org/licenses/BSD-3-Clause)
 
 #include <catch2/catch.hpp>
-
 #include <cstring>
 
 #include "fs_testsuite.h"
@@ -34,14 +33,14 @@ TEST_CASE("Path / construct / default",
 }
 
 TEST_CASE("Path / construct / copy", "[common][filesystem][path][construct]") {
-  for (const path p : TEST_PATHS) {
+  for (const path p : TEST_PATHS()) {
     path copy = p;
     ComparePaths(p, copy);
   }
 }
 
 TEST_CASE("Path / construct / move", "[common][filesystem][path][construct]") {
-  for (const path p : TEST_PATHS) {
+  for (const path p : TEST_PATHS()) {
     path copy = p;
     path move = std::move(copy);
     ComparePaths(p, move);
@@ -127,7 +126,7 @@ TEST_CASE("Path / construct / path(InputIterator, InputIterator, format)",
 }
 
 TEST_CASE("Path / construct / range", "[common][filesystem][path][construct]") {
-  for (auto &s : TEST_PATHS) {
+  for (auto &s : TEST_PATHS()) {
     path p1 = s;
     path p2(s.begin(), s.end());
     path p3(s.c_str());
@@ -150,13 +149,12 @@ TEST_CASE("Path / construct / range", "[common][filesystem][path][construct]") {
 
     // Test with input iterators and const value_types
 
-    std::vector<char> r1((char *)s.c_str(), (char *)s.c_str() + s.size());
+    std::vector<char> r1(s.c_str(), s.c_str() + s.size());
     path p9(r1.begin(), r1.end());
     ComparePaths(p1, p9);
 
-    std::vector<char> r2(
-        (char *)s.c_str(),
-        (char *)s.c_str() + s.size() + 1);  // includes null-terminator
+    std::vector<char> r2(s.c_str(),
+                         s.c_str() + s.size() + 1);  // includes null-terminator
     path p10(r2.begin());
     ComparePaths(p1, p10);
 
@@ -170,14 +168,13 @@ TEST_CASE("Path / construct / range", "[common][filesystem][path][construct]") {
     ComparePaths(p1, p12);
 
     // Test with input iterators and const value_types
-    std::vector<wchar_t> r5((wchar_t *)ws.c_str(),
-                            (wchar_t *)ws.c_str() + ws.size());
+    std::vector<wchar_t> r5(ws.c_str(), ws.c_str() + ws.size());
     path p13(r5.begin(), r5.end());
     ComparePaths(p1, p13);
 
     std::vector<wchar_t> r6(
-        (wchar_t *)ws.c_str(),
-        (wchar_t *)ws.c_str() + ws.size() + 1);  // includes null-terminator
+        ws.c_str(),
+        ws.c_str() + ws.size() + 1);  // includes null-terminator
     path p14(r6.begin());
     ComparePaths(p1, p14);
 

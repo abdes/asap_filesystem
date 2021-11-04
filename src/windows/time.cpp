@@ -14,7 +14,7 @@
 namespace asap {
 namespace filesystem {
 namespace detail {
-namespace win32 {
+namespace win32_port {
 
 file_time_type FileTimeTypeFromWindowsFileTime(const FILETIME &ft,
                                                std::error_code &ec) {
@@ -51,7 +51,7 @@ FILETIME FileTimeTypeToWindowsFileTime(const file_time_type &ft,
   return wt;
 }
 
-}  // namespace win32
+}  // namespace win32_port
 }  // namespace detail
 }  // namespace filesystem
 }  // namespace asap

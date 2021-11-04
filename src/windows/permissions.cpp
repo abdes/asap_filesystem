@@ -19,7 +19,7 @@
 namespace asap {
 namespace filesystem {
 namespace detail {
-namespace win32 {
+namespace win32_port {
 
 enum class TrusteeType { owner = 0, group, others, system, admins };
 enum class OperationType { read = 0, write, exec };
@@ -314,7 +314,8 @@ perms GetOthersPermissions(PACL DACL, DWORD attr, std::error_code &ec) {
   return prms;
 }
 
-perms GetPermissions(const path &p, DWORD attr, bool follow_symlinks,
+// TODO: check what we need to do here for symlinks
+perms GetPermissions(const path &p, DWORD attr, bool /*follow_symlinks*/,
                      std::error_code *ec) {
   ErrorHandler<perms> err("permissions", ec, &p);
   std::error_code m_ec;
@@ -407,7 +408,8 @@ PEXPLICIT_ACCESS MakeAce(TrusteeType trustee, PSID pSid, DWORD access,
   return pEA;
 }
 
-void SetPermissions(const path &p, perms prms, bool follow_symlinks,
+// TODO: check what we need to do here for symlinks
+void SetPermissions(const path &p, perms prms, bool /*follow_symlinks*/,
                     std::error_code *ec) {
   ErrorHandler<void> err("permissions", ec, &p);
 
@@ -568,8 +570,9 @@ void SetPermissions(const path &p, perms prms, bool follow_symlinks,
 
   PACL pACL = NULL;
   auto acl_size = ordered_aces.size();
-  errVal = SetEntriesInAcl(acl_size, (acl_size > 0) ? &ordered_aces[0] : NULL,
-                           NULL, &pACL);
+  errVal =
+      SetEntriesInAcl(static_cast<ULONG>(acl_size),
+                      (acl_size > 0) ? &ordered_aces[0] : NULL, NULL, &pACL);
   if (errVal != ERROR_SUCCESS) {
     return err.report({(int)errVal, std::system_category()});
   }
@@ -584,7 +587,7 @@ void SetPermissions(const path &p, perms prms, bool follow_symlinks,
   }
 }
 
-}  // namespace win32
+}  // namespace win32_port
 }  // namespace detail
 }  // namespace filesystem
 }  // namespace asap

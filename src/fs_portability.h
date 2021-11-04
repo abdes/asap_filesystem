@@ -27,14 +27,14 @@
 #include <climits>
 #include <cstdlib>
 
-#if ASAP_FS_USE_UTIME
+#if defined(ASAP_FS_USE_UTIME)
 # include <utime.h>
 #endif
 
 // Which method to use for copy file
-#if ASAP_FS_USE_SENDFILE
+#if defined(ASAP_FS_USE_SENDFILE)
 # include <sys/sendfile.h>
-#elif ASAP_FS_USE_COPYFILE
+#elif defined(ASAP_FS_USE_COPYFILE)
 # include <copyfile.h>
 #endif
 
@@ -51,25 +51,25 @@ namespace asap {
 namespace filesystem {
 namespace detail {
 
-namespace linux {
-#if ASAP_FS_USE_SENDFILE
+namespace linux_port {
+#if defined(ASAP_FS_USE_SENDFILE)
 using ::sendfile;
 #endif
-#if ASAP_FS_USE_UTIMENSAT
+#if defined(ASAP_FS_USE_UTIMENSAT)
 using ::utimensat;
 #endif
-}  // namespace linux
+}  // namespace linux_port
 
-namespace apple {
-#if ASAP_FS_USE_COPYFILE
+namespace apple_port {
+#if defined(ASAP_FS_USE_COPYFILE)
 using ::copyfile_state_alloc;
 using ::copyfile_state_free;
 using ::fcopyfile;
 #endif
-}  // namespace apple
+}  // namespace apple_port
 
 #if defined(ASAP_POSIX)
-namespace posix {
+namespace posix_port {
 const int invalid_fd_value = -1;
 
 using ::chdir;
@@ -90,15 +90,15 @@ using ::remove;
 using ::stat;
 using ::symlink;
 using ::truncate;
-#if (ASAP_FS_USE_UTIME)
+#if defined(ASAP_FS_USE_UTIME)
 using ::utime;
 #endif
 using ::write;
-}  // namespace posix
+}  // namespace posix_port
 #endif  // ASAP_POSIX
 
 #if defined(ASAP_WINDOWS)
-namespace win32 {
+namespace win32_port {
 typedef ULONG_PTR ulong_ptr;
 typedef HANDLE handle;
 const handle invalid_handle_value = (handle)((ulong_ptr)-1);
@@ -136,7 +136,7 @@ using ::SetFileAttributesW;
 using ::SetFilePointerEx;
 using ::SetFileTime;
 
-}  // namespace win32
+}  // namespace win32_port
 #endif  // ASAP_WINDOWS
 
 // -----------------------------------------------------------------------------
@@ -146,22 +146,22 @@ using ::SetFileTime;
 typedef struct ::timespec TimeSpec;
 
 #if defined(ASAP_POSIX)
-namespace posix {
+namespace posix_port {
 
 file_time_type FileTimeTypeFromPosixTimeSpec(TimeSpec tm);
 
-}  // namespace posix
+}  // namespace posix_port
 #endif  // ASAP_POSIX
 
 #if defined(ASAP_WINDOWS)
-namespace win32 {
+namespace win32_port {
 
 file_time_type FileTimeTypeFromWindowsFileTime(const FILETIME &ft,
                                                std::error_code &ec);
 FILETIME FileTimeTypeToWindowsFileTime(const file_time_type &ft,
                                        std::error_code &ec);
 
-}  // namespace win32
+}  // namespace win32_port
 #endif  // ASAP_WINDOWS
 
 // -----------------------------------------------------------------------------
@@ -169,11 +169,11 @@ FILETIME FileTimeTypeToWindowsFileTime(const file_time_type &ft,
 // -----------------------------------------------------------------------------
 
 #if defined(ASAP_POSIX)
-namespace posix {
+namespace posix_port {
 
 // Use typedef instead of using to avoid gcc warning on struct ::stat not
 // declaring anything. (alternative is: "using StatT = struct ::stat;" )
-#if HEDLEY_GNUC_VERSION
+#if defined(HEDLEY_GNUC_VERSION)
 typedef struct ::stat StatT;
 #else
 using StatT = struct ::stat;
@@ -187,7 +187,7 @@ inline TimeSpec ExtractModificationTime(StatT const &st) {
 inline TimeSpec ExtractModificationTime(StatT const &st) { return st.st_mtim; }
 #endif
 
-#if ASAP_FS_USE_UTIME
+#if defined(ASAP_FS_USE_UTIME)
 #if defined(ASAP_APPLE)
 inline TimeSpec ExtractAccessTime(StatT const &st) { return st.st_atimespec; }
 #else
@@ -196,19 +196,19 @@ inline TimeSpec ExtractAccessTime(StatT const &st) { return st.st_atim; }
 #endif  // ASAP_FS_USE_UTIME
 
 file_status CreateFileStatus(std::error_code &m_ec, path const &p,
-                             const posix::StatT &path_stat,
+                             const posix_port::StatT &path_stat,
                              std::error_code *ec);
 
-file_status GetFileStatus(path const &p, posix::StatT &path_stat,
+file_status GetFileStatus(path const &p, posix_port::StatT &path_stat,
                           std::error_code *ec);
 
-file_status GetLinkStatus(path const &p, posix::StatT &path_stat,
+file_status GetLinkStatus(path const &p, posix_port::StatT &path_stat,
                           std::error_code *ec);
 
 file_time_type ExtractLastWriteTime(const path &p, const StatT &st,
                                     std::error_code *ec);
 
-}  // namespace posix
+}  // namespace posix_port
 #endif  // ASAP_POSIX
 
 // -----------------------------------------------------------------------------
@@ -216,7 +216,7 @@ file_time_type ExtractLastWriteTime(const path &p, const StatT &st,
 // -----------------------------------------------------------------------------
 
 #if defined(ASAP_WINDOWS)
-namespace win32 {
+namespace win32_port {
 bool IsNotFoundError(int errval);
 
 bool IsReparsePointSymlink(const path &p, std::error_code *ec = nullptr);
@@ -230,7 +230,7 @@ perms GetPermissions(const path &p, DWORD attr, bool follow_symlinks,
                      std::error_code *ec);
 void SetPermissions(const path &p, perms prms, bool follow_symlinks,
                      std::error_code *ec);
-}  // namespace win32
+}  // namespace win32_port
 #endif  // ASAP_WINDOWS
 
 // -----------------------------------------------------------------------------
@@ -240,10 +240,10 @@ void SetPermissions(const path &p, perms prms, bool follow_symlinks,
 struct FileDescriptor {
   const path &name_;
 #if defined(ASAP_WINDOWS)
-  using fd_type = win32::handle;
+  using fd_type = win32_port::handle;
 #else
   using fd_type = int;
-  posix::StatT stat_;
+  posix_port::StatT stat_;
 #endif
   static const fd_type invalid_value;
   fd_type fd_{invalid_value};
@@ -273,9 +273,9 @@ struct FileDescriptor {
     fd_type fd{invalid_value};
 #if defined(ASAP_WINDOWS)
     auto wpath = p->wstring();
-    fd = win32::CreateFileW(wpath.c_str(), args...);
+    fd = win32_port::CreateFileW(wpath.c_str(), args...);
 #else
-    fd = posix::open(p->c_str(), args...);
+    fd = posix_port::open(p->c_str(), args...);
 #endif
     if (fd == invalid_value) {
       ec = capture_errno();
@@ -286,7 +286,7 @@ struct FileDescriptor {
 
   file_status Status() const { return status_; }
 #if defined(ASAP_POSIX)
-  posix::StatT const &PosixStatus() const { return stat_; }
+  posix_port::StatT const &PosixStatus() const { return stat_; }
 #endif
 
   file_status RefreshStatus(bool follow_symlinks, std::error_code &ec);
@@ -299,9 +299,9 @@ struct FileDescriptor {
   void Close() noexcept {
     if (fd_ != invalid_value) {
 #if defined(ASAP_WINDOWS)
-      win32::CloseHandle(fd_);
+      win32_port::CloseHandle(fd_);
 #else
-      posix::close(fd_);
+      posix_port::close(fd_);
 #endif
     }
     fd_ = invalid_value;

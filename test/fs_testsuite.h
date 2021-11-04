@@ -31,6 +31,11 @@ using asap::filesystem::path;
 
 namespace testing {
 
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wweak-vtables"
+#endif  // __clang__
+
 // Catch2 matcher for filesystem_error
 class FilesystemErrorMatcher : public Catch::MatcherBase<fs::filesystem_error> {
   std::error_code ec_;
@@ -62,6 +67,10 @@ class FilesystemErrorMatcher : public Catch::MatcherBase<fs::filesystem_error> {
     return ss.str();
   }
 };
+
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#endif  // __clang__
 
 // The builder functions
 inline FilesystemErrorMatcher FilesystemErrorDetail(std::error_code ec) {
@@ -95,10 +104,11 @@ inline void ComparePaths(const path &p1, const path &p2) {
   CHECK(d1 == d2);
 }
 
-const std::string TEST_PATHS[] = {
-    "",     "/",     "//",       "/.",     "/./",    "/a",
-    "/a/",  "/a//",  "/a/b/c/d", "/a//b",  "a",      "a/b",
-    "a/b/", "a/b/c", "a/b/c.d",  "a/b/..", "a/b/c.", "a/b/.c"};
+inline const std::vector<std::string> TEST_PATHS() {
+  return {"",     "/",     "//",       "/.",     "/./",    "/a",
+          "/a/",  "/a//",  "/a/b/c/d", "/a//b",  "a",      "a/b",
+          "a/b/", "a/b/c", "a/b/c.d",  "a/b/..", "a/b/c.", "a/b/.c"};
+}
 
 inline path root_path() {
 #if defined(ASAP_WINDOWS)

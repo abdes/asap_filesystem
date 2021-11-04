@@ -4,7 +4,6 @@
 //   https://opensource.org/licenses/BSD-3-Clause)
 
 #include <catch2/catch.hpp>
-
 #include <fstream>
 
 #include "fs_testsuite.h"
@@ -84,7 +83,7 @@ TEST_CASE("Ops / exists / permissions", "[common][filesystem][ops][exists]") {
   //  directories is to enable conformance to certain IEEE and ISO POSIX
   //  standards when interoperability with Unix systems is a requirement.
 
-  #if !defined(ASAP_WINDOWS)
+#if !defined(ASAP_WINDOWS)
   REQUIRE(ec == std::errc::permission_denied);
   ec.clear();
 
@@ -92,5 +91,5 @@ TEST_CASE("Ops / exists / permissions", "[common][filesystem][ops][exists]") {
       exists(unr), fs::filesystem_error,
       testing::FilesystemErrorDetail(
           std::make_error_code(std::errc::permission_denied), unr));
-  #endif // ASAP_WINDOWS
+#endif  // ASAP_WINDOWS
 }

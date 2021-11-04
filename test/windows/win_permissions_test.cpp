@@ -4,26 +4,25 @@
 //   https://opensource.org/licenses/BSD-3-Clause)
 
 #include <catch2/catch.hpp>
+#include <random>
 
 #include "../fs_testsuite.h"
-
-#include <random>
 
 namespace asap {
 namespace filesystem {
 namespace detail {
-namespace win32 {
+namespace win32_port {
 
 enum class TrusteeType { OWNER, GROUP, OTHERS };
 perms MapAccessMaskToPerms(ACCESS_MASK, TrusteeType, file_type);
 
-}  // namespace win32
+}  // namespace win32_port
 }  // namespace detail
 }  // namespace filesystem
 }  // namespace asap
 
-using asap::filesystem::detail::win32::MapAccessMaskToPerms;
-using asap::filesystem::detail::win32::TrusteeType;
+using asap::filesystem::detail::win32_port::MapAccessMaskToPerms;
+using asap::filesystem::detail::win32_port::TrusteeType;
 
 // -----------------------------------------------------------------------------
 //  dir_iterator
@@ -172,8 +171,10 @@ TEST_CASE("Windows / Permissions / Mapping / dir / others",
 
 TEST_CASE("Windows / Permissions / Mapping / combo",
           "[filesystem][windows][permissions]") {
-  ACCESS_MASK mask = FILE_GENERIC_READ | FILE_GENERIC_WRITE | FILE_GENERIC_EXECUTE;
+  ACCESS_MASK mask =
+      FILE_GENERIC_READ | FILE_GENERIC_WRITE | FILE_GENERIC_EXECUTE;
   auto prm =
       MapAccessMaskToPerms(mask, TrusteeType::OWNER, fs::file_type::regular);
-  REQUIRE(prm == (fs::perms::owner_read | fs::perms::owner_write | fs::perms::owner_exec));
+  REQUIRE(prm == (fs::perms::owner_read | fs::perms::owner_write |
+                  fs::perms::owner_exec));
 }

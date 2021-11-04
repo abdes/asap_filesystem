@@ -30,7 +30,7 @@ TEST_CASE("Path / compare / basic", "[common][filesystem][path][compare]") {
 
 TEST_CASE("Path / compare / path", "[common][filesystem][path][compare]") {
   const path p0 = "/a/a/b/b";
-  for (const path p : TEST_PATHS) {
+  for (const path p : TEST_PATHS()) {
     REQUIRE(p.compare(p) == 0);
     int cmp = p.compare(p0);
     if (cmp == 0)
@@ -45,7 +45,7 @@ TEST_CASE("Path / compare / path", "[common][filesystem][path][compare]") {
 TEST_CASE("Path / compare / strings", "[common][filesystem][path][assign]") {
   const std::string s0 = "/a/a/b/b";
   const path p0 = s0;
-  for (const std::string &s : TEST_PATHS) {
+  for (const std::string &s : TEST_PATHS()) {
     path p(s);
     REQUIRE(p.compare(s) == 0);
     REQUIRE(p.compare(s.c_str()) == 0);
