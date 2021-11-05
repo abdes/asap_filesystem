@@ -146,9 +146,10 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/include/filesystem/config.h.in
                ${CMAKE_CURRENT_BINARY_DIR}/include/filesystem/config.h)
 
 # ------------------------------------------------------------------------------
-# Code analysis
+# Add support for (optional) code quality tools
 # ------------------------------------------------------------------------------
 
+asap_configure_sanitizers(${target})
 enable_cppcheck()
 tidy_target(${target})
 

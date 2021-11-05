@@ -127,3 +127,9 @@ asap_test_executable(
   ${compile_definitions}
   COMPILE_OPTIONS
   ${compile_options})
+
+# ------------------------------------------------------------------------------
+# Add support for (optional) code quality tools
+# ------------------------------------------------------------------------------
+
+asap_configure_sanitizers(${target})
