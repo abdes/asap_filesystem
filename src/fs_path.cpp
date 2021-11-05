@@ -118,12 +118,12 @@ path &path::operator=(path &&p) noexcept {
   return *this;
 }
 
-path &path::operator=(string_type &&__source) {
-  return *this = path(std::move(__source));
+path &path::operator=(string_type &&source) {
+  return *this = path(std::move(source));
 }
 
-path &path::assign(string_type &&__source) {
-  return *this = path(std::move(__source));
+path &path::assign(string_type &&source) {
+  return *this = path(std::move(source));
 }
 
 // -----------------------------------------------------------------------------

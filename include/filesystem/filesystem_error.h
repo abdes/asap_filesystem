@@ -63,8 +63,6 @@ class
     create_what(2);
   }
 
-  ~filesystem_error() override = default;
-
   const path& path1() const noexcept { return data_->path1_; }
   const path& path2() const noexcept { return data_->path2_; }
   const char* what() const noexcept override { return data_->what_.c_str(); }
