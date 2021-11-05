@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include <type_traits>
 namespace asap {
 namespace filesystem {
 
@@ -44,35 +45,35 @@ enum class perms : unsigned {
   unknown = 0xFFFF,
 };
 
-constexpr perms operator&(perms lhs, perms rhs) noexcept {
+constexpr auto operator&(perms lhs, perms rhs) noexcept -> perms {
   using utype = typename std::underlying_type<perms>::type;
   return static_cast<perms>(static_cast<utype>(lhs) & static_cast<utype>(rhs));
 }
 
-constexpr perms operator|(perms lhs, perms rhs) noexcept {
+constexpr auto operator|(perms lhs, perms rhs) noexcept -> perms {
   using utype = typename std::underlying_type<perms>::type;
   return static_cast<perms>(static_cast<utype>(lhs) | static_cast<utype>(rhs));
 }
 
-constexpr perms operator^(perms lhs, perms rhs) noexcept {
+constexpr auto operator^(perms lhs, perms rhs) noexcept -> perms {
   using utype = typename std::underlying_type<perms>::type;
   return static_cast<perms>(static_cast<utype>(lhs) ^ static_cast<utype>(rhs));
 }
 
-constexpr perms operator~(perms lhs) noexcept {
+constexpr auto operator~(perms lhs) noexcept -> perms {
   using utype = typename std::underlying_type<perms>::type;
   return static_cast<perms>(~static_cast<utype>(lhs));
 }
 
-inline perms &operator&=(perms &lhs, perms rhs) noexcept {
+inline auto operator&=(perms &lhs, perms rhs) noexcept -> perms & {
   return lhs = lhs & rhs;
 }
 
-inline perms &operator|=(perms &lhs, perms rhs) noexcept {
+inline auto operator|=(perms &lhs, perms rhs) noexcept -> perms & {
   return lhs = lhs | rhs;
 }
 
-inline perms &operator^=(perms &lhs, perms rhs) noexcept {
+inline auto operator^=(perms &lhs, perms rhs) noexcept -> perms & {
   return lhs = lhs ^ rhs;
 }
 
@@ -97,38 +98,44 @@ enum class perm_options : unsigned {
   nofollow = 0x8
 };
 
-constexpr perm_options operator&(perm_options lhs, perm_options rhs) noexcept {
+constexpr auto operator&(perm_options lhs, perm_options rhs) noexcept
+    -> perm_options {
   using utype = typename std::underlying_type<perm_options>::type;
   return static_cast<perm_options>(static_cast<utype>(lhs) &
                                    static_cast<utype>(rhs));
 }
 
-constexpr perm_options operator|(perm_options lhs, perm_options rhs) noexcept {
+constexpr auto operator|(perm_options lhs, perm_options rhs) noexcept
+    -> perm_options {
   using utype = typename std::underlying_type<perm_options>::type;
   return static_cast<perm_options>(static_cast<utype>(lhs) |
                                    static_cast<utype>(rhs));
 }
 
-constexpr perm_options operator^(perm_options lhs, perm_options rhs) noexcept {
+constexpr auto operator^(perm_options lhs, perm_options rhs) noexcept
+    -> perm_options {
   using utype = typename std::underlying_type<perm_options>::type;
   return static_cast<perm_options>(static_cast<utype>(lhs) ^
                                    static_cast<utype>(rhs));
 }
 
-constexpr perm_options operator~(perm_options lhs) noexcept {
+constexpr auto operator~(perm_options lhs) noexcept -> perm_options {
   using utype = typename std::underlying_type<perm_options>::type;
   return static_cast<perm_options>(~static_cast<utype>(lhs));
 }
 
-inline perm_options &operator&=(perm_options &lhs, perm_options rhs) noexcept {
+inline auto operator&=(perm_options &lhs, perm_options rhs) noexcept
+    -> perm_options & {
   return lhs = lhs & rhs;
 }
 
-inline perm_options &operator|=(perm_options &lhs, perm_options rhs) noexcept {
+inline auto operator|=(perm_options &lhs, perm_options rhs) noexcept
+    -> perm_options & {
   return lhs = lhs | rhs;
 }
 
-inline perm_options &operator^=(perm_options &lhs, perm_options rhs) noexcept {
+inline auto operator^=(perm_options &lhs, perm_options rhs) noexcept
+    -> perm_options & {
   return lhs = lhs ^ rhs;
 }
 

@@ -56,9 +56,12 @@ TEST_CASE("Ops / last_write_time / read",
 }
 
 namespace {
-bool approx_equal(time_type file_time, time_type expected) {
+auto approx_equal(time_type file_time, time_type expected) -> bool {
   auto delta = expected - file_time;
-  if (delta < delta.zero()) delta = -delta;
+  if (delta <
+      std::chrono::duration<std::int64_t, std::ratio<1, 1000000000>>::zero()) {
+    delta = -delta;
+  }
   return delta < std::chrono::seconds(1);
 }
 }  // namespace

@@ -46,12 +46,13 @@ TEST_CASE("Path / compare / path", "[common][filesystem][path][compare]") {
   for (const path p : TEST_PATHS()) {
     REQUIRE(p.compare(p) == 0);
     int cmp = p.compare(p0);
-    if (cmp == 0)
+    if (cmp == 0) {
       REQUIRE(p0.compare(p) == 0);
-    else if (cmp < 0)
+    } else if (cmp < 0) {
       REQUIRE(p0.compare(p) > 0);
-    else if (cmp > 0)
+    } else if (cmp > 0) {
       REQUIRE(p0.compare(p) < 0);
+    }
   }
 }
 

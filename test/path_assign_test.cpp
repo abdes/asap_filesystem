@@ -30,7 +30,9 @@ using testing::TEST_PATHS;
 TEST_CASE("Path / assign / operator", "[common][filesystem][path][assign]") {
   SECTION("Using std::string") {
     for (const std::string &s : TEST_PATHS()) {
-      path p0 = s, p1, p2;
+      path p0(s);
+      path p1;
+      path p2;
 
       p1 = s;
       ComparePaths(p0, p1);
@@ -41,7 +43,9 @@ TEST_CASE("Path / assign / operator", "[common][filesystem][path][assign]") {
   }
   SECTION("Using std::wstring") {
     for (const std::string &s : TEST_PATHS()) {
-      path p0 = s, p1, p2;
+      path p0 = s;
+      path p1;
+      path p2;
       std::wstring ws(s.begin(), s.end());
 
       p1 = ws;
@@ -56,7 +60,11 @@ TEST_CASE("Path / assign / operator", "[common][filesystem][path][assign]") {
 TEST_CASE("Path / assign / assign", "[common][filesystem][path][assign]") {
   SECTION("Using std::string") {
     for (const std::string &s : TEST_PATHS()) {
-      path p0 = s, p1, p2, p3, p4;
+      path p0 = s;
+      path p1;
+      path p2;
+      path p3;
+      path p4;
 
       p1.assign(s);
       ComparePaths(p0, p1);
@@ -73,7 +81,11 @@ TEST_CASE("Path / assign / assign", "[common][filesystem][path][assign]") {
   }
   SECTION("Using std::wstring") {
     for (const std::string &s : TEST_PATHS()) {
-      path p0 = s, p1, p2, p3, p4;
+      path p0 = s;
+      path p1;
+      path p2;
+      path p3;
+      path p4;
       std::wstring ws(s.begin(), s.end());
 
       p1.assign(ws);

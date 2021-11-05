@@ -145,7 +145,8 @@ TEST_CASE("Dir / dir_recursive_iterator / noexcept",
   auto p = testing::nonexistent_path();
   create_directory(p);
   create_directory(p / "x");
-  fs::recursive_directory_iterator it(p), endit;
+  fs::recursive_directory_iterator it(p);
+  fs::recursive_directory_iterator endit;
   REQUIRE(begin(it) == it);
   static_assert(noexcept(begin(it)), "begin is noexcept");
   REQUIRE(end(it) == endit);

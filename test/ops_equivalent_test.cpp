@@ -32,7 +32,7 @@ TEST_CASE("Ops / equivalent", "[common][filesystem][ops][equivalent]") {
   auto p2 = testing::nonexistent_path();
   const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
   std::error_code ec;
-  bool result;
+  bool result = false;
 
   result = equivalent(p1, p2, ec);
   REQUIRE(ec);
@@ -52,7 +52,9 @@ TEST_CASE("Ops / equivalent", "[common][filesystem][ops][equivalent]") {
 
   auto p3 = testing::nonexistent_path();
   create_hard_link(p1, p3, ec);
-  if (ec) return;  // hard links not supported
+  if (ec) {
+    return;  // hard links not supported
+  }
   testing::scoped_file f3(p3, testing::scoped_file::adopt_file);
 
   ec = bad_ec;

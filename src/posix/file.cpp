@@ -18,17 +18,21 @@ namespace detail {
 const FileDescriptor::fd_type FileDescriptor::invalid_value =
     posix_port::invalid_fd_value;
 
-file_status FileDescriptor::RefreshStatus(bool follow_symlinks,
-                                          std::error_code &ec) {
+auto FileDescriptor::RefreshStatus(bool follow_symlinks, std::error_code &ec)
+    -> file_status {
   // FD must be open and good.
   status_ = file_status{};
   stat_ = {};
   std::error_code m_ec;
 
   if (follow_symlinks) {
-    if (posix_port::stat(name_.c_str(), &stat_) == -1) m_ec = capture_errno();
+    if (posix_port::stat(name_.c_str(), &stat_) == -1) {
+      m_ec = capture_errno();
+    }
   } else {
-    if (posix_port::lstat(name_.c_str(), &stat_) == -1) m_ec = capture_errno();
+    if (posix_port::lstat(name_.c_str(), &stat_) == -1) {
+      m_ec = capture_errno();
+    }
   }
 
   status_ = detail::posix_port::CreateFileStatus(m_ec, name_, stat_, &ec);

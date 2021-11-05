@@ -102,7 +102,8 @@ TEST_CASE("Ops / canonical / with symlinks",
   auto dir = testing::nonexistent_path();
   testing::scoped_file sdir(dir, testing::scoped_file::adopt_file);
   fs::create_directory(dir);
-  fs::path foo = dir / "foo", bar = dir / "bar";
+  fs::path foo = dir / "foo";
+  fs::path bar = dir / "bar";
   fs::create_directory(foo);
   fs::create_directory(bar);
 #if defined(ASAP_WINDOWS)

@@ -108,7 +108,7 @@ TEST_CASE("Ops / status / no-permission", "[common][filesystem][ops][status]") {
   permissions(dir, fs::perms::none);
 
   std::error_code ec;
-  fs::file_status st1 = fs::status(dir, ec);
+  fs::status(dir, ec);
   REQUIRE(!ec);
 }
 

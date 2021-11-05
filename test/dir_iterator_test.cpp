@@ -258,7 +258,8 @@ TEST_CASE("Dir / dir_iterator / noexcept",
   create_directory(p);
   testing::scoped_file sp(p, testing::scoped_file::adopt_file);
   create_directory(p / "x");
-  fs::directory_iterator it(p), endit;
+  fs::directory_iterator it(p);
+  fs::directory_iterator endit;
   REQUIRE(begin(it) == it);
   static_assert(noexcept(begin(it)), "begin is noexcept");
   REQUIRE(end(it) == endit);

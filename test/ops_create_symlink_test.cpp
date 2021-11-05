@@ -2,6 +2,7 @@
 //    Distributed under the 3-Clause BSD License.
 //    (See accompanying file LICENSE or copy at
 //   https://opensource.org/licenses/BSD-3-Clause)
+
 #if defined(__clang__)
 #pragma clang diagnostic push
 // Catch2 uses a lot of macro names that will make clang go crazy
@@ -103,7 +104,8 @@ TEST_CASE("Ops / create_directory_symlink",
   if (!testing::IsDeveloperModeEnabled()) return;
 #endif  // ASAP_WINDOWS
   const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
-  std::error_code ec, ec2;
+  std::error_code ec;
+  std::error_code ec2;
 
   fs::path tgt = testing::nonexistent_path();
   fs::create_directory(tgt);

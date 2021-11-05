@@ -33,7 +33,8 @@ TEST_CASE("Ops / is_empty / permissions",
   create_directory(p);
   testing::scoped_file sp(p, testing::scoped_file::adopt_file);
   permissions(p, fs::perms::none);
-  std::error_code ec, ec2;
+  std::error_code ec;
+  std::error_code ec2;
 
   bool result = fs::is_empty(p, ec);
   REQUIRE(ec == std::make_error_code(std::errc::permission_denied));
@@ -69,8 +70,9 @@ TEST_CASE("Ops / is_empty", "[common][filesystem][ops][is_empty]") {
   auto p = testing::nonexistent_path();
   testing::scoped_file sp(p, testing::scoped_file::adopt_file);
   create_directory(p);
-  std::error_code ec, bad_ec = make_error_code(std::errc::invalid_argument);
-  bool empty;
+  std::error_code ec;
+  std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
+  bool empty = false;
 
   ec = bad_ec;
   empty = is_empty(p, ec);

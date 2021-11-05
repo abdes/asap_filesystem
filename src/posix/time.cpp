@@ -27,21 +27,24 @@ HEDLEY_PRAGMA(GCC diagnostic ignored "-Woverflow")
 #if defined(__clang__)
 HEDLEY_PRAGMA(clang diagnostic ignored "-Wtautological-type-limit-compare")
 #endif  // __clang__
-bool FileTimeIsRepresentable(TimeSpec tm) {
-  using namespace std::chrono;
+auto FileTimeIsRepresentable(TimeSpec tm) -> bool {
+  using std::chrono::nanoseconds;
+  using std::chrono::seconds;
   if (tm.tv_sec >= 0) {
     return tm.tv_sec <= seconds::max().count();
-  } else if (tm.tv_sec == (seconds::min().count() - 1)) {
-    return tm.tv_nsec >= nanoseconds::min().count();
-  } else {
-    return tm.tv_sec >= seconds::min().count();
   }
+  if (tm.tv_sec == (seconds::min().count() - 1)) {
+    return tm.tv_nsec >= nanoseconds::min().count();
+  }
+  return tm.tv_sec >= seconds::min().count();
 }
 HEDLEY_DIAGNOSTIC_POP
 }  // namespace
 
-file_time_type FileTimeTypeFromPosixTimeSpec(TimeSpec tm) {
-  using namespace std::chrono;
+auto FileTimeTypeFromPosixTimeSpec(TimeSpec tm) -> file_time_type {
+  using std::chrono::duration;
+  using std::chrono::duration_cast;
+
   using rep = typename file_time_type::rep;
   using fs_duration = typename file_time_type::duration;
   using fs_seconds = duration<rep>;
@@ -51,21 +54,21 @@ file_time_type FileTimeTypeFromPosixTimeSpec(TimeSpec tm) {
     return file_time_type(
         fs_seconds(tm.tv_sec) +
         duration_cast<fs_duration>(fs_nanoseconds(tm.tv_nsec)));
-  } else {  // tm.tv_sec < 0
-    auto adj_subsec =
-        duration_cast<fs_duration>(fs_seconds(1) - fs_nanoseconds(tm.tv_nsec));
-    auto Dur = fs_seconds(tm.tv_sec + 1) - adj_subsec;
-    return file_time_type(Dur);
-  }
+  }  // tm.tv_sec < 0
+  auto adj_subsec =
+      duration_cast<fs_duration>(fs_seconds(1) - fs_nanoseconds(tm.tv_nsec));
+  auto Dur = fs_seconds(tm.tv_sec + 1) - adj_subsec;
+  return file_time_type(Dur);
 }
 
-file_time_type ExtractLastWriteTime(const path &p, const StatT &st,
-                                    std::error_code *ec) {
+auto ExtractLastWriteTime(const path &p, const StatT &st, std::error_code *ec)
+    -> file_time_type {
   ErrorHandler<file_time_type> err("last_write_time", ec, &p);
 
   auto ts = detail::posix_port::ExtractModificationTime(st);
-  if (!detail::posix_port::FileTimeIsRepresentable(ts))
+  if (!detail::posix_port::FileTimeIsRepresentable(ts)) {
     return err.report(std::errc::value_too_large);
+  }
   return detail::posix_port::FileTimeTypeFromPosixTimeSpec(ts);
 }
 

@@ -21,7 +21,7 @@
 #include "fs_testsuite.h"
 
 template <typename... Args>
-constexpr bool nothrow_constructible() {
+constexpr auto nothrow_constructible() -> bool {
   return std::is_nothrow_constructible<fs::file_status, Args...>::value;
 }
 

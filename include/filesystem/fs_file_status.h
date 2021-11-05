@@ -6,6 +6,8 @@
 #pragma once
 
 #include <filesystem/asap_filesystem_api.h>
+#include <filesystem/fs_file_type.h>
+#include <filesystem/fs_perms.h>
 
 namespace asap {
 namespace filesystem {
@@ -33,25 +35,25 @@ class ASAP_FILESYSTEM_API file_status {
   file_status(const file_status &) noexcept = default;
   file_status(file_status &&) noexcept = default;
 
-  ~file_status() {}
+  ~file_status() = default;
 
   //@}
 
   /// @name assignments
   //@{
 
-  file_status &operator=(const file_status &) noexcept = default;
+  auto operator=(const file_status &) noexcept -> file_status & = default;
 
-  file_status &operator=(file_status &&) noexcept = default;
+  auto operator=(file_status &&) noexcept -> file_status & = default;
 
   //@}
 
   /// @name observers
   //@{
 
-  file_type type() const noexcept { return ftype_; }
+  auto type() const noexcept -> file_type { return ftype_; }
 
-  perms permissions() const noexcept { return permissions_; }
+  auto permissions() const noexcept -> perms { return permissions_; }
 
   //@}
 

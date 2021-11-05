@@ -26,7 +26,7 @@ using testing::TEST_PATHS;
 // path::operator/=(const path&)
 
 namespace {
-fs::path Append(fs::path l, const fs::path& r) {
+auto Append(fs::path l, const fs::path& r) -> fs::path {
   l /= r;
   return l;
 }
@@ -151,7 +151,7 @@ TEST_CASE("Path / append / source / TEST_PATHS",
   }
 }
 
-// TODO: figure later wstring vs string correct impl
+// TODO(abdessattar): figure later wstring vs string correct impl
 /*
 TEST_CASE("Path / append / source / wstring",
           "[common][filesystem][path][append]") {

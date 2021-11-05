@@ -28,7 +28,7 @@ TEST_CASE("Ops / remove / nonexistent path",
           "[common][filesystem][ops][remove]") {
   std::error_code ec;
   const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
-  bool n;
+  bool n = false;
 
   auto p = testing::nonexistent_path();
   ec = bad_ec;
@@ -40,7 +40,7 @@ TEST_CASE("Ops / remove / nonexistent path",
 TEST_CASE("Ops / remove / empty path", "[common][filesystem][ops][remove]") {
   std::error_code ec;
   const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
-  bool n;
+  bool n = false;
 
   ec = bad_ec;
   n = fs::remove("", ec);
@@ -51,7 +51,7 @@ TEST_CASE("Ops / remove / empty path", "[common][filesystem][ops][remove]") {
 TEST_CASE("Ops / remove / file", "[common][filesystem][ops][remove]") {
   std::error_code ec;
   const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
-  bool n;
+  bool n = false;
 
   auto p = testing::nonexistent_path();
   testing::scoped_file f(p);
@@ -67,7 +67,7 @@ TEST_CASE("Ops / remove / empty directory",
           "[common][filesystem][ops][remove]") {
   std::error_code ec;
   const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
-  bool n;
+  bool n = false;
 
   auto p = testing::nonexistent_path();
   ec = bad_ec;
@@ -91,7 +91,7 @@ TEST_CASE("Ops / remove / symlink to nonexistent path",
 
   std::error_code ec;
   const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
-  bool n;
+  bool n = false;
 
   auto p = testing::nonexistent_path();
   auto link = testing::nonexistent_path();
@@ -113,7 +113,7 @@ TEST_CASE("Ops / remove / symlink to actual path",
 
   std::error_code ec;
   const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
-  bool n;
+  bool n = false;
 
   auto p = testing::nonexistent_path();
   auto link = testing::nonexistent_path();
@@ -132,7 +132,7 @@ TEST_CASE("Ops / remove / non-empty directory",
           "[common][filesystem][ops][remove]") {
   std::error_code ec;
   const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
-  bool n;
+  bool n = false;
 
   const auto dir = testing::nonexistent_path();
   create_directories(dir / "a/b");
@@ -160,7 +160,7 @@ TEST_CASE("Ops / remove / file permissions",
 #if 0   // FIXME
   //  std::error_code ec;
   const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
-  bool n;
+  bool n = false;
 
   const auto p = testing::nonexistent_path();
   testing::scoped_file f(p);
@@ -193,7 +193,7 @@ TEST_CASE("Ops / remove / file permissions",
 TEST_CASE("Ops / remove_all / empty path",
           "[common][filesystem][ops][remove_all]") {
   std::error_code ec;
-  std::uintmax_t n;
+  std::uintmax_t n = 0;
 
   n = fs::remove_all("", ec);
   REQUIRE(!ec);  // This seems odd, but is what the standard requires.
@@ -204,7 +204,7 @@ TEST_CASE("Ops / remove_all / nonexistent path",
           "[common][filesystem][ops][remove_all]") {
   std::error_code ec;
   const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
-  std::uintmax_t n;
+  std::uintmax_t n = 0;
 
   auto p = testing::nonexistent_path();
   ec = bad_ec;
@@ -223,7 +223,7 @@ TEST_CASE("Ops / remove_all / symlink to nonexistent path",
 
   std::error_code ec;
   const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
-  std::uintmax_t n;
+  std::uintmax_t n = 0;
 
   auto p = testing::nonexistent_path();
   auto link = testing::nonexistent_path();
@@ -245,7 +245,7 @@ TEST_CASE("Ops / remove_all / symlink to actual path",
 
   std::error_code ec;
   const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
-  std::uintmax_t n;
+  std::uintmax_t n = 0;
 
   auto p = testing::nonexistent_path();
   auto link = testing::nonexistent_path();
@@ -262,7 +262,7 @@ TEST_CASE("Ops / remove_all / symlink to actual path",
 TEST_CASE("Ops / remove_all / tree", "[common][filesystem][ops][remove_all]") {
   std::error_code ec;
   const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
-  std::uintmax_t n;
+  std::uintmax_t n = 0;
 
   const auto dir = testing::nonexistent_path();
   create_directories(dir / "a/b/c");

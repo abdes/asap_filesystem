@@ -143,12 +143,12 @@ using ::SetFileTime;
 //                          detail: file time utils
 // -----------------------------------------------------------------------------
 
-typedef struct ::timespec TimeSpec;
+using TimeSpec = struct ::timespec;
 
 #if defined(ASAP_POSIX)
 namespace posix_port {
 
-file_time_type FileTimeTypeFromPosixTimeSpec(TimeSpec tm);
+auto FileTimeTypeFromPosixTimeSpec(TimeSpec tm) -> file_time_type;
 
 }  // namespace posix_port
 #endif  // ASAP_POSIX
@@ -184,7 +184,9 @@ inline TimeSpec ExtractModificationTime(StatT const &st) {
   return st.st_mtimespec;
 }
 #else
-inline TimeSpec ExtractModificationTime(StatT const &st) { return st.st_mtim; }
+inline auto ExtractModificationTime(StatT const &st) -> TimeSpec {
+  return st.st_mtim;
+}
 #endif
 
 #if defined(ASAP_FS_USE_UTIME)
@@ -195,18 +197,18 @@ inline TimeSpec ExtractAccessTime(StatT const &st) { return st.st_atim; }
 #endif
 #endif  // ASAP_FS_USE_UTIME
 
-file_status CreateFileStatus(std::error_code &m_ec, path const &p,
-                             const posix_port::StatT &path_stat,
-                             std::error_code *ec);
+auto CreateFileStatus(std::error_code &m_ec, path const &p,
+                      const posix_port::StatT &path_stat, std::error_code *ec)
+    -> file_status;
 
-file_status GetFileStatus(path const &p, posix_port::StatT &path_stat,
-                          std::error_code *ec);
+auto GetFileStatus(path const &p, posix_port::StatT &path_stat,
+                   std::error_code *ec) -> file_status;
 
-file_status GetLinkStatus(path const &p, posix_port::StatT &path_stat,
-                          std::error_code *ec);
+auto GetLinkStatus(path const &p, posix_port::StatT &path_stat,
+                   std::error_code *ec) -> file_status;
 
-file_time_type ExtractLastWriteTime(const path &p, const StatT &st,
-                                    std::error_code *ec);
+auto ExtractLastWriteTime(const path &p, const StatT &st, std::error_code *ec)
+    -> file_time_type;
 
 }  // namespace posix_port
 #endif  // ASAP_POSIX
@@ -229,7 +231,7 @@ file_status ProcessStatusFailure(std::error_code m_ec, const path &p,
 perms GetPermissions(const path &p, DWORD attr, bool follow_symlinks,
                      std::error_code *ec);
 void SetPermissions(const path &p, perms prms, bool follow_symlinks,
-                     std::error_code *ec);
+                    std::error_code *ec);
 }  // namespace win32_port
 #endif  // ASAP_WINDOWS
 
@@ -243,7 +245,7 @@ struct FileDescriptor {
   using fd_type = win32_port::handle;
 #else
   using fd_type = int;
-  posix_port::StatT stat_;
+  posix_port::StatT stat_{};
 #endif
   static const fd_type invalid_value;
   fd_type fd_{invalid_value};
@@ -264,11 +266,11 @@ struct FileDescriptor {
 
   FileDescriptor() = delete;
   FileDescriptor(FileDescriptor const &) = delete;
-  FileDescriptor &operator=(FileDescriptor const &) = delete;
+  auto operator=(FileDescriptor const &) -> FileDescriptor & = delete;
 
   template <class... Args>
-  static FileDescriptor Create(const path *p, std::error_code &ec,
-                               Args... args) {
+  static auto Create(const path *p, std::error_code &ec, Args... args)
+      -> FileDescriptor {
     ec.clear();
     fd_type fd{invalid_value};
 #if defined(ASAP_WINDOWS)
@@ -284,12 +286,12 @@ struct FileDescriptor {
     return FileDescriptor(p, fd);
   }
 
-  file_status Status() const { return status_; }
+  auto Status() const -> file_status { return status_; }
 #if defined(ASAP_POSIX)
-  posix_port::StatT const &PosixStatus() const { return stat_; }
+  auto PosixStatus() const -> posix_port::StatT const & { return stat_; }
 #endif
 
-  file_status RefreshStatus(bool follow_symlinks, std::error_code &ec);
+  auto RefreshStatus(bool follow_symlinks, std::error_code &ec) -> file_status;
 
  private:
   explicit FileDescriptor(const path *p,

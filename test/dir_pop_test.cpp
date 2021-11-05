@@ -79,14 +79,18 @@ TEST_CASE("Dir / dir_pop / complex", "[common][filesystem][ops][dir_pop]") {
     ec = bad_ec;
     dir.pop(ec);
     REQUIRE(!ec);
-    if (dir != end(dir)) REQUIRE(dir.depth() == (expected_depth - 1));
+    if (dir != end(dir)) {
+      REQUIRE(dir.depth() == (expected_depth - 1));
+    }
 
     dir = fs::recursive_directory_iterator(p);
     std::advance(dir, i);
     REQUIRE(dir != end(dir));
     REQUIRE(dir.depth() == i);
     dir.pop();
-    if (dir != end(dir)) REQUIRE(dir.depth() == (i - 1));
+    if (dir != end(dir)) {
+      REQUIRE(dir.depth() == (i - 1));
+    }
   }
 }
 

@@ -70,7 +70,7 @@ TEST_CASE("Ops / permissions / add", "[common][filesystem][ops][permissions]") {
 }
 
 // This test case is not good and it is making the build on appveyor fail
-// TODO: rewrite this
+// TODO(abdessattar): rewrite this
 /*
 TEST_CASE("Ops / permissions / symlink",
           "[common][filesystem][ops][permissions]") {

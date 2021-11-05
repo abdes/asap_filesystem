@@ -32,16 +32,18 @@ TEST_CASE("Path / iterator / components",
           "[common][filesystem][path][iterator]") {
   for (const path p : TEST_PATHS()) {
     CAPTURE(p);
-    if (p.empty())
+    if (p.empty()) {
       REQUIRE(std::distance(p.begin(), p.end()) == 0);
-    else
+    } else {
       REQUIRE(std::distance(p.begin(), p.end()) != 0);
+    }
 
     for (const path& cmpt : p) {
-      if (cmpt.empty())
+      if (cmpt.empty()) {
         REQUIRE(std::distance(cmpt.begin(), cmpt.end()) == 0);
-      else
+      } else {
         REQUIRE(std::distance(cmpt.begin(), cmpt.end()) == 1);
+      }
     }
   }
 }
@@ -51,7 +53,8 @@ TEST_CASE("Path / iterator / traversal",
   path p;
   REQUIRE(p.begin() == p.end());
 
-  std::vector<path> v, v2;
+  std::vector<path> v;
+  std::vector<path> v2;
 
   p = "/";
   v.assign(p.begin(), p.end());
@@ -121,10 +124,12 @@ TEST_CASE("Path / iterator / traversal",
 
 TEST_CASE("Path / iterator / reverse", "[common][filesystem][path][iterator]") {
   using reverse_iterator = std::reverse_iterator<path::iterator>;
-  std::vector<path> fwd, rev;
+  std::vector<path> fwd;
+  std::vector<path> rev;
 
   for (const path p : TEST_PATHS()) {
-    const auto begin = p.begin(), end = p.end();
+    const auto begin = p.begin();
+    const auto end = p.end();
     fwd.assign(begin, end);
     rev.assign(reverse_iterator(end), reverse_iterator(begin));
     REQUIRE(fwd.size() == rev.size());
@@ -134,7 +139,8 @@ TEST_CASE("Path / iterator / reverse", "[common][filesystem][path][iterator]") {
 
 TEST_CASE("Path / iterator / special cases",
           "[common][filesystem][path][iterator]") {
-  path paths[] = {"single", "multiple/elements", "trailing/slash/", "/."};
+  std::array<path, 4> paths{"single", "multiple/elements", "trailing/slash/",
+                            "/."};
   for (const path& p : paths) {
     for (auto iter = p.begin(); iter != p.end(); ++iter) {
       auto iter2 = iter;

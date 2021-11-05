@@ -21,8 +21,8 @@
 #include "fs_testsuite.h"
 
 namespace {
-bool check(fs::space_info const& s) {
-  const std::uintmax_t err = static_cast<uintmax_t>(-1);
+auto check(fs::space_info const& s) -> bool {
+  const auto err = static_cast<uintmax_t>(-1);
   return s.capacity != err || s.free != err || s.available != err;
 }
 }  // namespace
@@ -41,10 +41,11 @@ TEST_CASE("Ops / space", "[common][filesystem][ops][space]") {
   REQUIRE(s.capacity >= s.free);
 
   s = fs::space(testing::nonexistent_path() / ".", ec);
-  if (ec)
+  if (ec) {
     REQUIRE(!check(s));
-  else
+  } else {
     REQUIRE(check(s));
+  }
 }
 
 TEST_CASE("Ops / space / capacity > free", "[common][filesystem][ops][space]") {

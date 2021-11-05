@@ -36,8 +36,8 @@ class ASAP_FILESYSTEM_API path {
   // the path internally. We follow the utf8-everywhere philosophy and we
   // exclusively use UTF-8 on any platform for the internal representation.
   // https://utf8everywhere.org/
-  typedef char value_type;
-  typedef std::basic_string<value_type> string_type;
+  using value_type = char;
+  using string_type = std::basic_string<value_type>;
 #ifdef ASAP_WINDOWS
   static constexpr value_type preferred_separator = '\\';
 #else
@@ -50,7 +50,7 @@ class ASAP_FILESYSTEM_API path {
   //@{
 
   /// Constructs an empty path.
-  path() noexcept {}
+  path() noexcept {};  // NOLINT
 
   /*!
    * @brief Copy constructor.
@@ -58,6 +58,7 @@ class ASAP_FILESYSTEM_API path {
    */
   path(const path &p) = default;
 
+  // NOLINTNEXTLINE
   path(string_type &&source, format /*fmt*/ = format::auto_format)
       : pathname_(std::move(source)) {
     SplitComponents();
@@ -81,7 +82,7 @@ class ASAP_FILESYSTEM_API path {
    * @param source the source character sequence
    */
   template <typename Source, typename = IsPathable<Source>>
-  path(const Source &source, format /*fmt*/ = format::auto_format)
+  path(const Source &source, format /*fmt*/ = format::auto_format)  // NOLINT
       : pathname_(convert(range_begin(source), range_end(source))) {
     SplitComponents();
   }
@@ -99,74 +100,74 @@ class ASAP_FILESYSTEM_API path {
 
   /// @name assignments
   //@{
-  path &operator=(const path &p) = default;
-  path &operator=(path &&p) noexcept;
-  path &operator=(string_type &&source);
-  path &assign(string_type &&source);
+  auto operator=(const path &p) -> path & = default;
+  auto operator=(path &&p) noexcept -> path &;
+  auto operator=(string_type &&source) -> path &;
+  auto assign(string_type &&source) -> path &;
 
   template <typename Source, typename = IsPathable<Source>>
-  path &operator=(Source const &source) {
+  auto operator=(Source const &source) -> path & {
     *this = path(source);
     return *this;
   }
 
   template <typename Source, typename = IsPathable<Source>>
-  path &assign(Source const &source) {
+  auto assign(Source const &source) -> path & {
     return *this = path(source);
   }
 
   template <typename InputIterator,
             typename = IsPathable<InputIterator, InputIterator>>
-  path &assign(InputIterator first, InputIterator last) {
+  auto assign(InputIterator first, InputIterator last) -> path & {
     return *this = path(first, last);
   }
   //@}
 
   // appends
 
-  path &operator/=(const path &p);
+  auto operator/=(const path &p) -> path &;
 
   template <class Source, typename = IsPathable<Source>>
-  path &operator/=(Source const &source) {
+  auto operator/=(Source const &source) -> path & {
     return operator/=(path(source));
   }
 
   template <typename Source, typename = IsPathable<Source>>
-  path &append(Source const &source) {
+  auto append(Source const &source) -> path & {
     return operator/=(path(source));
   }
 
   template <typename InputIterator,
             typename = IsPathable<InputIterator, InputIterator>>
-  path &append(InputIterator first, InputIterator last) {
+  auto append(InputIterator first, InputIterator last) -> path & {
     return operator/=(path(first, last));
   }
 
   // concatenation
 
-  path &operator+=(const path &other);
-  path &operator+=(const string_type &other);
-  path &operator+=(const value_type *other);
-  path &operator+=(value_type other);
+  auto operator+=(const path &other) -> path &;
+  auto operator+=(const string_type &other) -> path &;
+  auto operator+=(const value_type *other) -> path &;
+  auto operator+=(value_type other) -> path &;
 
   template <typename Source, typename = IsPathable<Source>>
-  path &operator+=(Source const &other) {
+  auto operator+=(Source const &other) -> path & {
     return concat(other);
   }
 
   template <typename CharT, typename = IsPathable<CharT *>>
-  path &operator+=(CharT other) {
+  auto operator+=(CharT other) -> path & {
     auto *addr = std::addressof(other);
     return concat(addr, addr + 1);
   }
 
   template <typename Source, typename = IsPathable<Source>>
-  path &concat(Source const &other) {
+  auto concat(Source const &other) -> path & {
     return *this += convert(range_begin(other), range_end(other));
   }
 
   template <typename InputIterator, typename = IsPathable<InputIterator>>
-  path &concat(InputIterator first, InputIterator last) {
+  auto concat(InputIterator first, InputIterator last) -> path & {
     return *this += convert(first, last);
   }
 
@@ -178,10 +179,10 @@ class ASAP_FILESYSTEM_API path {
     SplitComponents();
   }
 
-  path &make_preferred();
-  path &remove_filename();
-  path &replace_filename(const path &replacement);
-  path &replace_extension(const path &replacement = path());
+  auto make_preferred() -> path &;
+  auto remove_filename() -> path &;
+  auto replace_filename(const path &replacement) -> path &;
+  auto replace_extension(const path &replacement = path()) -> path &;
 
   void swap(path &rhs) noexcept {
     pathname_.swap(rhs.pathname_);
@@ -193,99 +194,104 @@ class ASAP_FILESYSTEM_API path {
 
   // native format observers
 
-  const string_type &native() const noexcept { return pathname_; }
-  const value_type *c_str() const noexcept { return pathname_.c_str(); }
+  auto native() const noexcept -> const string_type & { return pathname_; }
+  auto c_str() const noexcept -> const value_type * {
+    return pathname_.c_str();
+  }
+  // NOLINTNEXTLINE
   operator string_type() const { return pathname_; }
 
   template <typename CharT, typename Traits = std::char_traits<CharT>,
             typename Allocator = std::allocator<CharT>>
-  std::basic_string<CharT, Traits, Allocator> string(
-      const Allocator &alloc = Allocator()) const;
+  auto string(const Allocator &alloc = Allocator()) const
+      -> std::basic_string<CharT, Traits, Allocator>;
 
-  std::string string() const;
-  std::wstring wstring() const;
-  std::string u8string() const;
+  auto string() const -> std::string;
+  auto wstring() const -> std::wstring;
+  auto u8string() const -> std::string;
 
   // generic format observers
   template <typename CharT, typename Traits = std::char_traits<CharT>,
             typename Allocator = std::allocator<CharT>>
-  std::basic_string<CharT, Traits, Allocator> generic_string(
-      const Allocator &alloc = Allocator()) const;
+  auto generic_string(const Allocator &alloc = Allocator()) const
+      -> std::basic_string<CharT, Traits, Allocator>;
 
-  std::string generic_string() const;
-  std::wstring generic_wstring() const;
-  std::string generic_u8string() const;
+  auto generic_string() const -> std::string;
+  auto generic_wstring() const -> std::wstring;
+  auto generic_u8string() const -> std::string;
 
   // compare
 
-  int compare(const path &other) const noexcept;
-  int compare(const string_type &other) const;
-  int compare(const value_type *other) const;
+  auto compare(const path &other) const noexcept -> int;
+  auto compare(const string_type &other) const -> int;
+  auto compare(const value_type *other) const -> int;
 
   // generation
-  path lexically_normal() const;
-  path lexically_relative(const path &base) const;
+  auto lexically_normal() const -> path;
+  auto lexically_relative(const path &base) const -> path;
 
-  path lexically_proximate(const path &base) const {
+  auto lexically_proximate(const path &base) const -> path {
     path result = this->lexically_relative(base);
-    if (result.native().empty()) return *this;
+    if (result.native().empty()) {
+      return *this;
+    }
     return result;
   }
 
   // decomposition
 
-  path root_name() const;
-  path root_directory() const;
-  path root_path() const;
-  path relative_path() const;
-  path parent_path() const;
-  path filename() const;
-  path stem() const;
-  path extension() const;
+  auto root_name() const -> path;
+  auto root_directory() const -> path;
+  auto root_path() const -> path;
+  auto relative_path() const -> path;
+  auto parent_path() const -> path;
+  auto filename() const -> path;
+  auto stem() const -> path;
+  auto extension() const -> path;
 
   // query
 
-  bool empty() const noexcept { return pathname_.empty(); }
-  bool has_root_name() const;
-  bool has_root_directory() const;
-  bool has_root_path() const;
-  bool has_relative_path() const;
-  bool has_parent_path() const;
-  bool has_filename() const;
-  bool has_stem() const;
-  bool has_extension() const;
-  bool is_absolute() const;
-  bool is_relative() const { return !is_absolute(); }
+  auto empty() const noexcept -> bool { return pathname_.empty(); }
+  auto has_root_name() const -> bool;
+  auto has_root_directory() const -> bool;
+  auto has_root_path() const -> bool;
+  auto has_relative_path() const -> bool;
+  auto has_parent_path() const -> bool;
+  auto has_filename() const -> bool;
+  auto has_stem() const -> bool;
+  auto has_extension() const -> bool;
+  auto is_absolute() const -> bool;
+  auto is_relative() const -> bool { return !is_absolute(); }
 
   // iterators
   class iterator;
-  typedef iterator const_iterator;
+  using const_iterator = iterator;
 
-  iterator begin() const;
-  iterator end() const;
+  auto begin() const -> iterator;
+  auto end() const -> iterator;
 
  private:
   template <typename Source>
-  static Source range_begin(Source begin) {
+  static auto range_begin(Source begin) -> Source {
     return begin;
   }
 
   struct null_terminated {};
 
   template <typename Source>
-  static null_terminated range_end(Source) {
+  static auto range_end(Source /*unused*/) -> null_terminated {
     return {};
   }
 
   template <typename CharT, typename Traits, typename Alloc>
-  static const CharT *range_begin(
-      const std::basic_string<CharT, Traits, Alloc> &str) {
+  static auto range_begin(const std::basic_string<CharT, Traits, Alloc> &str)
+      -> const CharT * {
     return str.data();
   }
 
   template <typename CharT, typename Traits, typename Alloc>
-  static const CharT *range_end(
-      const std::basic_string<CharT, Traits, Alloc> &str) {
+  static auto range_end(const std::basic_string<CharT, Traits, Alloc> &str)
+      -> const CharT * {
     return str.data() + str.size();
   }
 
@@ -294,9 +300,12 @@ class ASAP_FILESYSTEM_API path {
             typename Traits = std::iterator_traits<InputIterator>,
             typename CharT =
                 typename std::remove_cv<typename Traits::value_type>::type>
-  static std::basic_string<CharT> string_from_iter(InputIterator source) {
+  static auto string_from_iter(InputIterator source)
+      -> std::basic_string<CharT> {
     std::basic_string<CharT> str;
-    for (CharT ch = *source; ch != CharT(); ch = *++source) str.push_back(ch);
+    for (CharT ch = *source; ch != CharT(); ch = *++source) {
+      str.push_back(ch);
+    }
     return str;
   }
 
@@ -306,35 +315,37 @@ class ASAP_FILESYSTEM_API path {
   template <typename CharT>
   struct Converter;
 
-  static string_type convert(value_type *src, null_terminated) {
-    return string_type(src);
+  static auto convert(value_type *src, null_terminated /*unused*/)
+      -> string_type {
+    return {src};
   }
 
-  static string_type convert(const value_type *src, null_terminated) {
-    return string_type(src);
+  static auto convert(const value_type *src, null_terminated /*unused*/)
+      -> string_type {
+    return {src};
   }
 
   template <typename Iter>
-  static string_type convert(Iter first, Iter last) {
+  static auto convert(Iter first, Iter last) -> string_type {
     using iter_value_type = typename std::iterator_traits<Iter>::value_type;
     return Converter<typename std::remove_cv<iter_value_type>::type>::convert(
         first, last);
   }
 
   template <typename InputIterator>
-  static string_type convert(InputIterator src, null_terminated) {
+  static auto convert(InputIterator src, null_terminated /*unused*/)
+      -> string_type {
     auto s = string_from_iter(src);
     return convert(s.c_str(), s.c_str() + s.size());
   }
 
   template <typename CharT, typename Traits, typename Allocator>
-  static std::basic_string<CharT, Traits, Allocator> str_convert(
-      const string_type &, const Allocator &alloc);
+  static auto str_convert(const string_type & /*str*/, const Allocator &alloc)
+      -> std::basic_string<CharT, Traits, Allocator>;
 
- private:
   static constexpr value_type slash = '/';
 
-  static bool IsDirSeparator(value_type ch) {
+  static auto IsDirSeparator(value_type ch) -> bool {
     return ch == slash
 #ifdef ASAP_WINDOWS
            || ch == preferred_separator
@@ -347,9 +358,9 @@ class ASAP_FILESYSTEM_API path {
   path(string_type pathname, Type type)
       : pathname_(std::move(pathname)), type_(type) {}
 
-  std::pair<const string_type *, size_t> FindExtension() const;
+  auto FindExtension() const -> std::pair<const string_type *, size_t>;
 
-  string_type::size_type AppendSeparatorIfNeeded();
+  auto AppendSeparatorIfNeeded() -> string_type::size_type;
   void EraseRedundantSeparator(string_type::size_type sep_pos);
 
   void SplitComponents();
@@ -359,7 +370,7 @@ class ASAP_FILESYSTEM_API path {
   void AddFilename(size_t pos, size_t len);
 
   template <typename Allocator = std::allocator<value_type>>
-  string_type make_generic(const Allocator &alloc = Allocator()) const;
+  auto make_generic(const Allocator &alloc = Allocator()) const -> string_type;
 
   string_type pathname_;
   struct Component;
@@ -370,7 +381,7 @@ class ASAP_FILESYSTEM_API path {
 
 inline void swap(path &lhs, path &rhs) noexcept { lhs.swap(rhs); }
 
-size_t ASAP_FILESYSTEM_API hash_value(const path &p) noexcept;
+auto ASAP_FILESYSTEM_API hash_value(const path &p) noexcept -> size_t;
 
 /// An iterator for the components of a path
 class ASAP_FILESYSTEM_API path::iterator {
@@ -381,33 +392,33 @@ class ASAP_FILESYSTEM_API path::iterator {
   using pointer = const path *;
   using iterator_category = std::bidirectional_iterator_tag;
 
-  iterator() : path_(nullptr), cur_(), at_end_() {}
+  iterator() = default;
 
   iterator(const iterator &) = default;
-  iterator &operator=(const iterator &) = default;
+  auto operator=(const iterator &) -> iterator & = default;
 
-  reference operator*() const;
-  pointer operator->() const { return std::addressof(**this); }
+  auto operator*() const -> reference;
+  auto operator->() const -> pointer { return std::addressof(**this); }
 
-  iterator &operator++();
-  const iterator operator++(int) {
+  auto operator++() -> iterator &;
+  auto operator++(int) -> iterator {
     auto tmp = *this;
     ++*this;
     return tmp;
   }
 
-  iterator &operator--();
-  const iterator operator--(int) {
+  auto operator--() -> iterator &;
+  auto operator--(int) -> iterator {
     auto tmp = *this;
     --*this;
     return tmp;
   }
 
-  friend bool operator==(const iterator &lhs, const iterator &rhs) {
+  friend auto operator==(const iterator &lhs, const iterator &rhs) -> bool {
     return lhs.equals(rhs);
   }
 
-  friend bool operator!=(const iterator &lhs, const iterator &rhs) {
+  friend auto operator!=(const iterator &lhs, const iterator &rhs) -> bool {
     return !lhs.equals(rhs);
   }
 
@@ -415,39 +426,38 @@ class ASAP_FILESYSTEM_API path::iterator {
   friend class path;
 
   iterator(const path *path, path::List::const_iterator iter)
-      : path_(path), cur_(iter), at_end_() {}
+      : path_(path), cur_(iter) {}
 
-  iterator(const path *path, bool at_end)
-      : path_(path), cur_(), at_end_(at_end) {}
+  iterator(const path *path, bool at_end) : path_(path), at_end_(at_end) {}
 
-  bool equals(iterator) const;
+  auto equals(iterator) const -> bool;
 
-  const path *path_;
+  const path *path_{};
   path::List::const_iterator cur_;
-  bool at_end_;  // only used when type != MULTI
+  bool at_end_{};  // only used when type != MULTI
 };
 
-inline bool operator<(const path &lhs, const path &rhs) noexcept {
+inline auto operator<(const path &lhs, const path &rhs) noexcept -> bool {
   return lhs.compare(rhs) < 0;
 }
 
-inline bool operator<=(const path &lhs, const path &rhs) noexcept {
+inline auto operator<=(const path &lhs, const path &rhs) noexcept -> bool {
   return !(rhs < lhs);
 }
 
-inline bool operator>(const path &lhs, const path &rhs) noexcept {
+inline auto operator>(const path &lhs, const path &rhs) noexcept -> bool {
   return rhs < lhs;
 }
 
-inline bool operator>=(const path &lhs, const path &rhs) noexcept {
+inline auto operator>=(const path &lhs, const path &rhs) noexcept -> bool {
   return !(lhs < rhs);
 }
 
-inline bool operator==(const path &lhs, const path &rhs) noexcept {
+inline auto operator==(const path &lhs, const path &rhs) noexcept -> bool {
   return lhs.compare(rhs) == 0;
 }
 
-inline bool operator!=(const path &lhs, const path &rhs) noexcept {
+inline auto operator!=(const path &lhs, const path &rhs) noexcept -> bool {
   return !(lhs == rhs);
 }
 
@@ -455,43 +465,43 @@ inline bool operator!=(const path &lhs, const path &rhs) noexcept {
 // Concat
 //
 
-inline path &path::operator+=(const path &other) {
+inline auto path::operator+=(const path &other) -> path & {
   return operator+=(other.native());
 }
 
-inline path &path::operator+=(const string_type &other) {
+inline auto path::operator+=(const string_type &other) -> path & {
   pathname_ += other;
   SplitComponents();
   return *this;
 }
 
-inline path &path::operator+=(const value_type *other) {
+inline auto path::operator+=(const value_type *other) -> path & {
   pathname_ += other;
   SplitComponents();
   return *this;
 }
 
-inline path &path::operator+=(value_type other) {
+inline auto path::operator+=(value_type other) -> path & {
   pathname_ += other;
   SplitComponents();
   return *this;
 }
 
 /// Append one path to another
-inline path operator/(const path &lhs, const path &rhs) {
+inline auto operator/(const path &lhs, const path &rhs) -> path {
   path result(lhs);
   result /= rhs;
   return result;
 }
 
 /// Write a path to a stream
-inline std::ostream &operator<<(std::ostream &os, const path &p) {
+inline auto operator<<(std::ostream &os, const path &p) -> std::ostream & {
   os << std::quoted(p.string(), '"', '\\');
   return os;
 }
 template <typename CharT, typename Traits>
-std::basic_ostream<CharT, Traits> &operator<<(
-    std::basic_ostream<CharT, Traits> &os, const path &p) {
+auto operator<<(std::basic_ostream<CharT, Traits> &os, const path &p)
+    -> std::basic_ostream<CharT, Traits> & {
   auto tmp = p.string<CharT, Traits>();
   os << std::quoted<CharT, Traits>(tmp, CharT('"'), CharT('\\'));
   return os;
@@ -499,11 +509,12 @@ std::basic_ostream<CharT, Traits> &operator<<(
 
 /// Read a path from a stream
 template <typename CharT, typename Traits>
-std::basic_istream<CharT, Traits> &operator>>(
-    std::basic_istream<CharT, Traits> &is, path &p) {
+auto operator>>(std::basic_istream<CharT, Traits> &is, path &p)
+    -> std::basic_istream<CharT, Traits> & {
   std::basic_string<CharT, Traits> tmp;
-  if (is >> std::quoted<CharT, Traits>(tmp, CharT('"'), CharT('\\')))
+  if (is >> std::quoted<CharT, Traits>(tmp, CharT('"'), CharT('\\'))) {
     p = std::move(tmp);
+  }
   return is;
 }
 
@@ -518,59 +529,62 @@ struct path::Component : path {
 template <>
 struct path::Converter<path::value_type> {
   template <typename Iter>
-  static string_type convert(Iter first, Iter last) {
+  static auto convert(Iter first, Iter last) -> string_type {
     return string_type{first, last};
   }
 };
 
 template <typename CharT>
 struct path::Converter {
-  static string_type convert(const CharT *first, const CharT *last) {
+  static auto convert(const CharT *first, const CharT *last) -> string_type {
     return nowide::narrow(first, last);
   }
 
-  static string_type convert(CharT *first, CharT *last) {
+  static auto convert(CharT *first, CharT *last) -> string_type {
     return convert(const_cast<const CharT *>(first),
                    const_cast<const CharT *>(last));
   }
 
   template <typename Iter>
-  static string_type convert(Iter first, Iter last) {
+  static auto convert(Iter first, Iter last) -> string_type {
     const std::basic_string<CharT> str(first, last);
     return convert(str.data(), str.data() + str.size());
   }
 };
 
 template <typename CharT, typename Traits, typename Allocator>
-std::basic_string<CharT, Traits, Allocator> path::str_convert(
-    const string_type &str, const Allocator &alloc) {
-  if (str.empty()) return std::basic_string<CharT, Traits, Allocator>(alloc);
+auto path::str_convert(const string_type &str, const Allocator &alloc)
+    -> std::basic_string<CharT, Traits, Allocator> {
+  if (str.empty()) {
+    return std::basic_string<CharT, Traits, Allocator>(alloc);
+  }
 
   return nowide::widen<Allocator>(str, alloc);
 }
 
 template <typename CharT, typename Traits, typename Allocator>
-inline std::basic_string<CharT, Traits, Allocator> path::string(
-    const Allocator &alloc) const {
-  if (std::is_same<CharT, value_type>::value)
+inline auto path::string(const Allocator &alloc) const
+    -> std::basic_string<CharT, Traits, Allocator> {
+  if (std::is_same<CharT, value_type>::value) {
     return {pathname_.begin(), pathname_.end(), alloc};
-  else
-    return str_convert<CharT, Traits>(pathname_, alloc);
+  }
+  return str_convert<CharT, Traits>(pathname_, alloc);
 }
 
-inline std::string path::string() const { return pathname_; }
+inline auto path::string() const -> std::string { return pathname_; }
 
-inline std::wstring path::wstring() const { return string<wchar_t>(); }
+inline auto path::wstring() const -> std::wstring { return string<wchar_t>(); }
 
-inline std::string path::u8string() const { return pathname_; }
+inline auto path::u8string() const -> std::string { return pathname_; }
 
 template <typename Allocator>
-inline path::string_type path::make_generic(const Allocator &alloc) const {
+inline auto path::make_generic(const Allocator &alloc) const
+    -> path::string_type {
   string_type str(alloc);
 
   str.reserve(pathname_.size());
   bool add_slash = false;
-  for (auto &elem : *this) {
+  for (const auto &elem : *this) {
     if (elem.type_ == Type::ROOT_NAME) {
       auto rootname = elem.pathname_;
       std::replace(rootname.begin(), rootname.end(), '\\', '/');
@@ -578,7 +592,9 @@ inline path::string_type path::make_generic(const Allocator &alloc) const {
     } else if (elem.type_ == Type::ROOT_DIR) {
       str += slash;
     } else {
-      if (add_slash) str += slash;
+      if (add_slash) {
+        str += slash;
+      }
       str += elem.pathname_;
       add_slash = elem.type_ == Type::FILENAME;
     }
@@ -588,19 +604,23 @@ inline path::string_type path::make_generic(const Allocator &alloc) const {
 }
 
 template <typename CharT, typename Traits, typename Allocator>
-inline std::basic_string<CharT, Traits, Allocator> path::generic_string(
-    const Allocator &alloc) const {
+inline auto path::generic_string(const Allocator &alloc) const
+    -> std::basic_string<CharT, Traits, Allocator> {
   auto str = make_generic<Allocator>(alloc);
   return nowide::widen<Allocator>(str, alloc);
 }
 
-inline std::string path::generic_string() const { return make_generic(); }
+inline auto path::generic_string() const -> std::string {
+  return make_generic();
+}
 
-inline std::wstring path::generic_wstring() const {
+inline auto path::generic_wstring() const -> std::wstring {
   return generic_string<wchar_t>();
 }
 
-inline std::string path::generic_u8string() const { return generic_string(); }
+inline auto path::generic_u8string() const -> std::string {
+  return generic_string();
+}
 
 }  // namespace filesystem
 }  // namespace asap

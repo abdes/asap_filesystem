@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include <type_traits>
 namespace asap {
 namespace filesystem {
 
@@ -29,44 +30,44 @@ enum class directory_options : unsigned char {
   skip_permission_denied = 2
 };
 
-constexpr directory_options operator&(directory_options lhs,
-                                      directory_options rhs) noexcept {
+constexpr auto operator&(directory_options lhs, directory_options rhs) noexcept
+    -> directory_options {
   using utype = typename std::underlying_type<directory_options>::type;
   return static_cast<directory_options>(static_cast<utype>(lhs) &
                                         static_cast<utype>(rhs));
 }
 
-constexpr directory_options operator|(directory_options lhs,
-                                      directory_options rhs) noexcept {
+constexpr auto operator|(directory_options lhs, directory_options rhs) noexcept
+    -> directory_options {
   using utype = typename std::underlying_type<directory_options>::type;
   return static_cast<directory_options>(static_cast<utype>(lhs) |
                                         static_cast<utype>(rhs));
 }
 
-constexpr directory_options operator^(directory_options lhs,
-                                      directory_options rhs) noexcept {
+constexpr auto operator^(directory_options lhs, directory_options rhs) noexcept
+    -> directory_options {
   using utype = typename std::underlying_type<directory_options>::type;
   return static_cast<directory_options>(static_cast<utype>(lhs) ^
                                         static_cast<utype>(rhs));
 }
 
-constexpr directory_options operator~(directory_options lhs) noexcept {
+constexpr auto operator~(directory_options lhs) noexcept -> directory_options {
   using utype = typename std::underlying_type<directory_options>::type;
   return static_cast<directory_options>(~static_cast<utype>(lhs));
 }
 
-inline directory_options &operator&=(directory_options &lhs,
-                                     directory_options rhs) noexcept {
+inline auto operator&=(directory_options &lhs, directory_options rhs) noexcept
+    -> directory_options & {
   return lhs = lhs & rhs;
 }
 
-inline directory_options &operator|=(directory_options &lhs,
-                                     directory_options rhs) noexcept {
+inline auto operator|=(directory_options &lhs, directory_options rhs) noexcept
+    -> directory_options & {
   return lhs = lhs | rhs;
 }
 
-inline directory_options &operator^=(directory_options &lhs,
-                                     directory_options rhs) noexcept {
+inline auto operator^=(directory_options &lhs, directory_options rhs) noexcept
+    -> directory_options & {
   return lhs = lhs ^ rhs;
 }
 

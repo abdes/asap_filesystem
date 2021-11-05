@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include <type_traits>
 namespace asap {
 namespace filesystem {
 
@@ -36,38 +37,44 @@ enum class copy_options : unsigned short {
   create_hard_links = 256
 };
 
-constexpr copy_options operator&(copy_options lhs, copy_options rhs) noexcept {
+constexpr auto operator&(copy_options lhs, copy_options rhs) noexcept
+    -> copy_options {
   using utype = typename std::underlying_type<copy_options>::type;
   return static_cast<copy_options>(static_cast<utype>(lhs) &
                                    static_cast<utype>(rhs));
 }
 
-constexpr copy_options operator|(copy_options lhs, copy_options rhs) noexcept {
+constexpr auto operator|(copy_options lhs, copy_options rhs) noexcept
+    -> copy_options {
   using utype = typename std::underlying_type<copy_options>::type;
   return static_cast<copy_options>(static_cast<utype>(lhs) |
                                    static_cast<utype>(rhs));
 }
 
-constexpr copy_options operator^(copy_options lhs, copy_options rhs) noexcept {
+constexpr auto operator^(copy_options lhs, copy_options rhs) noexcept
+    -> copy_options {
   using utype = typename std::underlying_type<copy_options>::type;
   return static_cast<copy_options>(static_cast<utype>(lhs) ^
                                    static_cast<utype>(rhs));
 }
 
-constexpr copy_options operator~(copy_options lhs) noexcept {
+constexpr auto operator~(copy_options lhs) noexcept -> copy_options {
   using utype = typename std::underlying_type<copy_options>::type;
   return static_cast<copy_options>(~static_cast<utype>(lhs));
 }
 
-inline copy_options &operator&=(copy_options &lhs, copy_options rhs) noexcept {
+inline auto operator&=(copy_options &lhs, copy_options rhs) noexcept
+    -> copy_options & {
   return lhs = lhs & rhs;
 }
 
-inline copy_options &operator|=(copy_options &lhs, copy_options rhs) noexcept {
+inline auto operator|=(copy_options &lhs, copy_options rhs) noexcept
+    -> copy_options & {
   return lhs = lhs | rhs;
 }
 
-inline copy_options &operator^=(copy_options &lhs, copy_options rhs) noexcept {
+inline auto operator^=(copy_options &lhs, copy_options rhs) noexcept
+    -> copy_options & {
   return lhs = lhs ^ rhs;
 }
 

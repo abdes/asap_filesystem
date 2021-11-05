@@ -63,9 +63,11 @@ class
     create_what(2);
   }
 
-  const path& path1() const noexcept { return data_->path1_; }
-  const path& path2() const noexcept { return data_->path2_; }
-  const char* what() const noexcept override { return data_->what_.c_str(); }
+  auto path1() const noexcept -> const path& { return data_->path1_; }
+  auto path2() const noexcept -> const path& { return data_->path2_; }
+  auto what() const noexcept -> const char* override {
+    return data_->what_.c_str();
+  }
 
  private:
   ASAP_FILESYSTEM_API void create_what(int num_paths);

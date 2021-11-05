@@ -77,15 +77,18 @@ void path::SplitComponents() {
   size_t back = pos;
   while (pos < len) {
     if (IsDirSeparator(pathname_[pos])) {
-      if (back != pos) AddFilename(back, pos - back);
+      if (back != pos) {
+        AddFilename(back, pos - back);
+      }
       back = ++pos;
-    } else
+    } else {
       ++pos;
+    }
   }
 
-  if (back != pos)
+  if (back != pos) {
     AddFilename(back, pos - back);
-  else if (IsDirSeparator(pathname_.back())) {
+  } else if (IsDirSeparator(pathname_.back())) {
     // [fs.path.itr]/4
     // An empty element, if trailing non-root directory-separator present.
     if (components_.back().type_ == Type::FILENAME) {
@@ -110,7 +113,7 @@ void path::Trim() {
 //  Assign
 // -----------------------------------------------------------------------------
 
-path &path::operator=(path &&p) noexcept {
+auto path::operator=(path &&p) noexcept -> path & {
   pathname_ = std::move(p.pathname_);
   components_ = std::move(p.components_);
   type_ = p.type_;
@@ -118,11 +121,11 @@ path &path::operator=(path &&p) noexcept {
   return *this;
 }
 
-path &path::operator=(string_type &&source) {
+auto path::operator=(string_type &&source) -> path & {
   return *this = path(std::move(source));
 }
 
-path &path::assign(string_type &&source) {
+auto path::assign(string_type &&source) -> path & {
   return *this = path(std::move(source));
 }
 
@@ -130,33 +133,38 @@ path &path::assign(string_type &&source) {
 //  Query
 // -----------------------------------------------------------------------------
 
-bool path::has_stem() const {
+auto path::has_stem() const -> bool {
   auto ext = FindExtension();
-  return ext.first;
+  return ext.first != nullptr;
 }
 
-bool path::has_extension() const {
+auto path::has_extension() const -> bool {
   auto ext = FindExtension();
-  return ext.first && ext.second != string_type::npos && ext.second != 0;
+  return (ext.first != nullptr) && ext.second != string_type::npos &&
+         ext.second != 0;
 }
 
-bool path::has_root_name() const {
+auto path::has_root_name() const -> bool {
   return (type_ == Type::ROOT_NAME) ||
          (!components_.empty() &&
           components_.begin()->type_ == Type::ROOT_NAME);
 }
 
-bool path::has_root_directory() const { return !root_directory().empty(); }
+auto path::has_root_directory() const -> bool {
+  return !root_directory().empty();
+}
 
-bool path::has_root_path() const { return !root_path().empty(); }
+auto path::has_root_path() const -> bool { return !root_path().empty(); }
 
-bool path::has_relative_path() const { return !relative_path().empty(); }
+auto path::has_relative_path() const -> bool {
+  return !relative_path().empty();
+}
 
-bool path::has_parent_path() const { return !parent_path().empty(); }
+auto path::has_parent_path() const -> bool { return !parent_path().empty(); }
 
-bool path::has_filename() const { return !filename().empty(); }
+auto path::has_filename() const -> bool { return !filename().empty(); }
 
-bool path::is_absolute() const {
+auto path::is_absolute() const -> bool {
 // NOTE: //foo is absolute because we can't express relative paths on top of it
 // without appending a separator.
 #if defined(ASAP_WINDOWS)
@@ -178,36 +186,43 @@ bool path::is_absolute() const {
 //  Decomposition
 // -----------------------------------------------------------------------------
 
-path path::root_name() const {
+auto path::root_name() const -> path {
   path ret;
-  if (type_ == Type::ROOT_NAME)
+  if (type_ == Type::ROOT_NAME) {
     ret = *this;
-  else if (!components_.empty() &&
-           components_.begin()->type_ == Type::ROOT_NAME)
+  } else if (!components_.empty() &&
+             components_.begin()->type_ == Type::ROOT_NAME) {
     ret = *components_.begin();
+  }
   return ret;
 }
 
-path path::root_directory() const {
+auto path::root_directory() const -> path {
   path ret;
   if (type_ == Type::ROOT_DIR) {
     ret = *this;
   } else if (type_ == Type::ROOT_NAME) {
     // Check for windows special case of drive letter
-    if (pathname_[1] == ':') ret = path("");
+    if (pathname_[1] == ':') {
+      ret = path("");
+    }
   } else if (!components_.empty()) {
     auto it = components_.begin();
-    if (it->type_ == Type::ROOT_NAME) ++it;
-    if (it != components_.end() && it->type_ == Type::ROOT_DIR) ret = *it;
+    if (it->type_ == Type::ROOT_NAME) {
+      ++it;
+    }
+    if (it != components_.end() && it->type_ == Type::ROOT_DIR) {
+      ret = *it;
+    }
   }
   return ret;
 }
 
-path path::root_path() const {
+auto path::root_path() const -> path {
   path ret;
-  if (type_ == Type::ROOT_NAME || type_ == Type::ROOT_DIR)
+  if (type_ == Type::ROOT_NAME || type_ == Type::ROOT_DIR) {
     ret = *this;
-  else if (!components_.empty()) {
+  } else if (!components_.empty()) {
     auto it = components_.begin();
     if (it->type_ == Type::ROOT_NAME) {
       ret = *it++;
@@ -215,27 +230,36 @@ path path::root_path() const {
         ret.pathname_ += preferred_separator;
         ret.SplitComponents();
       }
-    } else if (it->type_ == Type::ROOT_DIR)
+    } else if (it->type_ == Type::ROOT_DIR) {
       ret = *it;
+    }
   }
   return ret;
 }
 
-path path::relative_path() const {
+auto path::relative_path() const -> path {
   path ret;
-  if (type_ == Type::FILENAME)
+  if (type_ == Type::FILENAME) {
     ret = *this;
-  else if (!components_.empty()) {
+  } else if (!components_.empty()) {
     auto it = components_.begin();
-    if (it->type_ == Type::ROOT_NAME) ++it;
-    if (it != components_.end() && it->type_ == Type::ROOT_DIR) ++it;
-    if (it != components_.end()) ret.assign(pathname_.substr(it->pos_));
+    if (it->type_ == Type::ROOT_NAME) {
+      ++it;
+    }
+    if (it != components_.end() && it->type_ == Type::ROOT_DIR) {
+      ++it;
+    }
+    if (it != components_.end()) {
+      ret.assign(pathname_.substr(it->pos_));
+    }
   }
   return ret;
 }
 
-path path::parent_path() const {
-  if (!has_relative_path()) return *this;
+auto path::parent_path() const -> path {
+  if (!has_relative_path()) {
+    return *this;
+  }
 
   if (type_ == Type::MULTI) {
     ASAP_ASSERT(!components_.empty());
@@ -246,70 +270,84 @@ path path::parent_path() const {
     // indicates that the previous component is a directory and it was followed
     // with a separator in the path name.
     auto last = std::prev(ret.components_.end());
-    if (last->pathname_ == "") {
+    if (last->pathname_.empty()) {
       last = std::prev(last);
     }
     ret.components_.erase(last, ret.components_.end());
     ret.pathname_.clear();
     auto components_size = ret.components_.size();
     auto component_index = 1U;
-    for (auto comp : ret.components_) {
+    for (const auto &comp : ret.components_) {
       ret.pathname_.append(comp.pathname_);
-      if (component_index < components_size) ret.AppendSeparatorIfNeeded();
+      if (component_index < components_size) {
+        ret.AppendSeparatorIfNeeded();
+      }
       ++component_index;
     }
     return ret;
-  } else {
-    return {};
   }
+  return {};
 }
 
-path path::filename() const {
-  if (empty())
+auto path::filename() const -> path {
+  if (empty()) {
     return {};
-  else if (type_ == Type::FILENAME)
+  }
+  if (type_ == Type::FILENAME) {
     return *this;
-  else if (type_ == Type::MULTI) {
-    if (pathname_.back() == preferred_separator) return {};
-    auto &last = *--end();
-    if (last.type_ == Type::FILENAME) return last;
+  }
+  if (type_ == Type::MULTI) {
+    if (pathname_.back() == preferred_separator) {
+      return {};
+    }
+    const auto &last = *--end();
+    if (last.type_ == Type::FILENAME) {
+      return last;
+    }
   }
   return {};
 }
 
-path path::stem() const {
+auto path::stem() const -> path {
   auto ext = FindExtension();
-  if (ext.first) {
-    if (ext.second == string_type::npos || ext.second == 0)
+  if (ext.first != nullptr) {
+    if (ext.second == string_type::npos || ext.second == 0) {
       return path{*ext.first};
-    else
-      return path{ext.first->substr(0, ext.second)};
+    }
+    return path{ext.first->substr(0, ext.second)};
   }
   return {};
 }
 
-path path::extension() const {
+auto path::extension() const -> path {
   auto ext = FindExtension();
-  if (ext.first && ext.second != string_type::npos && ext.second != 0)
+  if ((ext.first != nullptr) && ext.second != string_type::npos &&
+      ext.second != 0) {
     return path{ext.first->substr(ext.second)};
+  }
   return {};
 }
 
-std::pair<const path::string_type *, std::size_t> path::FindExtension() const {
+auto path::FindExtension() const
+    -> std::pair<const path::string_type *, std::size_t> {
   const string_type *s = nullptr;
 
-  if (type_ == Type::FILENAME)
+  if (type_ == Type::FILENAME) {
     s = &pathname_;
-  else if (type_ == Type::MULTI && !components_.empty()) {
+  } else if (type_ == Type::MULTI && !components_.empty()) {
     const auto &c = components_.back();
-    if (c.type_ == Type::FILENAME) s = &c.pathname_;
+    if (c.type_ == Type::FILENAME) {
+      s = &c.pathname_;
+    }
   }
 
-  if (s) {
+  if (s != nullptr) {
     if (auto sz = s->size()) {
-      if (sz <= 2 && (*s)[0] == dot) return {s, string_type::npos};
+      if (sz <= 2 && (*s)[0] == dot) {
+        return {s, string_type::npos};
+      }
       const auto pos = s->rfind(dot);
-      return {s, pos ? pos : string_type::npos};
+      return {s, pos != 0U ? pos : string_type::npos};
     }
   }
   return {};
@@ -343,19 +381,23 @@ void path::AddFilename(size_t pos, size_t len) {
 // Iteration
 //
 
-path::iterator path::begin() const {
-  if (type_ == Type::MULTI) return iterator(this, components_.begin());
-  return iterator(this, empty());
+auto path::begin() const -> path::iterator {
+  if (type_ == Type::MULTI) {
+    return {this, components_.begin()};
+  }
+  return {this, empty()};
 }
 
-path::iterator path::end() const {
-  if (type_ == Type::MULTI) return iterator(this, components_.end());
-  return iterator(this, true);
+auto path::end() const -> path::iterator {
+  if (type_ == Type::MULTI) {
+    return {this, components_.end()};
+  }
+  return {this, true};
 }
 
-path::iterator &path::iterator::operator++() {
+auto path::iterator::operator++() -> path::iterator & {
   ASAP_ASSERT(path_ != nullptr);
-  if (path_ && (path_->type_ == Type::MULTI)) {
+  if ((path_ != nullptr) && (path_->type_ == Type::MULTI)) {
     ASAP_ASSERT(cur_ != path_->components_.end());
     ++cur_;
   } else {
@@ -365,9 +407,9 @@ path::iterator &path::iterator::operator++() {
   return *this;
 }
 
-path::iterator &path::iterator::operator--() {
+auto path::iterator::operator--() -> path::iterator & {
   ASAP_ASSERT(path_ != nullptr);
-  if (path_ && (path_->type_ == Type::MULTI)) {
+  if ((path_ != nullptr) && (path_->type_ == Type::MULTI)) {
     ASAP_ASSERT(cur_ != path_->components_.begin());
     --cur_;
   } else {
@@ -377,19 +419,25 @@ path::iterator &path::iterator::operator--() {
   return *this;
 }
 
-path::iterator::reference path::iterator::operator*() const {
+auto path::iterator::operator*() const -> path::iterator::reference {
   ASAP_ASSERT(path_ != nullptr);
-  if (path_ && (path_->type_ == Type::MULTI)) {
+  if ((path_ != nullptr) && (path_->type_ == Type::MULTI)) {
     ASAP_ASSERT(cur_ != path_->components_.end());
     return *cur_;
   }
   return *path_;
 }
 
-bool path::iterator::equals(iterator rhs) const {
-  if (path_ != rhs.path_) return false;
-  if (path_ == nullptr) return true;
-  if (path_->type_ == path::Type::MULTI) return cur_ == rhs.cur_;
+auto path::iterator::equals(iterator rhs) const -> bool {
+  if (path_ != rhs.path_) {
+    return false;
+  }
+  if (path_ == nullptr) {
+    return true;
+  }
+  if (path_->type_ == path::Type::MULTI) {
+    return cur_ == rhs.cur_;
+  }
   return at_end_ == rhs.at_end_;
 }
 
@@ -399,49 +447,60 @@ bool path::iterator::equals(iterator rhs) const {
 
 namespace {
 template <typename Iter1, typename Iter2>
-int do_compare(Iter1 begin1, Iter1 end1, Iter2 begin2, Iter2 end2) {
+auto do_compare(Iter1 begin1, Iter1 end1, Iter2 begin2, Iter2 end2) -> int {
   int cmpt = 1;
   while (begin1 != end1 && begin2 != end2) {
-    if (begin1->native() < begin2->native()) return -cmpt;
-    if (begin1->native() > begin2->native()) return +cmpt;
+    if (begin1->native() < begin2->native()) {
+      return -cmpt;
+    }
+    if (begin1->native() > begin2->native()) {
+      return +cmpt;
+    }
     ++begin1;
     ++begin2;
     ++cmpt;
   }
   if (begin1 == end1) {
-    if (begin2 == end2) return 0;
+    if (begin2 == end2) {
+      return 0;
+    }
     return -cmpt;
   }
   return +cmpt;
 }
 }  // namespace
 
-int path::compare(const path &other) const noexcept {
+auto path::compare(const path &other) const noexcept -> int {
   struct CmptRef {
     const path *ptr;
-    const string_type &native() const noexcept { return ptr->native(); }
+    auto native() const noexcept -> const string_type & {
+      return ptr->native();
+    }
   };
 
-  if (empty() && other.empty())
+  if (empty() && other.empty()) {
     return 0;
-  else if (type_ == Type::MULTI && other.type_ == Type::MULTI)
+  }
+  if (type_ == Type::MULTI && other.type_ == Type::MULTI) {
     return do_compare(components_.begin(), components_.end(),
                       other.components_.begin(), other.components_.end());
-  else if (type_ == Type::MULTI) {
+  }
+  if (type_ == Type::MULTI) {
     CmptRef c[1] = {{&other}};
     return do_compare(components_.begin(), components_.end(), c, c + 1);
-  } else if (other.type_ == Type::MULTI) {
+  }
+  if (other.type_ == Type::MULTI) {
     CmptRef c[1] = {{this}};
     return do_compare(c, c + 1, other.components_.begin(),
                       other.components_.end());
-  } else
-    return pathname_.compare(other.pathname_);
+  }
+  return pathname_.compare(other.pathname_);
 }
-int path::compare(const string_type &other) const {
+auto path::compare(const string_type &other) const -> int {
   return compare(path(other));
 }
 
-int path::compare(const value_type *other) const {
+auto path::compare(const value_type *other) const -> int {
   return compare(path(other));
 }
 
@@ -451,7 +510,7 @@ int path::compare(const value_type *other) const {
 // Append
 //
 
-path &path::operator/=(const path &p) {
+auto path::operator/=(const path &p) -> path & {
   // NOTE: the standard is not clear when it comes to handling root names.
   // The following examples were specified for windows:
   //   path("foo") / "c:/bar"; // yields "c:/bar"
@@ -484,21 +543,25 @@ path &path::operator/=(const path &p) {
   if (p.has_root_directory()) {
     // Remove any root directory and relative path
     if (type_ != Type::ROOT_NAME) {
-      if (!components_.empty() && components_.front().type_ == Type::ROOT_NAME)
+      if (!components_.empty() &&
+          components_.front().type_ == Type::ROOT_NAME) {
         lhs = components_.front().pathname_;
-      else
+      } else {
         lhs = {};
+      }
     }
-  } else if (has_filename() || (!has_root_directory() && is_absolute()))
+  } else if (has_filename() || (!has_root_directory() && is_absolute())) {
     add_sep = true;
+  }
 
   auto rhs = p.pathname_;
   // Omit any root-name from the generic format pathname:
-  if (p.type_ == Type::ROOT_NAME)
+  if (p.type_ == Type::ROOT_NAME) {
     rhs = {};
-  else if (!p.components_.empty() &&
-           p.components_.front().type_ == Type::ROOT_NAME)
+  } else if (!p.components_.empty() &&
+             p.components_.front().type_ == Type::ROOT_NAME) {
     rhs.erase(0, p.components_.front().pathname_.size());
+  }
 
   const size_t len = lhs.size() + static_cast<size_t>(add_sep) + rhs.size();
   const size_t maxcmpts = components_.size() + p.components_.size();
@@ -507,20 +570,24 @@ path &path::operator/=(const path &p) {
     string_type tmp;
     tmp.reserve(len);
     tmp = lhs;
-    if (add_sep) tmp += preferred_separator;
+    if (add_sep) {
+      tmp += preferred_separator;
+    }
     tmp += rhs;
-    path newp = std::move(tmp);
+    path newp(std::move(tmp));
     swap(newp);
   } else {
     pathname_ = lhs;
-    if (add_sep) pathname_ += preferred_separator;
+    if (add_sep) {
+      pathname_ += preferred_separator;
+    }
     pathname_ += rhs;
     SplitComponents();
   }
   return *this;
 }
 
-path::string_type::size_type path::AppendSeparatorIfNeeded() {
+auto path::AppendSeparatorIfNeeded() -> path::string_type::size_type {
   if (!pathname_.empty() &&
 #ifdef ASAP_WINDOWS
       *(pathname_.end() - 1) != ':' &&
@@ -533,7 +600,7 @@ path::string_type::size_type path::AppendSeparatorIfNeeded() {
   return 0;
 }
 
-std::size_t hash_value(const path &p) noexcept {
+auto hash_value(const path &p) noexcept -> std::size_t {
   // [path.non-member]
   // "If for two paths, p1 == p2 then hash_value(p1) == hash_value(p2)."
   // Equality works as if by traversing the range [begin(), end()), meaning
@@ -552,14 +619,14 @@ std::size_t hash_value(const path &p) noexcept {
 //  MODIFIERS
 //
 
-path &path::make_preferred() {
+auto path::make_preferred() -> path & {
 #ifdef ASAP_WINDOWS
   std::replace(pathname_.begin(), pathname_.end(), slash, preferred_separator);
 #endif
   return *this;
 }
 
-path &path::remove_filename() {
+auto path::remove_filename() -> path & {
   if (type_ == Type::MULTI) {
     if (!components_.empty()) {
       auto cmpt = std::prev(components_.end());
@@ -569,56 +636,61 @@ path &path::remove_filename() {
         if (prev->type_ == Type::ROOT_DIR || prev->type_ == Type::ROOT_NAME) {
           components_.erase(cmpt);
           Trim();
-        } else
+        } else {
           cmpt->clear();
+        }
       }
     }
-  } else if (type_ == Type::FILENAME)
+  } else if (type_ == Type::FILENAME) {
     clear();
+  }
   return *this;
 }
 
-path &path::replace_filename(const path &replacement) {
+auto path::replace_filename(const path &replacement) -> path & {
   remove_filename();
   operator/=(replacement);
   return *this;
 }
 
-path &path::replace_extension(const path &replacement) {
+auto path::replace_extension(const path &replacement) -> path & {
   auto ext = FindExtension();
   // Any existing extension() is removed
-  if (ext.first && ext.second != string_type::npos) {
-    if (ext.first == &pathname_)
+  if ((ext.first != nullptr) && ext.second != string_type::npos) {
+    if (ext.first == &pathname_) {
       pathname_.erase(ext.second);
-    else {
+    } else {
       const auto &back = components_.back();
-      if (ext.first != &back.pathname_)
+      if (ext.first != &back.pathname_) {
         throw(std::logic_error("path::replace_extension failed"));
+      }
       pathname_.erase(back.pos_ + ext.second);
     }
   }
   // If replacement is not empty and does not begin with a dot character,
   // a dot character is appended
-  if (!replacement.empty() && replacement.native()[0] != dot) pathname_ += dot;
+  if (!replacement.empty() && replacement.native()[0] != dot) {
+    pathname_ += dot;
+  }
   operator+=(replacement);
   return *this;
 }
 
 namespace {
-inline bool is_dot(fs::path::value_type c) { return c == dot; }
+inline auto is_dot(fs::path::value_type c) -> bool { return c == dot; }
 
-inline bool is_dot(const fs::path &path) {
+inline auto is_dot(const fs::path &path) -> bool {
   const auto &filename = path.native();
   return filename.size() == 1 && is_dot(filename[0]);
 }
 
-inline bool is_dotdot(const fs::path &path) {
+inline auto is_dotdot(const fs::path &path) -> bool {
   const auto &filename = path.native();
   return filename.size() == 2 && is_dot(filename[0]) && is_dot(filename[1]);
 }
 }  // namespace
 
-path path::lexically_normal() const {
+auto path::lexically_normal() const -> path {
   /*
   C++17 [fs.path.generic] p6
   - If the path is empty, stop.
@@ -635,8 +707,10 @@ path path::lexically_normal() const {
   */
   path ret;
   // If the path is empty, stop.
-  if (empty()) return ret;
-  for (auto &p : *this) {
+  if (empty()) {
+    return ret;
+  }
+  for (const auto &p : *this) {
 #ifdef ASAP_WINDOWS
     // Replace each slash character in the root-name
     if (p.type_ == Type::ROOT_NAME || p.type_ == Type::ROOT_DIR) {
@@ -649,13 +723,16 @@ path path::lexically_normal() const {
     if (is_dotdot(p)) {
       if (ret.has_filename()) {
         // remove a non-dot-dot filename immediately followed by /..
-        if (!is_dotdot(ret.filename()))
+        if (!is_dotdot(ret.filename())) {
           ret.remove_filename();
-        else
+        } else {
           ret /= p;
+        }
       } else if (!ret.has_relative_path()) {
         // remove a dot-dot filename immediately after root-directory
-        if (!ret.has_root_directory()) ret /= p;
+        if (!ret.has_root_directory()) {
+          ret /= p;
+        }
       } else {
         // Got a path with a relative path (i.e. at least one non-root
         // element) and no filename at the end (i.e. empty last element),
@@ -664,23 +741,26 @@ path path::lexically_normal() const {
         if (elem->has_filename() && !is_dotdot(*elem)) {
           // Remove the filename before the trailing slash
           // (equiv. to ret = ret.parent_path().remove_filename())
-          if (elem == ret.begin())
+          if (elem == ret.begin()) {
             ret.clear();
-          else {
+          } else {
             ret.pathname_.erase(elem.cur_->pos_);
             // Do we still have a trailing slash?
-            if (std::prev(elem)->type_ == Type::FILENAME)
+            if (std::prev(elem)->type_ == Type::FILENAME) {
               ret.components_.erase(elem.cur_);
-            else
+            } else {
               ret.components_.erase(elem.cur_, ret.components_.end());
+            }
           }
-        } else  // ???
+        } else {  // ???
           ret /= p;
+        }
       }
-    } else if (is_dot(p))
+    } else if (is_dot(p)) {
       ret /= path();
-    else
+    } else {
       ret /= p;
+    }
   }
 
   if (ret.components_.size() >= 2) {
@@ -693,35 +773,47 @@ path path::lexically_normal() const {
     }
   }
   // If the path is empty, add a dot.
-  else if (ret.empty())
+  else if (ret.empty()) {
     ret = ".";
+  }
 
   return ret;
 }
 
-path path::lexically_relative(const path &base) const {
+auto path::lexically_relative(const path &base) const -> path {
   path ret;
-  if (root_name() != base.root_name()) return ret;
-  if (is_absolute() != base.is_absolute()) return ret;
-  if (!has_root_directory() && base.has_root_directory()) return ret;
+  if (root_name() != base.root_name()) {
+    return ret;
+  }
+  if (is_absolute() != base.is_absolute()) {
+    return ret;
+  }
+  if (!has_root_directory() && base.has_root_directory()) {
+    return ret;
+  }
   auto p = std::mismatch(begin(), end(), base.begin(), base.end());
   auto a = p.first;
   auto b = p.second;
-  if (a == end() && b == base.end())
+  if (a == end() && b == base.end()) {
     ret = ".";
-  else {
+  } else {
     int n = 0;
     for (; b != base.end(); ++b) {
       const path &bp = *b;
-      if (is_dotdot(bp))
+      if (is_dotdot(bp)) {
         --n;
-      else if (!is_dot(bp))
+      } else if (!is_dot(bp)) {
         ++n;
+      }
     }
     if (n >= 0) {
       const path dotdot("..");
-      while (n--) ret /= dotdot;
-      for (; a != end(); ++a) ret /= *a;
+      while ((n--) != 0) {
+        ret /= dotdot;
+      }
+      for (; a != end(); ++a) {
+        ret /= *a;
+      }
     }
   }
   return ret;

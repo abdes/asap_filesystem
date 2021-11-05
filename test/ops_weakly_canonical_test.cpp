@@ -38,7 +38,8 @@ TEST_CASE("Ops / weakly_canonical",
   testing::scoped_file sdir(dir, testing::scoped_file::adopt_file);
   fs::create_directory(dir);
   const auto dirc = canonical(dir);
-  fs::path foo = dir / "foo", bar = dir / "bar";
+  fs::path foo = dir / "foo";
+  fs::path bar = dir / "bar";
   fs::create_directory(foo);
   fs::create_directory(bar);
   fs::create_directory(bar / "baz");

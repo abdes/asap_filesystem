@@ -124,8 +124,9 @@ void directory_entry::UpdateBasicFileInformation(bool follow_symlinks,
     cached_data_.perms_resolved = true;
   }
 
-  if (asap::filesystem::is_regular_file(st))
+  if (asap::filesystem::is_regular_file(st)) {
     cached_data_.size = static_cast<uintmax_t>(full_st.st_size);
+  }
 
   if (asap::filesystem::exists(st)) {
     // Attempt to extract the mtime, and fail if it's not representable using
@@ -277,39 +278,20 @@ void directory_entry::UpdatePermissionsInformation(bool follow_symlinks,
   cached_data_.cache_type = CacheType_::FULL;
 }  // namespace filesystem
 
-file_type directory_entry::GetSymLinkFileType(std::error_code *ec) const {
-  if (ec) ec->clear();
+auto directory_entry::GetSymLinkFileType(std::error_code *ec) const
+    -> file_type {
+  if (ec != nullptr) {
+    ec->clear();
+  }
   if (cached_data_.cache_type == CacheType_::EMPTY) {
     UpdateBasicFileInformation(false, ec);
-    if (ec) return file_type::none;
+    if (ec != nullptr) {
+      return file_type::none;
+    }
   }
   if (cached_data_.symlink) {
     return file_type::symlink;
-  } else {
-    file_status st(cached_data_.type);
-    if (!asap::filesystem::exists(st)) {
-      HandleError("in directory_entry::GetSymLinkFileType", ec,
-                  make_error_code(std::errc::no_such_file_or_directory),
-                  /*allow_dne*/ false);
-    }
-    return cached_data_.type;
   }
-}
-
-file_type directory_entry::GetFileType(std::error_code *ec) const {
-  if (ec) ec->clear();
-  switch (cached_data_.cache_type) {
-    case CacheType_::EMPTY:
-      UpdateBasicFileInformation(true, ec);
-      break;
-    case CacheType_::BASIC:
-      if (!cached_data_.type_resolved) UpdateBasicFileInformation(true, ec);
-      break;
-    default:
-      // Nothing to do
-      break;
-  }
-  if (ec) return file_type::none;
   file_status st(cached_data_.type);
   if (!asap::filesystem::exists(st)) {
     HandleError("in directory_entry::GetSymLinkFileType", ec,
@@ -319,10 +301,41 @@ file_type directory_entry::GetFileType(std::error_code *ec) const {
   return cached_data_.type;
 }
 
-uintmax_t directory_entry::GetSize(std::error_code *ec) const {
+auto directory_entry::GetFileType(std::error_code *ec) const -> file_type {
+  if (ec != nullptr) {
+    ec->clear();
+  }
+  switch (cached_data_.cache_type) {
+    case CacheType_::EMPTY:
+      UpdateBasicFileInformation(true, ec);
+      break;
+    case CacheType_::BASIC:
+      if (!cached_data_.type_resolved) {
+        UpdateBasicFileInformation(true, ec);
+      }
+      break;
+    default:
+      // Nothing to do
+      break;
+  }
+  if (ec != nullptr) {
+    return file_type::none;
+  }
+  file_status st(cached_data_.type);
+  if (!asap::filesystem::exists(st)) {
+    HandleError("in directory_entry::GetSymLinkFileType", ec,
+                make_error_code(std::errc::no_such_file_or_directory),
+                /*allow_dne*/ false);
+  }
+  return cached_data_.type;
+}
+
+auto directory_entry::GetSize(std::error_code *ec) const -> uintmax_t {
   ErrorHandler<uintmax_t> err("UpdateExtraFileInformation", ec, &path_);
 
-  if (ec) ec->clear();
+  if (ec != nullptr) {
+    ec->clear();
+  }
   switch (cached_data_.cache_type) {
     case CacheType_::EMPTY: {
       UpdateBasicFileInformation(true, ec);
@@ -346,7 +359,9 @@ uintmax_t directory_entry::GetSize(std::error_code *ec) const {
       UpdateExtraFileInformation(true, ec);
       break;
     case CacheType_::EXTRA:
-      if (!cached_data_.extra_resolved) UpdateExtraFileInformation(true, ec);
+      if (!cached_data_.extra_resolved) {
+        UpdateExtraFileInformation(true, ec);
+      }
       break;
 
     default:
@@ -357,10 +372,12 @@ uintmax_t directory_entry::GetSize(std::error_code *ec) const {
   return cached_data_.size;
 }
 
-uintmax_t directory_entry::GetHardLinkCount(std::error_code *ec) const {
+auto directory_entry::GetHardLinkCount(std::error_code *ec) const -> uintmax_t {
   ErrorHandler<uintmax_t> err("GetHardLinkCount", ec, &path_);
 
-  if (ec) ec->clear();
+  if (ec != nullptr) {
+    ec->clear();
+  }
   switch (cached_data_.cache_type) {
     case CacheType_::EMPTY:
       UpdateBasicFileInformation(false, ec);
@@ -381,10 +398,13 @@ uintmax_t directory_entry::GetHardLinkCount(std::error_code *ec) const {
   return cached_data_.nlink;
 }
 
-file_time_type directory_entry::GetLastWriteTime(std::error_code *ec) const {
+auto directory_entry::GetLastWriteTime(std::error_code *ec) const
+    -> file_time_type {
   ErrorHandler<file_time_type> err("GetLastWriteTime", ec, &path_);
 
-  if (ec) ec->clear();
+  if (ec != nullptr) {
+    ec->clear();
+  }
   switch (cached_data_.cache_type) {
     case CacheType_::EMPTY:
       UpdateBasicFileInformation(true, ec);
@@ -397,7 +417,9 @@ file_time_type directory_entry::GetLastWriteTime(std::error_code *ec) const {
       UpdateExtraFileInformation(true, ec);
       break;
     case CacheType_::EXTRA:
-      if (!cached_data_.extra_resolved) UpdateExtraFileInformation(true, ec);
+      if (!cached_data_.extra_resolved) {
+        UpdateExtraFileInformation(true, ec);
+      }
       break;
 
     default:
@@ -406,16 +428,19 @@ file_time_type directory_entry::GetLastWriteTime(std::error_code *ec) const {
   }
   file_status st(cached_data_.type);
   if (asap::filesystem::exists(st) &&
-      cached_data_.write_time == file_time_type::min())
+      cached_data_.write_time == file_time_type::min()) {
     return err.report(std::errc::value_too_large);
+  }
 
   return cached_data_.write_time;
 }
 
-file_status directory_entry::GetStatus(std::error_code *ec) const {
+auto directory_entry::GetStatus(std::error_code *ec) const -> file_status {
   ErrorHandler<file_time_type> err("GetLastWriteTime", ec, &path_);
 
-  if (ec) ec->clear();
+  if (ec != nullptr) {
+    ec->clear();
+  }
   switch (cached_data_.cache_type) {
     case CacheType_::EMPTY:
       UpdateBasicFileInformation(true, ec);
@@ -437,7 +462,9 @@ file_status directory_entry::GetStatus(std::error_code *ec) const {
       UpdatePermissionsInformation(true, ec);
       break;
     case CacheType_::FULL:
-      if (!cached_data_.perms_resolved) UpdatePermissionsInformation(true, ec);
+      if (!cached_data_.perms_resolved) {
+        UpdatePermissionsInformation(true, ec);
+      }
       break;
 #if !defined(__clang__)
     // clang properly sees that the switch covers all enum values and therefore
@@ -449,10 +476,13 @@ file_status directory_entry::GetStatus(std::error_code *ec) const {
   return file_status(cached_data_.type, cached_data_.non_symlink_perms);
 }
 
-file_status directory_entry::GetSymLinkStatus(std::error_code *ec) const {
+auto directory_entry::GetSymLinkStatus(std::error_code *ec) const
+    -> file_status {
   ErrorHandler<file_time_type> err("GetLastWriteTime", ec, &path_);
 
-  if (ec) ec->clear();
+  if (ec != nullptr) {
+    ec->clear();
+  }
   switch (cached_data_.cache_type) {
     case CacheType_::EMPTY:
       UpdateBasicFileInformation(false, ec);
@@ -480,7 +510,7 @@ file_status directory_entry::GetSymLinkStatus(std::error_code *ec) const {
 }
 
 #ifndef ASAP_WINDOWS
-std::error_code directory_entry::DoRefresh_impl() const noexcept {
+auto directory_entry::DoRefresh_impl() const noexcept -> std::error_code {
   cached_data_.Reset();
   std::error_code failure_ec;
   UpdateBasicFileInformation(true, &failure_ec);
@@ -504,7 +534,7 @@ namespace {
 
 #if !defined(ASAP_WINDOWS)
 template <class DirEntT, class = decltype(DirEntT::d_type)>
-file_type get_file_type(DirEntT *ent) {
+auto get_file_type(DirEntT *ent) -> file_type {
   switch (ent->d_type) {
     case DT_BLK:
       return file_type::block;
@@ -531,17 +561,18 @@ file_type get_file_type(DirEntT *ent) {
   return file_type::none;
 }
 
-std::pair<std::string, file_type> posix_readdir(DIR *dir_stream,
-                                                std::error_code &ec) {
+auto posix_readdir(DIR *dir_stream, std::error_code &ec)
+    -> std::pair<std::string, file_type> {
   struct dirent *dir_entry_ptr = nullptr;
   errno = 0;  // zero errno in order to detect errors
   ec.clear();
   if ((dir_entry_ptr = posix_port::readdir(dir_stream)) == nullptr) {
-    if (errno) ec = detail::capture_errno();
+    if (errno) {
+      ec = detail::capture_errno();
+    }
     return {};
-  } else {
-    return {dir_entry_ptr->d_name, get_file_type(dir_entry_ptr)};
   }
+  return {dir_entry_ptr->d_name, get_file_type(dir_entry_ptr)};
 }
 #else
 
@@ -708,7 +739,7 @@ class DirectoryStream {
 class DirectoryStream {
  public:
   DirectoryStream() = delete;
-  DirectoryStream &operator=(const DirectoryStream &) = delete;
+  auto operator=(const DirectoryStream &) -> DirectoryStream & = delete;
 
   DirectoryStream(DirectoryStream &&other) noexcept
       : stream_(other.stream_),
@@ -718,49 +749,55 @@ class DirectoryStream {
   }
 
   DirectoryStream(const path &root, directory_options opts, std::error_code &ec)
-      : stream_(nullptr), root_(root) {
+      : root_(root) {
     if ((stream_ = ::opendir(root.c_str())) == nullptr) {
       ec = detail::capture_errno();
       const auto allow_eacess =
           bool(opts & directory_options::skip_permission_denied);
-      if (allow_eacess && ec.value() == EACCES) ec.clear();
+      if (allow_eacess && ec.value() == EACCES) {
+        ec.clear();
+      }
       return;
     }
     advance(ec);
   }
 
   ~DirectoryStream() noexcept {
-    if (stream_) close();
+    if (stream_ != nullptr) {
+      close();
+    }
   }
 
-  bool good() const noexcept { return stream_ != nullptr; }
+  auto good() const noexcept -> bool { return stream_ != nullptr; }
 
-  bool advance(std::error_code &ec) {
+  auto advance(std::error_code &ec) -> bool {
     while (true) {
       auto entry_data_ = detail::posix_readdir(stream_, ec);
       auto &str = entry_data_.first;
       if (str == "." || str == "..") {
         continue;
-      } else if (ec || str.empty()) {
+      }
+      if (ec || str.empty()) {
         close();
         return false;
-      } else {
-        entry_.path_ = root_ / str;
-        entry_.cached_data_.type = entry_data_.second;
-        entry_.cached_data_.cache_type = directory_entry::CacheType_::BASIC;
-        if (entry_.cached_data_.type == file_type::symlink) {
-          entry_.cached_data_.symlink = true;
-          // FIXME: check if read_dir follows sumlinks or not
-        }
-        return true;
       }
+      entry_.path_ = root_ / path(str);
+      entry_.cached_data_.type = entry_data_.second;
+      entry_.cached_data_.cache_type = directory_entry::CacheType_::BASIC;
+      if (entry_.cached_data_.type == file_type::symlink) {
+        entry_.cached_data_.symlink = true;
+        // FIXME: check if read_dir follows sumlinks or not
+      }
+      return true;
     }
   }
 
  private:
-  std::error_code close() noexcept {
+  auto close() noexcept -> std::error_code {
     std::error_code m_ec;
-    if (::closedir(stream_) == -1) m_ec = detail::capture_errno();
+    if (::closedir(stream_) == -1) {
+      m_ec = detail::capture_errno();
+    }
     stream_ = nullptr;
     return m_ec;
   }
@@ -781,21 +818,28 @@ directory_iterator::directory_iterator(const path &p, std::error_code *ec,
 
   std::error_code m_ec;
   impl_ = std::make_shared<DirectoryStream>(p, opts, m_ec);
-  if (ec) *ec = m_ec;
+  if (ec != nullptr) {
+    *ec = m_ec;
+  }
   if (!impl_->good()) {
     impl_.reset();
-    if (m_ec) err.report(m_ec);
+    if (m_ec) {
+      err.report(m_ec);
+    }
   }
 }
 
-directory_iterator &directory_iterator::do_increment(std::error_code *ec) {
+auto directory_iterator::do_increment(std::error_code *ec)
+    -> directory_iterator & {
   ErrorHandler<void> err("directory_iterator::operator++()", ec);
   if (impl_) {
     std::error_code m_ec;
     if (!impl_->advance(m_ec)) {
       path root = std::move(impl_->root_);
       impl_.reset();
-      if (m_ec) err.report(m_ec, "at root \"" + root.string() + "\"");
+      if (m_ec) {
+        err.report(m_ec, "at root \"" + root.string() + "\"");
+      }
     }
   } else {
     err.report(std::errc::invalid_argument, "invalid iterator");
@@ -803,7 +847,7 @@ directory_iterator &directory_iterator::do_increment(std::error_code *ec) {
   return *this;
 }
 
-directory_entry const &directory_iterator::dereference() const {
+auto directory_iterator::dereference() const -> directory_entry const & {
   ASAP_ASSERT(impl_ && "attempt to dereference an invalid iterator");
   return impl_->entry_;
 }
@@ -822,7 +866,9 @@ recursive_directory_iterator::recursive_directory_iterator(
 
   std::error_code m_ec;
   DirectoryStream new_s(p, opt, m_ec);
-  if (m_ec) err.report(m_ec);
+  if (m_ec) {
+    err.report(m_ec);
+  }
   if (m_ec || !new_s.good()) return;
 
   impl_ = std::make_shared<SharedImpl>();
@@ -834,38 +880,45 @@ void recursive_directory_iterator::pop_impl(std::error_code *ec) {
   ErrorHandler<void> err("directory_iterator::pop()", ec);
   if (impl_) {
     impl_->dir_stack.pop();
-    if (impl_->dir_stack.empty())
+    if (impl_->dir_stack.empty()) {
       impl_.reset();
-    else
+    } else {
       Advance(ec);
+    }
   } else {
     err.report(std::errc::invalid_argument, "invalid iterator");
   }
 }
 
-directory_options recursive_directory_iterator::options() const {
+auto recursive_directory_iterator::options() const -> directory_options {
   ASAP_ASSERT(impl_ && "attempt to dereference an invalid iterator");
   return impl_->options;
 }
 
-int recursive_directory_iterator::depth() const {
+auto recursive_directory_iterator::depth() const -> int {
   ErrorHandler<int> err("recursive_directory_iterator::depth()", nullptr);
-  if (!impl_)
+  if (!impl_) {
     return err.report(std::errc::invalid_argument, "invalid iterator");
+  }
 
   return static_cast<int>(impl_->dir_stack.size() - 1);
 }
 
-const directory_entry &recursive_directory_iterator::dereference() const {
+auto recursive_directory_iterator::dereference() const
+    -> const directory_entry & {
   ASAP_ASSERT(impl_ && "attempt to dereference an invalid iterator");
   return impl_->dir_stack.top().entry_;
 }
 
-recursive_directory_iterator &recursive_directory_iterator::do_increment(
-    std::error_code *ec) {
-  if (ec) ec->clear();
+auto recursive_directory_iterator::do_increment(std::error_code *ec)
+    -> recursive_directory_iterator & {
+  if (ec != nullptr) {
+    ec->clear();
+  }
   if (recursion_pending()) {
-    if (TryRecursion(ec) || (ec && *ec)) return *this;
+    if (TryRecursion(ec) || ((ec != nullptr) && *ec)) {
+      return *this;
+    }
   }
   recursion_ = true;
   Advance(ec);
@@ -874,15 +927,20 @@ recursive_directory_iterator &recursive_directory_iterator::do_increment(
 
 void recursive_directory_iterator::Advance(std::error_code *ec) {
   ErrorHandler<void> err("recursive_directory_iterator::Advance()", ec);
-  if (!impl_)
+  if (!impl_) {
     return err.report(std::errc::invalid_argument, "invalid iterator");
+  }
 
   const directory_iterator end_it;
   auto &stack = impl_->dir_stack;
   std::error_code m_ec;
   while (!stack.empty()) {
-    if (stack.top().advance(m_ec)) return;
-    if (m_ec) break;
+    if (stack.top().advance(m_ec)) {
+      return;
+    }
+    if (m_ec) {
+      break;
+    }
     stack.pop();
   }
 
@@ -895,11 +953,12 @@ void recursive_directory_iterator::Advance(std::error_code *ec) {
   }
 }
 
-bool recursive_directory_iterator::TryRecursion(std::error_code *ec) {
+auto recursive_directory_iterator::TryRecursion(std::error_code *ec) -> bool {
   ErrorHandler<bool> err("recursive_directory_iterator::TryRecursion()", ec);
-  if (!impl_)
+  if (!impl_) {
     return err.report(make_error_code(std::errc::invalid_argument),
                       "invalid iterator");
+  }
 
   auto rec_sym = bool(options() & directory_options::follow_directory_symlink);
 
@@ -909,12 +968,20 @@ bool recursive_directory_iterator::TryRecursion(std::error_code *ec) {
   std::error_code m_ec;
   if (!rec_sym) {
     file_status st(curr_it.entry_.GetSymLinkFileType(&m_ec));
-    if (m_ec && status_known(st)) m_ec.clear();
-    if (m_ec || is_symlink(st) || !is_directory(st)) skip_rec = true;
+    if (m_ec && status_known(st)) {
+      m_ec.clear();
+    }
+    if (m_ec || is_symlink(st) || !is_directory(st)) {
+      skip_rec = true;
+    }
   } else {
     file_status st(curr_it.entry_.GetFileType(&m_ec));
-    if (m_ec && status_known(st)) m_ec.clear();
-    if (m_ec || !is_directory(st)) skip_rec = true;
+    if (m_ec && status_known(st)) {
+      m_ec.clear();
+    }
+    if (m_ec || !is_directory(st)) {
+      skip_rec = true;
+    }
   }
 
   if (!skip_rec) {
@@ -928,7 +995,9 @@ bool recursive_directory_iterator::TryRecursion(std::error_code *ec) {
     const auto allow_eacess =
         bool(impl_->options & directory_options::skip_permission_denied);
     if (m_ec.value() == EACCES && allow_eacess) {
-      if (ec) ec->clear();
+      if (ec != nullptr) {
+        ec->clear();
+      }
     } else {
       path at_ent = std::move(curr_it.entry_.path_);
       impl_.reset();

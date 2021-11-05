@@ -16,9 +16,8 @@
 #pragma clang diagnostic ignored "-Wundefined-func-template"
 #endif  // __clang__
 
-#include <stdlib.h>
-
 #include <catch2/catch.hpp>
+#include <cstdlib>
 
 #include "fs_testsuite.h"
 
@@ -35,14 +34,14 @@ void clean_env() {
 #endif
 }
 
-bool set_env(const char* name, std::string value) {
+auto set_env(const char* name, const std::string& value) -> bool {
 #if defined(ASAP_WINDOWS)
   std::string s = name;
   s += '=';
   s += value;
   return !::_putenv(s.c_str());
 #else
-  return !::setenv(name, value.c_str(), 1);
+  return ::setenv(name, value.c_str(), 1) == 0;
 #endif
 }
 }  // namespace
@@ -55,7 +54,9 @@ TEST_CASE("Ops / temp_dir / default (/tmp)",
           "[common][filesystem][ops][temp_dir]") {
   clean_env();
 
-  if (!fs::exists("/tmp")) return;  // just give up
+  if (!fs::exists("/tmp")) {
+    return;  // just give up
+  }
 
   std::error_code ec = make_error_code(std::errc::invalid_argument);
   fs::path p1 = fs::temp_directory_path(ec);
@@ -69,8 +70,9 @@ TEST_CASE("Ops / temp_dir / default (/tmp)",
 TEST_CASE("Ops / temp_dir / TMP", "[common][filesystem][ops][temp_dir]") {
   clean_env();
 
-  if (!set_env("TMP", testing::nonexistent_path().string()))
+  if (!set_env("TMP", testing::nonexistent_path().string())) {
     return;  // just give up
+  }
 
   std::error_code ec;
   fs::path p = fs::temp_directory_path(ec);

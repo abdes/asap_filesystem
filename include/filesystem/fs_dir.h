@@ -10,6 +10,7 @@
 #include <filesystem/filesystem.h>
 
 #include <memory>  // for std::shared_ptr
+#include <utility>
 
 namespace asap {
 namespace filesystem {
@@ -30,7 +31,7 @@ time) during directory iteration.
 @see https://en.cppreference.com/w/cpp/filesystem/directory_entry
 */
 class ASAP_FILESYSTEM_API directory_entry {
-  typedef asap::filesystem::path path_type;
+  using path_type = asap::filesystem::path;
 
  public:
   // constructors and destructors
@@ -38,19 +39,19 @@ class ASAP_FILESYSTEM_API directory_entry {
   directory_entry(directory_entry const &) = default;
   directory_entry(directory_entry &&) noexcept = default;
 
-  explicit directory_entry(path_type const &p) : path_(p) {
+  explicit directory_entry(path_type p) : path_(std::move(p)) {
     std::error_code ec;
     DoRefresh(&ec);
   }
 
-  directory_entry(path_type const &p, std::error_code &ec) : path_(p) {
+  directory_entry(path_type p, std::error_code &ec) : path_(std::move(p)) {
     DoRefresh(&ec);
   }
 
   ~directory_entry() = default;
 
-  directory_entry &operator=(directory_entry const &) = default;
-  directory_entry &operator=(directory_entry &&) noexcept = default;
+  auto operator=(directory_entry const &) -> directory_entry & = default;
+  auto operator=(directory_entry &&) noexcept -> directory_entry & = default;
 
   void assign(path_type const &p) {
     path_ = p;
@@ -83,102 +84,110 @@ class ASAP_FILESYSTEM_API directory_entry {
   }
 
   /// Returns the full path the directory entry refers to.
-  path_type const &path() const noexcept { return path_; }
+  auto path() const noexcept -> path_type const & { return path_; }
 
   /// Returns the full path the directory entry refers to.
-  operator const path_type &() const noexcept { return path_; }
+  explicit operator const path_type &() const noexcept { return path_; }
 
   /// Checks whether the pointed-to object exists (follows symlinks).
-  bool exists() const {
+  auto exists() const -> bool {
     return asap::filesystem::exists(file_status{GetFileType()});
   }
 
   /// Checks whether the pointed-to object exists (follows symlinks).
-  bool exists(std::error_code &ec) const noexcept {
+  auto exists(std::error_code &ec) const noexcept -> bool {
     return asap::filesystem::exists(file_status{GetFileType(&ec)});
   }
 
   /// Checks whether the pointed-to object is a block device (follows symlinks).
-  bool is_block_file() const { return GetFileType() == file_type::block; }
+  auto is_block_file() const -> bool {
+    return GetFileType() == file_type::block;
+  }
 
   /// Checks whether the pointed-to object is a block device (follows symlinks).
-  bool is_block_file(std::error_code &ec) const noexcept {
+  auto is_block_file(std::error_code &ec) const noexcept -> bool {
     return GetFileType(&ec) == file_type::block;
   }
 
   /// Checks whether the pointed-to object is a charcter device (follows
   /// symlinks).
-  bool is_character_file() const {
+  auto is_character_file() const -> bool {
     return GetFileType() == file_type::character;
   }
 
   /// Checks whether the pointed-to object is a charcter device (follows
   /// symlinks).
-  bool is_character_file(std::error_code &ec) const noexcept {
+  auto is_character_file(std::error_code &ec) const noexcept -> bool {
     return GetFileType(&ec) == file_type::character;
   }
 
   /// Checks whether the pointed-to object is a directory (follows symlinks).
-  bool is_directory() const { return GetFileType() == file_type::directory; }
+  auto is_directory() const -> bool {
+    return GetFileType() == file_type::directory;
+  }
 
   /// Checks whether the pointed-to object is a directory (follows symlinks).
-  bool is_directory(std::error_code &ec) const noexcept {
+  auto is_directory(std::error_code &ec) const noexcept -> bool {
     return GetFileType(&ec) == file_type::directory;
   }
 
   /// Checks whether the pointed-to object is a FIFO or pipe file (follows
   /// symlinks).
-  bool is_fifo() const { return GetFileType() == file_type::fifo; }
+  auto is_fifo() const -> bool { return GetFileType() == file_type::fifo; }
 
   /// Checks whether the pointed-to object is a FIFO or pipe file (follows
   /// symlinks).
-  bool is_fifo(std::error_code &ec) const noexcept {
+  auto is_fifo(std::error_code &ec) const noexcept -> bool {
     return GetFileType(&ec) == file_type::fifo;
   }
 
   /// Checks whether the pointed-to object is an other file (not a regular file,
   /// directory or symlink) (follows symlinks).
-  bool is_other() const {
+  auto is_other() const -> bool {
     return asap::filesystem::is_other(file_status{GetFileType()});
   }
 
   /// Checks whether the pointed-to object is an other file (not a regular file,
   /// directory or symlink) (follows symlinks).
-  bool is_other(std::error_code &ec) const noexcept {
+  auto is_other(std::error_code &ec) const noexcept -> bool {
     return asap::filesystem::is_other(file_status{GetFileType(&ec)});
   }
 
   /// Checks whether the pointed-to object is a regular file (follows symlinks).
-  bool is_regular_file() const { return GetFileType() == file_type::regular; }
+  auto is_regular_file() const -> bool {
+    return GetFileType() == file_type::regular;
+  }
 
   /// Checks whether the pointed-to object is a regular file (follows symlinks).
-  bool is_regular_file(std::error_code &ec) const noexcept {
+  auto is_regular_file(std::error_code &ec) const noexcept -> bool {
     return GetFileType(&ec) == file_type::regular;
   }
 
   /// Checks whether the pointed-to object is a named socket (follows symlinks).
-  bool is_socket() const { return GetFileType() == file_type::socket; }
+  auto is_socket() const -> bool { return GetFileType() == file_type::socket; }
 
   /// Checks whether the pointed-to object is a named socket (follows symlinks).
-  bool is_socket(std::error_code &ec) const noexcept {
+  auto is_socket(std::error_code &ec) const noexcept -> bool {
     return GetFileType(&ec) == file_type::socket;
   }
 
   /// Checks whether the pointed-to object is a symbolic link (does not follow
   /// symlinks).
-  bool is_symlink() const { return GetSymLinkFileType() == file_type::symlink; }
+  auto is_symlink() const -> bool {
+    return GetSymLinkFileType() == file_type::symlink;
+  }
 
   /// Checks whether the pointed-to object is a symbolic link (does not follow
   /// symlinks).
-  bool is_symlink(std::error_code &ec) const noexcept {
+  auto is_symlink(std::error_code &ec) const noexcept -> bool {
     return GetSymLinkFileType(&ec) == file_type::symlink;
   }
 
   /// Returns the size of the referred-to filesystem object (follows symlinks).
-  uintmax_t file_size() const { return GetSize(); }
+  auto file_size() const -> uintmax_t { return GetSize(); }
 
   /// Returns the size of the referred-to filesystem object (follows symlinks).
-  uintmax_t file_size(std::error_code &ec) const noexcept {
+  auto file_size(std::error_code &ec) const noexcept -> uintmax_t {
     try {
       return GetSize(&ec);
     } catch (...) {
@@ -189,11 +198,11 @@ class ASAP_FILESYSTEM_API directory_entry {
 
   /// Returns the number of hard links for the referred-to filesystem object
   /// (does not follow symlinks).
-  uintmax_t hard_link_count() const { return GetHardLinkCount(); }
+  auto hard_link_count() const -> uintmax_t { return GetHardLinkCount(); }
 
   /// Returns the number of hard links for the referred-to filesystem object
   /// (does not follow symlinks).
-  uintmax_t hard_link_count(std::error_code &ec) const noexcept {
+  auto hard_link_count(std::error_code &ec) const noexcept -> uintmax_t {
     try {
       return GetHardLinkCount(&ec);
     } catch (...) {
@@ -204,11 +213,11 @@ class ASAP_FILESYSTEM_API directory_entry {
 
   /// Returns the last modification time for the referred-to filesystem object
   /// (follows symlinks).
-  file_time_type last_write_time() const { return GetLastWriteTime(); }
+  auto last_write_time() const -> file_time_type { return GetLastWriteTime(); }
 
   /// Returns the last modification time for the referred-to filesystem object
   /// (follows symlinks).
-  file_time_type last_write_time(std::error_code &ec) const noexcept {
+  auto last_write_time(std::error_code &ec) const noexcept -> file_time_type {
     try {
       return GetLastWriteTime(&ec);
     } catch (...) {
@@ -219,45 +228,45 @@ class ASAP_FILESYSTEM_API directory_entry {
 
   /// Returns status of the entry, as if determined by a status call (symlinks
   /// are followed to their targets).
-  file_status status() const { return GetStatus(); }
+  auto status() const -> file_status { return GetStatus(); }
 
   /// Returns status of the entry, as if determined by a status call (symlinks
   /// are followed to their targets).
-  file_status status(std::error_code &ec) const noexcept {
+  auto status(std::error_code &ec) const noexcept -> file_status {
     return GetStatus(&ec);
   }
 
   /// Returns status of the entry, as if determined by a symlink_status call
   /// (symlinks are not followed).
-  file_status symlink_status() const { return GetSymLinkStatus(); }
+  auto symlink_status() const -> file_status { return GetSymLinkStatus(); }
 
   /// Returns status of the entry, as if determined by a symlink_status call
   /// (symlinks are not followed).
-  file_status symlink_status(std::error_code &ec) const noexcept {
+  auto symlink_status(std::error_code &ec) const noexcept -> file_status {
     return GetSymLinkStatus(&ec);
   }
 
-  bool operator<(directory_entry const &rhs) const noexcept {
+  auto operator<(directory_entry const &rhs) const noexcept -> bool {
     return path_ < rhs.path_;
   }
 
-  bool operator==(directory_entry const &rhs) const noexcept {
+  auto operator==(directory_entry const &rhs) const noexcept -> bool {
     return path_ == rhs.path_;
   }
 
-  bool operator!=(directory_entry const &rhs) const noexcept {
+  auto operator!=(directory_entry const &rhs) const noexcept -> bool {
     return path_ != rhs.path_;
   }
 
-  bool operator<=(directory_entry const &rhs) const noexcept {
+  auto operator<=(directory_entry const &rhs) const noexcept -> bool {
     return path_ <= rhs.path_;
   }
 
-  bool operator>(directory_entry const &rhs) const noexcept {
+  auto operator>(directory_entry const &rhs) const noexcept -> bool {
     return path_ > rhs.path_;
   }
 
-  bool operator>=(directory_entry const &rhs) const noexcept {
+  auto operator>=(directory_entry const &rhs) const noexcept -> bool {
     return path_ >= rhs.path_;
   }
 
@@ -328,10 +337,12 @@ class ASAP_FILESYSTEM_API directory_entry {
     cached_data_ = data;
   }
 
-  std::error_code DoRefresh_impl() const noexcept;
+  auto DoRefresh_impl() const noexcept -> std::error_code;
 
-  static bool IsDoesNotExistError(std::error_code const &ec) {
-    if (!ec) return true;
+  static auto IsDoesNotExistError(std::error_code const &ec) -> bool {
+    if (!ec) {
+      return true;
+    }
     switch (static_cast<std::errc>(ec.value())) {
       case std::errc::no_such_file_or_directory:
       case std::errc::not_a_directory:
@@ -343,12 +354,13 @@ class ASAP_FILESYSTEM_API directory_entry {
 
   void HandleError(const char *msg, std::error_code *dest_ec,
                    std::error_code const &ec, bool allow_dne = false) const {
-    if (dest_ec) {
+    if (dest_ec != nullptr) {
       *dest_ec = ec;
       return;
     }
-    if (ec && (!allow_dne || !IsDoesNotExistError(ec)))
+    if (ec && (!allow_dne || !IsDoesNotExistError(ec))) {
       throw filesystem_error(msg, path_, ec);
+    }
   }
 
   void DoRefresh(std::error_code *ec = nullptr) const {
@@ -363,33 +375,33 @@ class ASAP_FILESYSTEM_API directory_entry {
   void UpdatePermissionsInformation(bool follow_symlinks,
                                     std::error_code *ec = nullptr) const;
 
-  file_type GetSymLinkFileType(std::error_code *ec = nullptr) const;
+  auto GetSymLinkFileType(std::error_code *ec = nullptr) const -> file_type;
 
-  file_type GetFileType(std::error_code *ec = nullptr) const;
+  auto GetFileType(std::error_code *ec = nullptr) const -> file_type;
 
-  file_status GetStatus(std::error_code *ec = nullptr) const;
+  auto GetStatus(std::error_code *ec = nullptr) const -> file_status;
 
-  file_status GetSymLinkStatus(std::error_code *ec = nullptr) const;
+  auto GetSymLinkStatus(std::error_code *ec = nullptr) const -> file_status;
 
-  uintmax_t GetSize(std::error_code *ec = nullptr) const;
+  auto GetSize(std::error_code *ec = nullptr) const -> uintmax_t;
 
-  uintmax_t GetHardLinkCount(std::error_code *ec = nullptr) const;
+  auto GetHardLinkCount(std::error_code *ec = nullptr) const -> uintmax_t;
 
-  file_time_type GetLastWriteTime(std::error_code *ec = nullptr) const;
+  auto GetLastWriteTime(std::error_code *ec = nullptr) const -> file_time_type;
 
- private:
   path_type path_;
   mutable CachedData_ cached_data_;
 };  // namespace filesystem
 
 class DirectoryEntryProxy_ {
  public:
-  inline directory_entry operator*() { return std::move(entry_); }
+  inline auto operator*() -> directory_entry { return std::move(entry_); }
 
  private:
   friend class directory_iterator;
   friend class recursive_directory_iterator;
-  explicit DirectoryEntryProxy_(directory_entry const &entry) : entry_(entry) {}
+  explicit DirectoryEntryProxy_(directory_entry entry)
+      : entry_(std::move(entry)) {}
   DirectoryEntryProxy_(DirectoryEntryProxy_ &&other) noexcept
       : entry_(std::move(other.entry_)) {}
 
@@ -419,13 +431,12 @@ be observed through the iterator.
 */
 class ASAP_FILESYSTEM_API directory_iterator {
  public:
-  typedef directory_entry value_type;
-  typedef ptrdiff_t difference_type;
-  typedef value_type const *pointer;
-  typedef value_type const &reference;
-  typedef std::input_iterator_tag iterator_category;
+  using value_type = directory_entry;
+  using difference_type = ptrdiff_t;
+  using pointer = const value_type *;
+  using reference = const value_type &;
+  using iterator_category = std::input_iterator_tag;
 
- public:
   // ctor & dtor
   directory_iterator() noexcept = default;
 
@@ -437,15 +448,14 @@ class ASAP_FILESYSTEM_API directory_iterator {
   directory_iterator(const path &p, std::error_code &ec)
       : directory_iterator(p, &ec) {}
 
-  directory_iterator(const path &p, directory_options opts,
-                     std::error_code &ec)
+  directory_iterator(const path &p, directory_options opts, std::error_code &ec)
       : directory_iterator(p, &ec, opts) {}
 
   directory_iterator(const directory_iterator &) = default;
   directory_iterator(directory_iterator &&) = default;
-  directory_iterator &operator=(const directory_iterator &) = default;
+  auto operator=(const directory_iterator &) -> directory_iterator & = default;
 
-  directory_iterator &operator=(directory_iterator &&other) noexcept {
+  auto operator=(directory_iterator &&other) noexcept -> directory_iterator & {
     // non-default implementation provided to support self-move assign.
     if (this != &other) {
       impl_ = std::move(other.impl_);
@@ -455,58 +465,59 @@ class ASAP_FILESYSTEM_API directory_iterator {
 
   ~directory_iterator() = default;
 
-  const directory_entry &operator*() const {
+  auto operator*() const -> const directory_entry & {
     ASAP_ASSERT(impl_ && "The end iterator cannot be dereferenced");
     return dereference();
   }
 
-  const directory_entry *operator->() const { return &**this; }
+  auto operator->() const -> const directory_entry * { return &**this; }
 
-  directory_iterator &operator++() { return do_increment(); }
+  auto operator++() -> directory_iterator & { return do_increment(); }
 
-  DirectoryEntryProxy_ operator++(int) {
+  auto operator++(int) -> DirectoryEntryProxy_ {
     DirectoryEntryProxy_ proxy(**this);
     do_increment();
     return proxy;
   }
 
-  directory_iterator &increment(std::error_code &ec) {
+  auto increment(std::error_code &ec) -> directory_iterator & {
     return do_increment(&ec);
   }
 
  private:
-  inline friend bool operator==(const directory_iterator &,
-                                const directory_iterator &) noexcept;
+  inline friend auto operator==(const directory_iterator & /*lhs*/,
+                                const directory_iterator & /*rhs*/) noexcept
+      -> bool;
 
   // construct the dir_stream
   directory_iterator(const path &, std::error_code *,
                      directory_options = directory_options::none);
 
-  directory_iterator &do_increment(std::error_code *ec = nullptr);
+  auto do_increment(std::error_code *ec = nullptr) -> directory_iterator &;
 
-  const directory_entry &dereference() const;
+  auto dereference() const -> const directory_entry &;
 
- private:
   std::shared_ptr<DirectoryStream> impl_;
 };
 
-inline bool operator==(const directory_iterator &lhs,
-                       const directory_iterator &rhs) noexcept {
+inline auto operator==(const directory_iterator &lhs,
+                       const directory_iterator &rhs) noexcept -> bool {
   return lhs.impl_ == rhs.impl_;
 }
 
-inline bool operator!=(const directory_iterator &lhs,
-                       const directory_iterator &rhs) noexcept {
+inline auto operator!=(const directory_iterator &lhs,
+                       const directory_iterator &rhs) noexcept -> bool {
   return !(lhs == rhs);
 }
 
 // enable directory_iterator range-based for statements
-inline directory_iterator begin(directory_iterator iter) noexcept {
+inline auto begin(directory_iterator iter) noexcept -> directory_iterator {
   return iter;
 }
 
-inline directory_iterator end(const directory_iterator &) noexcept {
-  return directory_iterator();
+inline auto end(const directory_iterator & /*unused*/) noexcept
+    -> directory_iterator {
+  return {};
 }
 
 // -----------------------------------------------------------------------------
@@ -546,10 +557,9 @@ class ASAP_FILESYSTEM_API recursive_directory_iterator {
   using reference = directory_entry const &;
   using iterator_category = std::input_iterator_tag;
 
- public:
   // constructors and destructor
 
-  recursive_directory_iterator() noexcept : recursion_(false) {}
+  recursive_directory_iterator() noexcept = default;
 
   explicit recursive_directory_iterator(
       const path &p, directory_options xoptions = directory_options::none)
@@ -565,11 +575,11 @@ class ASAP_FILESYSTEM_API recursive_directory_iterator {
   recursive_directory_iterator(const recursive_directory_iterator &) = default;
   recursive_directory_iterator(recursive_directory_iterator &&) = default;
 
-  recursive_directory_iterator &operator=(
-      const recursive_directory_iterator &) = default;
+  auto operator=(const recursive_directory_iterator &)
+      -> recursive_directory_iterator & = default;
 
-  recursive_directory_iterator &operator=(
-      recursive_directory_iterator &&other) noexcept {
+  auto operator=(recursive_directory_iterator &&other) noexcept
+      -> recursive_directory_iterator & {
     // non-default implementation provided to support self-move assign.
     if (this != &other) {
       impl_ = std::move(other.impl_);
@@ -580,73 +590,77 @@ class ASAP_FILESYSTEM_API recursive_directory_iterator {
 
   ~recursive_directory_iterator() = default;
 
-  const directory_entry &operator*() const { return dereference(); }
+  auto operator*() const -> const directory_entry & { return dereference(); }
 
-  const directory_entry *operator->() const { return &dereference(); }
+  auto operator->() const -> const directory_entry * { return &dereference(); }
 
-  recursive_directory_iterator &operator++() { return do_increment(); }
+  auto operator++() -> recursive_directory_iterator & { return do_increment(); }
 
-  DirectoryEntryProxy_ operator++(int) {
+  auto operator++(int) -> DirectoryEntryProxy_ {
     DirectoryEntryProxy_ p(**this);
     do_increment();
     return p;
   }
 
-  recursive_directory_iterator &increment(std::error_code &ec) {
+  auto increment(std::error_code &ec) -> recursive_directory_iterator & {
     return do_increment(&ec);
   }
 
-  directory_options options() const;
-  int depth() const;
+  auto options() const -> directory_options;
+  auto depth() const -> int;
 
   void pop() { pop_impl(); }
 
   void pop(std::error_code &ec) { pop_impl(&ec); }
 
-  bool recursion_pending() const { return recursion_; }
+  auto recursion_pending() const -> bool { return recursion_; }
 
   void disable_recursion_pending() { recursion_ = false; }
 
  private:
-  recursive_directory_iterator(const path &p, directory_options __opt,
+  recursive_directory_iterator(const path &p, directory_options _opt,
                                std::error_code *ec);
 
-  const directory_entry &dereference() const;
+  auto dereference() const -> const directory_entry &;
 
-  bool TryRecursion(std::error_code *ec);
+  auto TryRecursion(std::error_code *ec) -> bool;
 
   void Advance(std::error_code *ec = nullptr);
 
-  recursive_directory_iterator &do_increment(std::error_code *ec = nullptr);
+  auto do_increment(std::error_code *ec = nullptr)
+      -> recursive_directory_iterator &;
 
   void pop_impl(std::error_code *ec = nullptr);
 
-  inline friend bool operator==(const recursive_directory_iterator &,
-                                const recursive_directory_iterator &) noexcept;
+  inline friend auto operator==(
+      const recursive_directory_iterator & /*lhs*/,
+      const recursive_directory_iterator & /*rhs*/) noexcept -> bool;
 
   struct SharedImpl;
   std::shared_ptr<SharedImpl> impl_;
-  bool recursion_;
+  bool recursion_{};
 };  // class recursive_directory_iterator
 
-inline bool operator==(const recursive_directory_iterator &lhs,
-                       const recursive_directory_iterator &rhs) noexcept {
+inline auto operator==(const recursive_directory_iterator &lhs,
+                       const recursive_directory_iterator &rhs) noexcept
+    -> bool {
   return lhs.impl_ == rhs.impl_;
 }
 
-inline bool operator!=(const recursive_directory_iterator &lhs,
-                       const recursive_directory_iterator &rhs) noexcept {
+inline auto operator!=(const recursive_directory_iterator &lhs,
+                       const recursive_directory_iterator &rhs) noexcept
+    -> bool {
   return !(lhs == rhs);
 }
 // enable recursive_directory_iterator range-based for statements
-inline recursive_directory_iterator begin(
-    recursive_directory_iterator iter) noexcept {
+inline auto begin(recursive_directory_iterator iter) noexcept
+    -> recursive_directory_iterator {
   return iter;
 }
 
-inline recursive_directory_iterator end(
-    const recursive_directory_iterator &) noexcept {
-  return recursive_directory_iterator();
+inline auto end(const recursive_directory_iterator & /*unused*/) noexcept
+    -> recursive_directory_iterator {
+  return {};
 }
 
 }  // namespace filesystem

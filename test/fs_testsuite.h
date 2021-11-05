@@ -6,6 +6,7 @@
 // clang-format off
 #include <common/platform.h>
 #include <common/config.h>
+#include "catch2/catch.hpp"
 #if defined(ASAP_POSIX)
 # if !defined(ASAP_APPLE) && !defined(_POSIX_C_SOURCE)
 #  define _POSIX_C_SOURCE ASAP_POSIX_LEVEL  // Request POSIX api
@@ -18,11 +19,12 @@
 #include <Windows.h>
 #endif
 
+#include <filesystem/filesystem.h>
+
 #include <cstdio>
 #include <fstream>
 #include <sstream>
-
-#include <filesystem/filesystem.h>
+#include <utility>
 
 namespace fs = asap::filesystem;
 using asap::filesystem::path;
@@ -43,14 +45,14 @@ class FilesystemErrorMatcher : public Catch::MatcherBase<fs::filesystem_error> {
   path p2_;
 
  public:
-  FilesystemErrorMatcher(std::error_code ec) : ec_(std::move(ec)) {}
+  explicit FilesystemErrorMatcher(std::error_code ec) : ec_(ec) {}
   FilesystemErrorMatcher(std::error_code ec, path p1)
-      : ec_(std::move(ec)), p1_(std::move(p1)) {}
+      : ec_(ec), p1_(std::move(p1)) {}
   FilesystemErrorMatcher(std::error_code ec, path p1, path p2)
-      : ec_(std::move(ec)), p1_(std::move(p1)), p2_(std::move(p2)) {}
+      : ec_(ec), p1_(std::move(p1)), p2_(std::move(p2)) {}
 
   // Performs the test for this matcher
-  virtual bool match(fs::filesystem_error const &error) const override {
+  auto match(fs::filesystem_error const &error) const -> bool override {
     return (error.code() == ec_) && (error.path1() == p1_) &&
            (error.path2() == p2_);
   }
@@ -59,11 +61,15 @@ class FilesystemErrorMatcher : public Catch::MatcherBase<fs::filesystem_error> {
   // include any provided data (the begin/ end in this case) and
   // be written as if it were stating a fact (in the output it will be
   // preceded by the value under test).
-  virtual std::string describe() const override {
+  auto describe() const -> std::string override {
     std::ostringstream ss;
     ss << "error code " << ec_;
-    if (!p1_.empty()) ss << ", path1 '" << p1_.string() << "'";
-    if (!p2_.empty()) ss << ", path2 '" << p2_.string() << "'";
+    if (!p1_.empty()) {
+      ss << ", path1 '" << p1_.string() << "'";
+    }
+    if (!p2_.empty()) {
+      ss << ", path2 '" << p2_.string() << "'";
+    }
     return ss.str();
   }
 };
@@ -73,16 +79,17 @@ class FilesystemErrorMatcher : public Catch::MatcherBase<fs::filesystem_error> {
 #endif  // __clang__
 
 // The builder functions
-inline FilesystemErrorMatcher FilesystemErrorDetail(std::error_code ec) {
-  return FilesystemErrorMatcher(std::move(ec));
+inline auto FilesystemErrorDetail(std::error_code ec)
+    -> FilesystemErrorMatcher {
+  return FilesystemErrorMatcher(ec);
 }
-inline FilesystemErrorMatcher FilesystemErrorDetail(std::error_code ec,
-                                                    path p1) {
-  return FilesystemErrorMatcher(std::move(ec), std::move(p1));
+inline auto FilesystemErrorDetail(std::error_code ec, path p1)
+    -> FilesystemErrorMatcher {
+  return {ec, std::move(p1)};
 }
-inline FilesystemErrorMatcher FilesystemErrorDetail(std::error_code ec, path p1,
-                                                    path p2) {
-  return FilesystemErrorMatcher(std::move(ec), std::move(p1), std::move(p2));
+inline auto FilesystemErrorDetail(std::error_code ec, path p1, path p2)
+    -> FilesystemErrorMatcher {
+  return {ec, std::move(p1), std::move(p2)};
 }
 
 inline void ComparePaths(const path &p1, const path &p2) {
@@ -104,30 +111,31 @@ inline void ComparePaths(const path &p1, const path &p2) {
   CHECK(d1 == d2);
 }
 
-inline const std::vector<std::string> TEST_PATHS() {
+inline auto TEST_PATHS() -> std::vector<std::string> {
   return {"",     "/",     "//",       "/.",     "/./",    "/a",
           "/a/",  "/a//",  "/a/b/c/d", "/a//b",  "a",      "a/b",
           "a/b/", "a/b/c", "a/b/c.d",  "a/b/..", "a/b/c.", "a/b/.c"};
 }
 
-inline path root_path() {
+inline auto root_path() -> path {
 #if defined(ASAP_WINDOWS)
   return "c:/";
 #else
-  return "/";
+  return {"/"};
 #endif
 }
 
 // This is NOT supposed to be a secure way to get a unique name!
 // We just need a path that doesn't exist for testing purposes.
-inline path nonexistent_path() {
+inline auto nonexistent_path() -> path {
   path p;
 #if defined(ASAP_POSIX)
   char tmp[] = "filesystem-test.XXXXXX";
   int fd = ::mkstemp(tmp);
-  if (fd == -1)
+  if (fd == -1) {
     throw fs::filesystem_error("mkstemp failed",
                                std::error_code(errno, std::generic_category()));
+  }
   ::unlink(tmp);
   ::close(fd);
   p = tmp;
@@ -153,16 +161,17 @@ struct scoped_file {
     std::ofstream{p.c_str()};
   }
 
-  scoped_file(path p, adopt_file_t) : path_(p) {}
+  scoped_file(path p, adopt_file_t /*unused*/) : path_(std::move(p)) {}
 
   ~scoped_file() {
     if (!path_.empty()) {
       std::error_code ec;
       fs::permissions(path_, fs::perms::owner_all, ec);
-      if (fs::is_directory(path_))
+      if (fs::is_directory(path_)) {
         fs::remove_all(path_, ec);
-      else
+      } else {
         fs::remove(path_, ec);
+      }
     }
   }
 

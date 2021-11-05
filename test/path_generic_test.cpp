@@ -25,7 +25,7 @@
 // -----------------------------------------------------------------------------
 
 TEST_CASE("Path / generic / string", "[common][filesystem][path][generic]") {
-  REQUIRE(path().generic_string() == "");
+  REQUIRE(path().generic_string().empty());
   REQUIRE(path("/").generic_string() == "/");
   REQUIRE(path("////").generic_string() == "/");
 #ifdef ASAP_WINDOWS

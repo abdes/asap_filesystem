@@ -33,14 +33,14 @@ HEDLEY_PRAGMA(clang diagnostic ignored "-Wunused-template")
 #endif
 
 template <typename Iter>
-static IsPathableIter<Iter> IsPathable(Iter, int);
+static auto IsPathable(Iter, int) -> IsPathableIter<Iter>;
 
 template <typename CharT, typename Traits, typename Alloc>
-static IsEncodedChar<CharT> IsPathable(
-    const std::basic_string<CharT, Traits, Alloc> &, int);
+static auto IsPathable(const std::basic_string<CharT, Traits, Alloc> &, int)
+    -> IsEncodedChar<CharT>;
 
 template <typename Unknown>
-static std::false_type IsPathable(const Unknown &, ...);
+static auto IsPathable(const Unknown &, ...) -> std::false_type;
 
 #if HEDLEY_HAS_WARNING("-Wunused-template")
 HEDLEY_DIAGNOSTIC_POP

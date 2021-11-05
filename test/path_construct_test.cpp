@@ -47,7 +47,7 @@ TEST_CASE("Path / construct / default",
 
 TEST_CASE("Path / construct / copy", "[common][filesystem][path][construct]") {
   for (const path p : TEST_PATHS()) {
-    path copy = p;
+    path copy = p;  // NOLINT(performance-unnecessary-copy-initialization)
     ComparePaths(p, copy);
   }
 }

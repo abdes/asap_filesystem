@@ -66,9 +66,9 @@ TEST_CASE("Path / decompose / filename",
   for (const path p : TEST_PATHS()) {
     CAPTURE(p);
     path f = p.filename();
-    if (p.empty())
+    if (p.empty()) {
       REQUIRE(f.empty());
-    else {
+    } else {
       const path back = *--p.end();
       if (back.has_root_path()) {
         REQUIRE(f.empty());
@@ -132,8 +132,12 @@ TEST_CASE("Path / decompose / relative_path",
     REQUIRE(!prel.has_root_name());
     path rel;
     for (const auto &cmpt : p) {
-      if (!cmpt.has_root_path()) after_root = true;
-      if (after_root) rel /= cmpt;
+      if (!cmpt.has_root_path()) {
+        after_root = true;
+      }
+      if (after_root) {
+        rel /= cmpt;
+      }
     }
     REQUIRE(prel == rel);
   }
@@ -175,7 +179,9 @@ TEST_CASE("Path / decompose / root_directory",
     CAPTURE(p);
     path rootdir = p.root_directory();
     REQUIRE(!rootdir.has_relative_path());
-    if (!rootdir.empty()) REQUIRE(rootdir.string() == path("/"));
+    if (!rootdir.empty()) {
+      REQUIRE(rootdir.string() == path("/"));
+    }
   }
 }
 
@@ -220,8 +226,9 @@ TEST_CASE("Path / decompose / stem", "[common][filesystem][path][decompose]") {
   REQUIRE(path("/foo/bar.txt").stem() == path("bar"));
   path p = "foo.bar.baz.tar";
   std::vector<std::string> v;
-  for (; !p.extension().empty(); p = p.stem())
+  for (; !p.extension().empty(); p = p.stem()) {
     v.push_back(p.extension().string());
+  }
   REQUIRE(v.at(0) == ".tar");
   REQUIRE(v.at(1) == ".baz");
   REQUIRE(v.at(2) == ".bar");
