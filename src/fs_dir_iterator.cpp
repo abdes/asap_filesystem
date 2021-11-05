@@ -811,8 +811,8 @@ directory_entry const &directory_iterator::dereference() const {
 // recursive_directory_iterator
 
 struct recursive_directory_iterator::SharedImpl {
-  std::stack<DirectoryStream> __stack_;
-  directory_options __options_{directory_options::none};
+  std::stack<DirectoryStream> dir_stack;
+  directory_options options{directory_options::none};
 };
 
 recursive_directory_iterator::recursive_directory_iterator(
@@ -826,15 +826,15 @@ recursive_directory_iterator::recursive_directory_iterator(
   if (m_ec || !new_s.good()) return;
 
   impl_ = std::make_shared<SharedImpl>();
-  impl_->__options_ = opt;
-  impl_->__stack_.push(std::move(new_s));
+  impl_->options = opt;
+  impl_->dir_stack.push(std::move(new_s));
 }
 
 void recursive_directory_iterator::pop_impl(std::error_code *ec) {
   ErrorHandler<void> err("directory_iterator::pop()", ec);
   if (impl_) {
-    impl_->__stack_.pop();
-    if (impl_->__stack_.empty())
+    impl_->dir_stack.pop();
+    if (impl_->dir_stack.empty())
       impl_.reset();
     else
       Advance(ec);
@@ -845,7 +845,7 @@ void recursive_directory_iterator::pop_impl(std::error_code *ec) {
 
 directory_options recursive_directory_iterator::options() const {
   ASAP_ASSERT(impl_ && "attempt to dereference an invalid iterator");
-  return impl_->__options_;
+  return impl_->options;
 }
 
 int recursive_directory_iterator::depth() const {
@@ -853,12 +853,12 @@ int recursive_directory_iterator::depth() const {
   if (!impl_)
     return err.report(std::errc::invalid_argument, "invalid iterator");
 
-  return static_cast<int>(impl_->__stack_.size() - 1);
+  return static_cast<int>(impl_->dir_stack.size() - 1);
 }
 
 const directory_entry &recursive_directory_iterator::dereference() const {
   ASAP_ASSERT(impl_ && "attempt to dereference an invalid iterator");
-  return impl_->__stack_.top().entry_;
+  return impl_->dir_stack.top().entry_;
 }
 
 recursive_directory_iterator &recursive_directory_iterator::do_increment(
@@ -878,7 +878,7 @@ void recursive_directory_iterator::Advance(std::error_code *ec) {
     return err.report(std::errc::invalid_argument, "invalid iterator");
 
   const directory_iterator end_it;
-  auto &stack = impl_->__stack_;
+  auto &stack = impl_->dir_stack;
   std::error_code m_ec;
   while (!stack.empty()) {
     if (stack.top().advance(m_ec)) return;
@@ -903,7 +903,7 @@ bool recursive_directory_iterator::TryRecursion(std::error_code *ec) {
 
   auto rec_sym = bool(options() & directory_options::follow_directory_symlink);
 
-  auto &curr_it = impl_->__stack_.top();
+  auto &curr_it = impl_->dir_stack.top();
 
   bool skip_rec = false;
   std::error_code m_ec;
@@ -918,15 +918,15 @@ bool recursive_directory_iterator::TryRecursion(std::error_code *ec) {
   }
 
   if (!skip_rec) {
-    DirectoryStream new_it(curr_it.entry_.path(), impl_->__options_, m_ec);
+    DirectoryStream new_it(curr_it.entry_.path(), impl_->options, m_ec);
     if (new_it.good()) {
-      impl_->__stack_.push(std::move(new_it));
+      impl_->dir_stack.push(std::move(new_it));
       return true;
     }
   }
   if (m_ec) {
     const auto allow_eacess =
-        bool(impl_->__options_ & directory_options::skip_permission_denied);
+        bool(impl_->options & directory_options::skip_permission_denied);
     if (m_ec.value() == EACCES && allow_eacess) {
       if (ec) ec->clear();
     } else {

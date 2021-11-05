@@ -431,24 +431,24 @@ class ASAP_FILESYSTEM_API directory_iterator {
 
   explicit directory_iterator(const path &p) : directory_iterator(p, nullptr) {}
 
-  directory_iterator(const path &p, directory_options __opts)
-      : directory_iterator(p, nullptr, __opts) {}
+  directory_iterator(const path &p, directory_options opts)
+      : directory_iterator(p, nullptr, opts) {}
 
   directory_iterator(const path &p, std::error_code &ec)
       : directory_iterator(p, &ec) {}
 
-  directory_iterator(const path &p, directory_options __opts,
+  directory_iterator(const path &p, directory_options opts,
                      std::error_code &ec)
-      : directory_iterator(p, &ec, __opts) {}
+      : directory_iterator(p, &ec, opts) {}
 
   directory_iterator(const directory_iterator &) = default;
   directory_iterator(directory_iterator &&) = default;
   directory_iterator &operator=(const directory_iterator &) = default;
 
-  directory_iterator &operator=(directory_iterator &&__o) noexcept {
+  directory_iterator &operator=(directory_iterator &&other) noexcept {
     // non-default implementation provided to support self-move assign.
-    if (this != &__o) {
-      impl_ = std::move(__o.impl_);
+    if (this != &other) {
+      impl_ = std::move(other.impl_);
     }
     return *this;
   }
@@ -552,12 +552,12 @@ class ASAP_FILESYSTEM_API recursive_directory_iterator {
   recursive_directory_iterator() noexcept : recursion_(false) {}
 
   explicit recursive_directory_iterator(
-      const path &p, directory_options __xoptions = directory_options::none)
-      : recursive_directory_iterator(p, __xoptions, nullptr) {}
+      const path &p, directory_options xoptions = directory_options::none)
+      : recursive_directory_iterator(p, xoptions, nullptr) {}
 
-  recursive_directory_iterator(const path &p, directory_options __xoptions,
+  recursive_directory_iterator(const path &p, directory_options xoptions,
                                std::error_code &ec)
-      : recursive_directory_iterator(p, __xoptions, &ec) {}
+      : recursive_directory_iterator(p, xoptions, &ec) {}
 
   recursive_directory_iterator(const path &p, std::error_code &ec)
       : recursive_directory_iterator(p, directory_options::none, &ec) {}
@@ -569,11 +569,11 @@ class ASAP_FILESYSTEM_API recursive_directory_iterator {
       const recursive_directory_iterator &) = default;
 
   recursive_directory_iterator &operator=(
-      recursive_directory_iterator &&__o) noexcept {
+      recursive_directory_iterator &&other) noexcept {
     // non-default implementation provided to support self-move assign.
-    if (this != &__o) {
-      impl_ = std::move(__o.impl_);
-      recursion_ = __o.recursion_;
+    if (this != &other) {
+      impl_ = std::move(other.impl_);
+      recursion_ = other.recursion_;
     }
     return *this;
   }

@@ -224,12 +224,12 @@ class ASAP_FILESYSTEM_API path {
 
   // generation
   path lexically_normal() const;
-  path lexically_relative(const path &__base) const;
+  path lexically_relative(const path &base) const;
 
-  path lexically_proximate(const path &__base) const {
-    path __result = this->lexically_relative(__base);
-    if (__result.native().empty()) return *this;
-    return __result;
+  path lexically_proximate(const path &base) const {
+    path result = this->lexically_relative(base);
+    if (result.native().empty()) return *this;
+    return result;
   }
 
   // decomposition
@@ -314,9 +314,9 @@ class ASAP_FILESYSTEM_API path {
     return string_type(src);
   }
 
-  template <typename _Iter>
-  static string_type convert(_Iter first, _Iter last) {
-    using iter_value_type = typename std::iterator_traits<_Iter>::value_type;
+  template <typename Iter>
+  static string_type convert(Iter first, Iter last) {
+    using iter_value_type = typename std::iterator_traits<Iter>::value_type;
     return Converter<typename std::remove_cv<iter_value_type>::type>::convert(
         first, last);
   }
@@ -534,8 +534,8 @@ struct path::Converter {
                    const_cast<const CharT *>(last));
   }
 
-  template <typename _Iter>
-  static string_type convert(_Iter first, _Iter last) {
+  template <typename Iter>
+  static string_type convert(Iter first, Iter last) {
     const std::basic_string<CharT> str(first, last);
     return convert(str.data(), str.data() + str.size());
   }
