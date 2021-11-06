@@ -99,8 +99,8 @@ using ::write;
 
 #if defined(ASAP_WINDOWS)
 namespace win32_port {
-typedef ULONG_PTR ulong_ptr;
-typedef HANDLE handle;
+using ulong_ptr = ULONG_PTR;
+using handle = HANDLE;
 const handle invalid_handle_value = (handle)((ulong_ptr)-1);
 
 // This should be defined when (_WIN32_WINNT >= 0x0600) which is what we
@@ -156,10 +156,10 @@ auto FileTimeTypeFromPosixTimeSpec(TimeSpec tm) -> file_time_type;
 #if defined(ASAP_WINDOWS)
 namespace win32_port {
 
-file_time_type FileTimeTypeFromWindowsFileTime(const FILETIME &ft,
-                                               std::error_code &ec);
-FILETIME FileTimeTypeToWindowsFileTime(const file_time_type &ft,
-                                       std::error_code &ec);
+auto FileTimeTypeFromWindowsFileTime(const FILETIME &ft, std::error_code &ec)
+    -> file_time_type;
+auto FileTimeTypeToWindowsFileTime(const file_time_type &ft,
+                                   std::error_code &ec) -> FILETIME;
 
 }  // namespace win32_port
 #endif  // ASAP_WINDOWS
@@ -219,17 +219,19 @@ auto ExtractLastWriteTime(const path &p, const StatT &st, std::error_code *ec)
 
 #if defined(ASAP_WINDOWS)
 namespace win32_port {
-bool IsNotFoundError(int errval);
+auto IsNotFoundError(int errval) -> bool;
 
-bool IsReparsePointSymlink(const path &p, std::error_code *ec = nullptr);
+auto IsReparsePointSymlink(const path &p, std::error_code *ec = nullptr)
+    -> bool;
 
-path ReadSymlinkFromReparsePoint(const path &p, std::error_code *ec = nullptr);
+auto ReadSymlinkFromReparsePoint(const path &p, std::error_code *ec = nullptr)
+    -> path;
 
-file_status ProcessStatusFailure(std::error_code m_ec, const path &p,
-                                 std::error_code *ec);
+auto ProcessStatusFailure(std::error_code m_ec, const path &p,
+                          std::error_code *ec) -> file_status;
 
-perms GetPermissions(const path &p, DWORD attr, bool follow_symlinks,
-                     std::error_code *ec);
+auto GetPermissions(const path &p, DWORD attr, bool follow_symlinks,
+                    std::error_code *ec) -> perms;
 void SetPermissions(const path &p, perms prms, bool follow_symlinks,
                     std::error_code *ec);
 }  // namespace win32_port

@@ -49,16 +49,16 @@ ASAP_FILESYSTEM_API
 auto create_directory_impl(const path &p, std::error_code *ec = nullptr)
     -> bool;
 ASAP_FILESYSTEM_API
-auto create_directory_impl(const path &p, const path &attributes,
+auto create_directory_impl(const path &p, const path &existing_template,
                            std::error_code *ec = nullptr) -> bool;
 ASAP_FILESYSTEM_API
-void create_directory_symlink_impl(const path &to, const path &new_symlink,
+void create_directory_symlink_impl(const path &target, const path &new_symlink,
                                    std::error_code *ec = nullptr);
 ASAP_FILESYSTEM_API
-void create_hard_link_impl(const path &to, const path &new_hard_link,
+void create_hard_link_impl(const path &target, const path &new_hard_link,
                            std::error_code *ec = nullptr);
 ASAP_FILESYSTEM_API
-void create_symlink_impl(const path &to, const path &new_symlink,
+void create_symlink_impl(const path &target, const path &new_symlink,
                          std::error_code *ec = nullptr);
 ASAP_FILESYSTEM_API
 auto current_path_impl(std::error_code *ec = nullptr) -> path;
