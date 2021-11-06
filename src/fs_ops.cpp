@@ -790,7 +790,7 @@ void create_symlink_impl(path const &target, path const &new_symlink,
                          std::error_code *ec) {
   ErrorHandler<void> err("create_symlink", ec, &target, &new_symlink);
 #if defined(ASAP_WINDOWS)
-  auto link_wpath = link.wstring();
+  auto link_wpath = new_symlink.wstring();
   auto target_wpath = target.wstring();
   if (detail::win32_port::CreateSymbolicLinkW(
           link_wpath.c_str(), target_wpath.c_str(),
