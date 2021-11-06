@@ -50,7 +50,7 @@ class ASAP_FILESYSTEM_API path {
   //@{
 
   /// Constructs an empty path.
-  path() noexcept {};  // NOLINT
+  path() noexcept {}  // NOLINT
 
   /*!
    * @brief Copy constructor.
