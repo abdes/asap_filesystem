@@ -26,7 +26,7 @@ enum class OperationType { read = 0, write, exec };
 
 namespace mapping {
 namespace {
-perms posix[3][3] = {
+const perms posix[3][3] = {
     {perms::owner_read, perms::owner_write, perms::owner_exec},
     {perms::group_read, perms::group_write, perms::group_exec},
     {perms::others_read, perms::others_write, perms::others_exec}};
@@ -80,15 +80,17 @@ constexpr unsigned long exec_mask = FILE_TRAVERSE |
 }  // namespace mapping
 
 // We need this to be exported for testing
-perms ASAP_FILESYSTEM_API MapAccessMaskToPerms(ACCESS_MASK mask,
-                                               TrusteeType trustee,
-                                               file_type type) {
+auto ASAP_FILESYSTEM_API MapAccessMaskToPerms(ACCESS_MASK mask,
+                                              TrusteeType trustee,
+                                              file_type type) -> perms {
   if (type == file_type::none || type == file_type::unknown ||
       type == file_type::not_found) {
     return perms::unknown;
   }
 
-  if (mask == 0) return perms::none;
+  if (mask == 0) {
+    return perms::none;
+  }
 
   int op = 0;
   int tr =
@@ -132,19 +134,19 @@ perms ASAP_FILESYSTEM_API MapAccessMaskToPerms(ACCESS_MASK mask,
 
 namespace {
 
-perms ProcessPermissionsFailure(std::error_code m_ec, const path &p,
-                                std::error_code *ec = nullptr) {
+auto ProcessPermissionsFailure(std::error_code m_ec, const path &p,
+                               std::error_code *ec = nullptr) -> perms {
   if (m_ec) {
     if (IsNotFoundError(m_ec.value())) {
       return perms(perms::none);
-    } else if (m_ec.value() == ERROR_SHARING_VIOLATION) {
+    }
+    if (m_ec.value() == ERROR_SHARING_VIOLATION) {
       return perms(perms::unknown);
-    } else {
-      if (ec) {
-        ErrorHandler<perms> err("permissions", ec, &p);
-        err.report(m_ec,
-                   "failed to determine permissions for the specified path");
-      }
+    }
+    if (ec != nullptr) {
+      ErrorHandler<perms> err("permissions", ec, &p);
+      err.report(m_ec,
+                 "failed to determine permissions for the specified path");
     }
   }
   return perms(perms::none);
@@ -152,8 +154,8 @@ perms ProcessPermissionsFailure(std::error_code m_ec, const path &p,
 
 }  // namespace
 
-PSECURITY_DESCRIPTOR *GetSecurityDescriptor(const path &p,
-                                            std::error_code &ec) {
+auto GetSecurityDescriptor(const path &p, std::error_code &ec)
+    -> PSECURITY_DESCRIPTOR * {
   ec.clear();
 
   DWORD dwSize = 0;
@@ -164,53 +166,54 @@ PSECURITY_DESCRIPTOR *GetSecurityDescriptor(const path &p,
   GetFileSecurityW(wpath.c_str(),
                    OWNER_SECURITY_INFORMATION | GROUP_SECURITY_INFORMATION |
                        DACL_SECURITY_INFORMATION,
-                   NULL, NULL, &dwBytesNeeded);
+                   nullptr, NULL, &dwBytesNeeded);
 
   dwSize = dwBytesNeeded;
-  PSECURITY_DESCRIPTOR *pDescriptor =
-      (PSECURITY_DESCRIPTOR *)LocalAlloc(LMEM_FIXED, dwBytesNeeded);
-  if (pDescriptor == NULL) return NULL;
-  if (!GetFileSecurityW(wpath.c_str(),
-                        OWNER_SECURITY_INFORMATION |
-                            GROUP_SECURITY_INFORMATION |
-                            DACL_SECURITY_INFORMATION,
-                        pDescriptor, dwSize, &dwBytesNeeded)) {
+  auto *pDescriptor = static_cast<PSECURITY_DESCRIPTOR *>(
+      LocalAlloc(LMEM_FIXED, dwBytesNeeded));
+  if (pDescriptor == nullptr) {
+    return nullptr;
+  }
+  if (GetFileSecurityW(wpath.c_str(),
+                       OWNER_SECURITY_INFORMATION | GROUP_SECURITY_INFORMATION |
+                           DACL_SECURITY_INFORMATION,
+                       pDescriptor, dwSize, &dwBytesNeeded) == 0) {
     ec = capture_errno();
     LocalFree(pDescriptor);
-    return NULL;
+    return nullptr;
   }
   return pDescriptor;
 }
 
-PACL GetDaclFromDescriptor(PSECURITY_DESCRIPTOR *pDescriptor,
-                           std::error_code &ec) {
+auto GetDaclFromDescriptor(PSECURITY_DESCRIPTOR *pDescriptor,
+                           std::error_code &ec) -> PACL {
   ec.clear();
 
-  PACL DACL = NULL;
-  BOOL bDACLPresent = false;
-  BOOL bDACLDefaulted = false;
+  PACL DACL = nullptr;
+  BOOL bDACLPresent = 0;
+  BOOL bDACLDefaulted = 0;
 
-  bDACLPresent = false;
-  bDACLDefaulted = false;
+  bDACLPresent = 0;
+  bDACLDefaulted = 0;
   if (GetSecurityDescriptorDacl(pDescriptor, &bDACLPresent, &DACL,
-                                &bDACLDefaulted) == false) {
+                                &bDACLDefaulted) == 0) {
     ec = capture_errno();
-    return NULL;
+    return nullptr;
   }
 
   return DACL;
 }
 
-perms GetOwnerPermissions(PSID pSidOwner, PACL DACL, DWORD attr,
-                          std::error_code &ec) {
+auto GetOwnerPermissions(PSID pSidOwner, PACL DACL, DWORD attr,
+                         std::error_code &ec) -> perms {
   ec.clear();
 
   TRUSTEE_A trustee;
-  trustee.pMultipleTrustee = NULL;
+  trustee.pMultipleTrustee = nullptr;
   trustee.MultipleTrusteeOperation = NO_MULTIPLE_TRUSTEE;
   trustee.TrusteeForm = TRUSTEE_IS_SID;
   trustee.TrusteeType = TRUSTEE_IS_USER;
-  trustee.ptstrName = (LPCH)(pSidOwner);
+  trustee.ptstrName = static_cast<LPCH>(pSidOwner);
 
   ACCESS_MASK mask = 0;
   auto retval = GetEffectiveRightsFromAcl(DACL, &trustee, &mask);
@@ -219,36 +222,38 @@ perms GetOwnerPermissions(PSID pSidOwner, PACL DACL, DWORD attr,
     // ERROR_INVALID_ACL if the specified ACL contains an inherited
     // access-denied ACE. When this happens the last error code is
     // useless and we just need to report this as a permission denied error.
-    if (retval == ERROR_INVALID_ACL)
+    if (retval == ERROR_INVALID_ACL) {
       ec = std::make_error_code(std::errc::permission_denied);
-    else
+    } else {
       ec = capture_errno();
+    }
     return perms::none;
   }
 
   perms prms = MapAccessMaskToPerms(
       mask, TrusteeType::owner,
-      FlagTest(attr, (DWORD)FILE_ATTRIBUTE_DIRECTORY) ? file_type::directory
-                                                      : file_type::regular);
+      FlagTest(attr, static_cast<DWORD>(FILE_ATTRIBUTE_DIRECTORY))
+          ? file_type::directory
+          : file_type::regular);
 
   // Test for read-only files and eventually remove read rights
-  if (FlagTest(attr, (DWORD)FILE_ATTRIBUTE_READONLY)) {
+  if (FlagTest(attr, static_cast<DWORD>(FILE_ATTRIBUTE_READONLY))) {
     FlagClear(prms, perms::owner_read);
   }
 
   return prms;
 }
 
-perms GetGroupPermissions(PSID pSidGroup, PACL DACL, DWORD attr,
-                          std::error_code &ec) {
+auto GetGroupPermissions(PSID pSidGroup, PACL DACL, DWORD attr,
+                         std::error_code &ec) -> perms {
   ec.clear();
 
   TRUSTEE_A trustee;
-  trustee.pMultipleTrustee = NULL;
+  trustee.pMultipleTrustee = nullptr;
   trustee.MultipleTrusteeOperation = NO_MULTIPLE_TRUSTEE;
   trustee.TrusteeForm = TRUSTEE_IS_SID;
   trustee.TrusteeType = TRUSTEE_IS_GROUP;
-  trustee.ptstrName = (LPCH)(pSidGroup);
+  trustee.ptstrName = static_cast<LPCH>(pSidGroup);
 
   ACCESS_MASK mask = 0;
   auto retval = GetEffectiveRightsFromAcl(DACL, &trustee, &mask);
@@ -257,31 +262,33 @@ perms GetGroupPermissions(PSID pSidGroup, PACL DACL, DWORD attr,
     // ERROR_INVALID_ACL if the specified ACL contains an inherited
     // access-denied ACE. When this happens the last error code is
     // useless and we just need to report this as a permission denied error.
-    if (retval == ERROR_INVALID_ACL)
+    if (retval == ERROR_INVALID_ACL) {
       ec = std::make_error_code(std::errc::permission_denied);
-    else
+    } else {
       ec = capture_errno();
+    }
     return perms::none;
   }
 
   perms prms = MapAccessMaskToPerms(
       mask, TrusteeType::group,
-      FlagTest(attr, (DWORD)FILE_ATTRIBUTE_DIRECTORY) ? file_type::directory
-                                                      : file_type::regular);
+      FlagTest(attr, static_cast<DWORD>(FILE_ATTRIBUTE_DIRECTORY))
+          ? file_type::directory
+          : file_type::regular);
 
   // Test for read-only files and eventually remove read rights
-  if (FlagTest(attr, (DWORD)FILE_ATTRIBUTE_READONLY)) {
+  if (FlagTest(attr, static_cast<DWORD>(FILE_ATTRIBUTE_READONLY))) {
     FlagClear(prms, perms::group_read);
   }
 
   return prms;
 }
 
-perms GetOthersPermissions(PACL DACL, DWORD attr, std::error_code &ec) {
+auto GetOthersPermissions(PACL DACL, DWORD attr, std::error_code &ec) -> perms {
   ec.clear();
 
   TRUSTEE_A trustee;
-  trustee.pMultipleTrustee = NULL;
+  trustee.pMultipleTrustee = nullptr;
   trustee.MultipleTrusteeOperation = NO_MULTIPLE_TRUSTEE;
   trustee.TrusteeForm = TRUSTEE_IS_NAME;
   trustee.TrusteeType = TRUSTEE_IS_WELL_KNOWN_GROUP;
@@ -294,36 +301,38 @@ perms GetOthersPermissions(PACL DACL, DWORD attr, std::error_code &ec) {
     // ERROR_INVALID_ACL if the specified ACL contains an inherited
     // access-denied ACE. When this happens the last error code is
     // useless and we just need to report this as a permission denied error.
-    if (retval == ERROR_INVALID_ACL)
+    if (retval == ERROR_INVALID_ACL) {
       ec = std::make_error_code(std::errc::permission_denied);
-    else
+    } else {
       ec = capture_errno();
+    }
     return perms::none;
   }
 
   perms prms = MapAccessMaskToPerms(
       mask, TrusteeType::others,
-      FlagTest(attr, (DWORD)FILE_ATTRIBUTE_DIRECTORY) ? file_type::directory
-                                                      : file_type::regular);
+      FlagTest(attr, static_cast<DWORD>(FILE_ATTRIBUTE_DIRECTORY))
+          ? file_type::directory
+          : file_type::regular);
 
   // Test for read-only files and eventually remove read rights
-  if (FlagTest(attr, (DWORD)FILE_ATTRIBUTE_READONLY)) {
+  if (FlagTest(attr, static_cast<DWORD>(FILE_ATTRIBUTE_READONLY))) {
     FlagClear(prms, perms::others_read);
   }
 
   return prms;
 }
 
-// TODO: check what we need to do here for symlinks
-perms GetPermissions(const path &p, DWORD attr, bool /*follow_symlinks*/,
-                     std::error_code *ec) {
+// TODO(Abdessattar): check what we need to do here for symlinks
+auto GetPermissions(const path &p, DWORD attr, bool /*follow_symlinks*/,
+                    std::error_code *ec) -> perms {
   ErrorHandler<perms> err("permissions", ec, &p);
   std::error_code m_ec;
 
-  PSID pSidOwner = NULL;
-  PSID pSidGroup = NULL;
-  PACL DACL = NULL;
-  PSECURITY_DESCRIPTOR pSecurityDescriptor;
+  PSID pSidOwner = nullptr;
+  PSID pSidGroup = nullptr;
+  PACL DACL = nullptr;
+  PSECURITY_DESCRIPTOR pSecurityDescriptor = nullptr;
 
   auto wpath = p.wstring();
 
@@ -331,7 +340,7 @@ perms GetPermissions(const path &p, DWORD attr, bool /*follow_symlinks*/,
                             OWNER_SECURITY_INFORMATION |
                                 GROUP_SECURITY_INFORMATION |
                                 DACL_SECURITY_INFORMATION,
-                            &pSidOwner, &pSidGroup, &DACL, NULL,
+                            &pSidOwner, &pSidGroup, &DACL, nullptr,
                             &pSecurityDescriptor) != ERROR_SUCCESS) {
     return err.report(capture_errno());
   }
@@ -351,7 +360,7 @@ perms GetPermissions(const path &p, DWORD attr, bool /*follow_symlinks*/,
   }
 
   // For the primary group
-  if (!EqualSid(pSidOwner, pSidGroup)) {
+  if (EqualSid(pSidOwner, pSidGroup) == 0) {
     prms |= GetGroupPermissions(pSidGroup, DACL, attr, m_ec);
     if (m_ec) {
       return ProcessPermissionsFailure(m_ec, p, ec);
@@ -367,11 +376,11 @@ perms GetPermissions(const path &p, DWORD attr, bool /*follow_symlinks*/,
   return prms;
 }
 
-PEXPLICIT_ACCESS MakeAce(TrusteeType trustee, PSID pSid, DWORD access,
-                         ACCESS_MODE mode) {
-  PEXPLICIT_ACCESS pEA =
-      (PEXPLICIT_ACCESS)LocalAlloc(LMEM_FIXED, sizeof(EXPLICIT_ACCESS));
-  if (pEA != NULL) {
+auto MakeAce(TrusteeType trustee, PSID pSid, DWORD access, ACCESS_MODE mode)
+    -> PEXPLICIT_ACCESS {
+  auto *pEA = static_cast<PEXPLICIT_ACCESS>(
+      LocalAlloc(LMEM_FIXED, sizeof(EXPLICIT_ACCESS)));
+  if (pEA != nullptr) {
     ZeroMemory(pEA, sizeof(EXPLICIT_ACCESS));
 
     pEA->grfAccessPermissions = access;
@@ -396,35 +405,35 @@ PEXPLICIT_ACCESS MakeAce(TrusteeType trustee, PSID pSid, DWORD access,
       case TrusteeType::owner:
         pEA->Trustee.TrusteeForm = TRUSTEE_IS_SID;
         pEA->Trustee.TrusteeType = TRUSTEE_IS_USER;
-        pEA->Trustee.ptstrName = (LPCH)pSid;
+        pEA->Trustee.ptstrName = static_cast<LPCH>(pSid);
         break;
       case TrusteeType::group:
         pEA->Trustee.TrusteeForm = TRUSTEE_IS_SID;
         pEA->Trustee.TrusteeType = TRUSTEE_IS_GROUP;
-        pEA->Trustee.ptstrName = (LPCH)pSid;
+        pEA->Trustee.ptstrName = static_cast<LPCH>(pSid);
         break;
     }
   }
   return pEA;
 }
 
-// TODO: check what we need to do here for symlinks
+// TODO(Abdessattar): check what we need to do here for symlinks
 void SetPermissions(const path &p, perms prms, bool /*follow_symlinks*/,
                     std::error_code *ec) {
   ErrorHandler<void> err("permissions", ec, &p);
 
   DWORD errVal = 0;
-  PSID pSidOwner;
-  PSID pSidGroup;
-  PSECURITY_DESCRIPTOR pSecurityDescriptor;
+  PSID pSidOwner = nullptr;
+  PSID pSidGroup = nullptr;
+  PSECURITY_DESCRIPTOR pSecurityDescriptor = nullptr;
   auto wpath = p.wstring();
 
   errVal = GetNamedSecurityInfoW(
       wpath.c_str(), SE_FILE_OBJECT,
       OWNER_SECURITY_INFORMATION | GROUP_SECURITY_INFORMATION, &pSidOwner,
-      &pSidGroup, NULL, NULL, &pSecurityDescriptor);
+      &pSidGroup, nullptr, nullptr, &pSecurityDescriptor);
   if (errVal != ERROR_SUCCESS) {
-    return err.report({(int)errVal, std::system_category()});
+    return err.report({static_cast<int>(errVal), std::system_category()});
   }
   std::unique_ptr<VOID, decltype(&::LocalFree)> ptr_secDesc(pSecurityDescriptor,
                                                             ::LocalFree);
@@ -432,7 +441,7 @@ void SetPermissions(const path &p, perms prms, bool /*follow_symlinks*/,
   using ea_unique_ptr =
       std::unique_ptr<EXPLICIT_ACCESS, decltype(&::LocalFree)>;
   std::deque<ea_unique_ptr> aces;
-  PEXPLICIT_ACCESS pEA = NULL;
+  PEXPLICIT_ACCESS pEA = nullptr;
   ea_unique_ptr ptr_EA(pEA, ::LocalFree);
 
   //
@@ -440,15 +449,22 @@ void SetPermissions(const path &p, perms prms, bool /*follow_symlinks*/,
   //
 
   DWORD access = 0L;
-  if (FlagTest(prms, perms::others_read)) FlagSet(access, (DWORD)GENERIC_READ);
-  if (FlagTest(prms, perms::others_write))
-    FlagSet(access, (DWORD)GENERIC_WRITE | FILE_DELETE_CHILD | DELETE);
-  if (FlagTest(prms, perms::others_exec))
-    FlagSet(access, (DWORD)GENERIC_EXECUTE);
+  if (FlagTest(prms, perms::others_read)) {
+    FlagSet(access, GENERIC_READ);
+  }
+  if (FlagTest(prms, perms::others_write)) {
+    FlagSet(access,
+            static_cast<DWORD>(GENERIC_WRITE | FILE_DELETE_CHILD | DELETE));
+  }
+  if (FlagTest(prms, perms::others_exec)) {
+    FlagSet(access, static_cast<DWORD>(GENERIC_EXECUTE));
+  }
 
   if (access != 0) {
-    pEA = MakeAce(TrusteeType::others, NULL, access, GRANT_ACCESS);
-    if (pEA == NULL) return err.report(capture_errno());
+    pEA = MakeAce(TrusteeType::others, nullptr, access, GRANT_ACCESS);
+    if (pEA == nullptr) {
+      return err.report(capture_errno());
+    }
 
     ptr_EA.reset(pEA);
     aces.emplace_front(std::forward<ea_unique_ptr>(ptr_EA));
@@ -466,22 +482,28 @@ void SetPermissions(const path &p, perms prms, bool /*follow_symlinks*/,
   // To avoid this, we will explicitly deny anything that is not allowed for
   // group but allowed for Everyone.
 
-  if (!EqualSid(pSidOwner, pSidGroup)) {
+  if (EqualSid(pSidOwner, pSidGroup) == 0) {
     // Allow
     access = 0;
     if (FlagTest(prms, perms::group_read) &&
-        !FlagTest(prms, perms::others_read))
-      FlagSet(access, (DWORD)GENERIC_READ);
+        !FlagTest(prms, perms::others_read)) {
+      FlagSet(access, GENERIC_READ);
+    }
     if (FlagTest(prms, perms::group_write) &&
-        !FlagTest(prms, perms::others_write))
-      FlagSet(access, (DWORD)GENERIC_WRITE | FILE_DELETE_CHILD | DELETE);
+        !FlagTest(prms, perms::others_write)) {
+      FlagSet(access,
+              static_cast<DWORD>(GENERIC_WRITE | FILE_DELETE_CHILD | DELETE));
+    }
     if (FlagTest(prms, perms::group_exec) &&
-        !FlagTest(prms, perms::others_exec))
-      FlagSet(access, (DWORD)GENERIC_EXECUTE);
+        !FlagTest(prms, perms::others_exec)) {
+      FlagSet(access, static_cast<DWORD>(GENERIC_EXECUTE));
+    }
 
     if (access != 0) {
       pEA = MakeAce(TrusteeType::group, pSidGroup, access, GRANT_ACCESS);
-      if (pEA == NULL) return err.report(capture_errno());
+      if (pEA == nullptr) {
+        return err.report(capture_errno());
+      }
 
       ptr_EA.reset(pEA);
       aces.emplace_front(std::forward<ea_unique_ptr>(ptr_EA));
@@ -490,18 +512,24 @@ void SetPermissions(const path &p, perms prms, bool /*follow_symlinks*/,
     // Deny
     access = 0;
     if (!FlagTest(prms, perms::group_read) &&
-        FlagTest(prms, perms::others_read))
-      FlagSet(access, (DWORD)GENERIC_READ);
+        FlagTest(prms, perms::others_read)) {
+      FlagSet(access, GENERIC_READ);
+    }
     if (!FlagTest(prms, perms::group_write) &&
-        FlagTest(prms, perms::others_write))
-      FlagSet(access, (DWORD)GENERIC_WRITE | FILE_DELETE_CHILD | DELETE);
+        FlagTest(prms, perms::others_write)) {
+      FlagSet(access,
+              static_cast<DWORD>(GENERIC_WRITE | FILE_DELETE_CHILD | DELETE));
+    }
     if (!FlagTest(prms, perms::group_exec) &&
-        FlagTest(prms, perms::others_exec))
-      FlagSet(access, (DWORD)GENERIC_EXECUTE);
+        FlagTest(prms, perms::others_exec)) {
+      FlagSet(access, static_cast<DWORD>(GENERIC_EXECUTE));
+    }
 
     if (access != 0) {
       pEA = MakeAce(TrusteeType::group, pSidGroup, access, DENY_ACCESS);
-      if (pEA == NULL) return err.report(capture_errno());
+      if (pEA == nullptr) {
+        return err.report(capture_errno());
+      }
 
       ptr_EA.reset(pEA);
       aces.emplace_front(std::forward<ea_unique_ptr>(ptr_EA));
@@ -514,20 +542,26 @@ void SetPermissions(const path &p, perms prms, bool /*follow_symlinks*/,
   access = 0;
   if (FlagTest(prms, perms::owner_read) &&
       !(FlagTest(prms, perms::group_read) ||
-        FlagTest(prms, perms::others_read)))
-    FlagSet(access, (DWORD)GENERIC_READ);
+        FlagTest(prms, perms::others_read))) {
+    FlagSet(access, GENERIC_READ);
+  }
   if (FlagTest(prms, perms::owner_write) &&
       !(FlagTest(prms, perms::group_write) ||
-        FlagTest(prms, perms::others_write)))
-    FlagSet(access, (DWORD)GENERIC_WRITE | FILE_DELETE_CHILD | DELETE);
+        FlagTest(prms, perms::others_write))) {
+    FlagSet(access,
+            static_cast<DWORD>(GENERIC_WRITE | FILE_DELETE_CHILD | DELETE));
+  }
   if (FlagTest(prms, perms::owner_exec) &&
       !(FlagTest(prms, perms::group_exec) ||
-        FlagTest(prms, perms::others_exec)))
-    FlagSet(access, (DWORD)GENERIC_EXECUTE);
+        FlagTest(prms, perms::others_exec))) {
+    FlagSet(access, static_cast<DWORD>(GENERIC_EXECUTE));
+  }
 
   if (access != 0) {
     pEA = MakeAce(TrusteeType::owner, pSidOwner, access, GRANT_ACCESS);
-    if (pEA == NULL) return err.report(capture_errno());
+    if (pEA == nullptr) {
+      return err.report(capture_errno());
+    }
 
     ptr_EA.reset(pEA);
     aces.emplace_front(std::forward<ea_unique_ptr>(ptr_EA));
@@ -536,19 +570,27 @@ void SetPermissions(const path &p, perms prms, bool /*follow_symlinks*/,
   // Deny
   access = 0;
   if (!FlagTest(prms, perms::owner_read) &&
-      (FlagTest(prms, perms::group_read) || FlagTest(prms, perms::others_read)))
-    FlagSet(access, (DWORD)GENERIC_READ);
+      (FlagTest(prms, perms::group_read) ||
+       FlagTest(prms, perms::others_read))) {
+    FlagSet(access, GENERIC_READ);
+  }
   if (!FlagTest(prms, perms::owner_write) &&
       (FlagTest(prms, perms::group_write) ||
-       FlagTest(prms, perms::others_write)))
-    FlagSet(access, (DWORD)GENERIC_WRITE | FILE_DELETE_CHILD | DELETE);
+       FlagTest(prms, perms::others_write))) {
+    FlagSet(access,
+            static_cast<DWORD>(GENERIC_WRITE | FILE_DELETE_CHILD | DELETE));
+  }
   if (!FlagTest(prms, perms::owner_exec) &&
-      (FlagTest(prms, perms::group_exec) || FlagTest(prms, perms::others_exec)))
-    FlagSet(access, (DWORD)GENERIC_EXECUTE);
+      (FlagTest(prms, perms::group_exec) ||
+       FlagTest(prms, perms::others_exec))) {
+    FlagSet(access, static_cast<DWORD>(GENERIC_EXECUTE));
+  }
 
   if (access != 0) {
     pEA = MakeAce(TrusteeType::group, pSidOwner, access, DENY_ACCESS);
-    if (pEA == NULL) return err.report(capture_errno());
+    if (pEA == nullptr) {
+      return err.report(capture_errno());
+    }
 
     ptr_EA.reset(pEA);
     aces.emplace_front(std::forward<ea_unique_ptr>(ptr_EA));
@@ -556,8 +598,10 @@ void SetPermissions(const path &p, perms prms, bool /*follow_symlinks*/,
 
   if (aces.empty()) {
     // Add the special ACEs for Everyone to deny everything
-    pEA = MakeAce(TrusteeType::others, NULL, GENERIC_ALL, DENY_ACCESS);
-    if (pEA == NULL) return err.report(capture_errno());
+    pEA = MakeAce(TrusteeType::others, nullptr, GENERIC_ALL, DENY_ACCESS);
+    if (pEA == nullptr) {
+      return err.report(capture_errno());
+    }
     ptr_EA.reset(pEA);
     aces.emplace_front(std::forward<ea_unique_ptr>(ptr_EA));
   }
@@ -565,25 +609,25 @@ void SetPermissions(const path &p, perms prms, bool /*follow_symlinks*/,
   // Create a new ACL that contains the new ACEs.
   auto ordered_aces = std::vector<EXPLICIT_ACCESS>();
   for (auto &i : aces) {
-    ordered_aces.push_back(*(i.get()));
+    ordered_aces.push_back(*(i));
   }
 
-  PACL pACL = NULL;
+  PACL pACL = nullptr;
   auto acl_size = ordered_aces.size();
-  errVal =
-      SetEntriesInAcl(static_cast<ULONG>(acl_size),
-                      (acl_size > 0) ? &ordered_aces[0] : NULL, NULL, &pACL);
+  errVal = SetEntriesInAcl(static_cast<ULONG>(acl_size),
+                           (acl_size > 0) ? &ordered_aces[0] : nullptr, nullptr,
+                           &pACL);
   if (errVal != ERROR_SUCCESS) {
-    return err.report({(int)errVal, std::system_category()});
+    return err.report({static_cast<int>(errVal), std::system_category()});
   }
   std::unique_ptr<ACL, decltype(&::LocalFree)> ptr_ACL(pACL, ::LocalFree);
 
   errVal = SetNamedSecurityInfoW(
-      (LPWSTR)(wpath.c_str()), SE_FILE_OBJECT,
-      DACL_SECURITY_INFORMATION | PROTECTED_DACL_SECURITY_INFORMATION, NULL,
-      NULL, pACL, NULL);
+      const_cast<LPWSTR>(wpath.c_str()), SE_FILE_OBJECT,
+      DACL_SECURITY_INFORMATION | PROTECTED_DACL_SECURITY_INFORMATION, nullptr,
+      nullptr, pACL, nullptr);
   if (errVal != ERROR_SUCCESS) {
-    return err.report({(int)errVal, std::system_category()});
+    return err.report({static_cast<int>(errVal), std::system_category()});
   }
 }
 

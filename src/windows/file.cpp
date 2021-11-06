@@ -18,25 +18,24 @@ namespace detail {
 const FileDescriptor::fd_type FileDescriptor::invalid_value =
     win32_port::invalid_handle_value;
 
-file_status FileDescriptor::RefreshStatus(bool follow_symlinks,
-                                          std::error_code &ec) {
+auto FileDescriptor::RefreshStatus(bool follow_symlinks, std::error_code &ec)
+    -> file_status {
   // Get the file attributes from its handle
   FILE_ATTRIBUTE_TAG_INFO file_info;
-  if (!detail::win32_port::GetFileInformationByHandleEx(
-          fd_, FileAttributeTagInfo, &file_info, sizeof(file_info))) {
+  if (detail::win32_port::GetFileInformationByHandleEx(
+          fd_, FileAttributeTagInfo, &file_info, sizeof(file_info)) == 0) {
     return detail::win32_port::ProcessStatusFailure(capture_errno(), name_,
                                                     &ec);
-  } else {
-    std::error_code m_ec;
-    auto prms = detail::win32_port::GetPermissions(
-        name_, file_info.FileAttributes, follow_symlinks, &m_ec);
-    if (m_ec) {
-      return detail::win32_port::ProcessStatusFailure(m_ec, name_, &ec);
-    }
-    return (file_info.FileAttributes & FILE_ATTRIBUTE_DIRECTORY)
-               ? file_status(file_type::directory, prms)
-               : file_status(file_type::regular, prms);
   }
+  std::error_code m_ec;
+  auto prms = detail::win32_port::GetPermissions(
+      name_, file_info.FileAttributes, follow_symlinks, &m_ec);
+  if (m_ec) {
+    return detail::win32_port::ProcessStatusFailure(m_ec, name_, &ec);
+  }
+  return (file_info.FileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0U
+             ? file_status(file_type::directory, prms)
+             : file_status(file_type::regular, prms);
 }
 
 }  // namespace detail

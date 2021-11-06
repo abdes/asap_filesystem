@@ -106,7 +106,9 @@ auto canonical_impl(path const &orig_p, std::error_code *ec) -> path {
   path result = pa.root_path();
 
   std::deque<path> cmpts;
-  for (auto &f : pa.relative_path()) cmpts.push_back(f);
+  for (const auto &f : pa.relative_path()) {
+    cmpts.push_back(f);
+  }
 
   int max_allowed_symlinks = 40;
 
@@ -117,28 +119,31 @@ auto canonical_impl(path const &orig_p, std::error_code *ec) -> path {
     if (f.empty()) {
       // ignore
     } else if (is_dot(f)) {
-      if (!is_directory(result, m_ec) && !m_ec)
+      if (!is_directory(result, m_ec) && !m_ec) {
         err.report(std::errc::not_a_directory);
+      }
     } else if (is_dotdot(f)) {
       auto parent = result.parent_path();
-      if (parent.empty())
+      if (parent.empty()) {
         result = pa.root_path();
-      else
+      } else {
         result.swap(parent);
+      }
     } else {
       result /= f;
 
       if (is_symlink(result, m_ec)) {
         path link = read_symlink(result, m_ec);
         if (!m_ec) {
-          if (--max_allowed_symlinks == 0)
+          if (--max_allowed_symlinks == 0) {
             err.report(std::errc::too_many_symbolic_link_levels);
-          else {
+          } else {
             if (link.is_absolute()) {
               result = link.root_path();
               link = link.relative_path();
-            } else
+            } else {
               result = result.parent_path();
+            }
 
             cmpts.insert(cmpts.begin(), link.begin(), link.end());
           }
@@ -182,24 +187,30 @@ void copy_impl(const path &from, const path &to, copy_options options,
   file_status f;
   file_status t;
 #if defined(ASAP_WINDOWS)
-  // TODO: Combine this with the non-Windows code
+  // TODO(Abdessattar): Combine this with the non-Windows code
   std::error_code m_ec1;
   bool use_lstat = create_symlinks || skip_symlinks || copy_symlinks;
   f = use_lstat ? symlink_status_impl(from, &m_ec1) : status_impl(from, &m_ec1);
-  if (m_ec1) return err.report(m_ec1);
+  if (m_ec1) {
+    return err.report(m_ec1);
+  }
 
   use_lstat = create_symlinks || skip_symlinks;
   t = use_lstat ? symlink_status_impl(to, &m_ec1) : status_impl(to, &m_ec1);
-  if (!status_known(t)) return err.report(m_ec1);
+  if (!status_known(t)) {
+    return err.report(m_ec1);
+  }
 
   if (!exists(f) || is_other(f) || is_other(t) ||
       (is_directory(f) && is_regular_file(t))) {
     return err.report(std::errc::function_not_supported);
   }
-  // TODO: status will be queried again here. Need optimization.
+  // TODO(Abdessattar): status will be queried again here. Need optimization.
   if (exists(f) && exists(t)) {
     bool same_file = equivalent_impl(from, to, &m_ec1);
-    if (m_ec1) return err.report(m_ec1);
+    if (m_ec1) {
+      return err.report(m_ec1);
+    }
     if (same_file) {
       return err.report(std::errc::function_not_supported);
     }
@@ -286,12 +297,12 @@ void copy_impl(const path &from, const path &to, copy_options options,
 
 namespace {
 #if defined(ASAP_WINDOWS)
-bool do_copy_file_win32(FileDescriptor &read_fd, FileDescriptor &write_fd,
-                        std::error_code &ec) {
+auto do_copy_file_win32(FileDescriptor &read_fd, FileDescriptor &write_fd,
+                        std::error_code &ec) -> bool {
   auto read_wpath = read_fd.name_.wstring();
   auto write_wpath = write_fd.name_.wstring();
   if (detail::win32_port::CopyFileW(read_wpath.c_str(), write_wpath.c_str(),
-                                    true)) {
+                                    1) != 0) {
     ec = capture_errno();
     return false;
   }
@@ -416,48 +427,62 @@ auto copy_file_impl(const path &from, const path &to, copy_options options,
       bool(copy_options::overwrite_existing & options);
 
 #if defined(ASAP_WINDOWS)
-  // TODO: refactor code to share portable portables
+  // TODO(Abdessattar): refactor code to share portable portables
 
   auto from_st = status_impl(from, &m_ec);
-  if (m_ec) return err.report(m_ec);
+  if (m_ec) {
+    return err.report(m_ec);
+  }
 
   if (!is_regular_file(from_st)) {
     return err.report(make_error_code(std::errc::not_supported));
   }
 
   auto to_st = status_impl(to, &m_ec);
-  if (!status_known(to_st)) return err.report(m_ec);
+  if (!status_known(to_st)) {
+    return err.report(m_ec);
+  }
 
   const bool to_exists = exists(to_st);
-  if (to_exists && !is_regular_file(to_st))
+  if (to_exists && !is_regular_file(to_st)) {
     return err.report(std::errc::not_supported);
+  }
 
   if (to_exists && equivalent_impl(from, to, &m_ec)) {
-    if (m_ec)
+    if (m_ec) {
       return err.report(std::errc::invalid_argument);
-    else
-      return err.report(std::errc::file_exists);
+    }
+    return err.report(std::errc::file_exists);
   }
-  if (to_exists && skip_existing) return false;
+  if (to_exists && skip_existing) {
+    return false;
+  }
 
   bool ShouldCopy = [&]() {
     if (to_exists && update_existing) {
       auto from_time = last_write_time_impl(from, &m_ec);
-      if (m_ec) return err.report(m_ec);
+      if (m_ec) {
+        return err.report(m_ec);
+      }
       auto to_time = last_write_time_impl(to, &m_ec);
-      if (m_ec) return err.report(m_ec);
-      if (from_time < to_time) return false;
+      if (m_ec) {
+        return err.report(m_ec);
+      }
+      return from_time >= to_time;
+    }
+    if (!to_exists || overwrite_existing) {
       return true;
     }
-    if (!to_exists || overwrite_existing) return true;
     return err.report(std::errc::file_exists);
   }();
-  if (!ShouldCopy) return false;
+  if (!ShouldCopy) {
+    return false;
+  }
 
   auto from_wpath = from.wstring();
   auto to_wpath = to.wstring();
-  if (!detail::win32_port::CopyFileW(from_wpath.c_str(), to_wpath.c_str(),
-                                     false)) {
+  if (detail::win32_port::CopyFileW(from_wpath.c_str(), to_wpath.c_str(), 0) ==
+      0) {
     return err.report(capture_errno());
   }
 
@@ -585,11 +610,14 @@ void copy_symlink_impl(const path &existing_symlink, const path &new_symlink,
   // is not needed with POSIX it is needed with Windows.
 #if defined(ASAP_WINDOWS)
   bool is_dir = is_directory(real_path, m_ec);
-  if (m_ec) return err.report(m_ec);
-  if (is_dir)
+  if (m_ec) {
+    return err.report(m_ec);
+  }
+  if (is_dir) {
     create_directory_symlink_impl(real_path, new_symlink, ec);
-  else
+  } else {
     create_symlink_impl(real_path, new_symlink, ec);
+  }
 #else
   create_symlink_impl(real_path, new_symlink, ec);
 #endif
@@ -663,9 +691,12 @@ auto create_directory_impl(const path &p, std::error_code *ec) -> bool {
   ErrorHandler<bool> err("create_directory", ec, &p);
 #if defined(ASAP_WINDOWS)
   auto wpath = p.wstring();
-  if (detail::win32_port::CreateDirectoryW(wpath.c_str(), nullptr)) return true;
-  if (detail::win32_port::GetLastError() != ERROR_ALREADY_EXISTS)
+  if (detail::win32_port::CreateDirectoryW(wpath.c_str(), nullptr) != 0) {
+    return true;
+  }
+  if (detail::win32_port::GetLastError() != ERROR_ALREADY_EXISTS) {
     err.report(capture_errno());
+  }
 #else
   if (detail::posix_port::mkdir(p.c_str(), static_cast<int>(perms::all)) == 0) {
     return true;
@@ -684,10 +715,11 @@ auto create_directory_impl(path const &p, path const &existing_template,
 #if defined(ASAP_WINDOWS)
   auto wpath = p.wstring();
   auto template_wpath = existing_template.wstring();
-  if (!detail::win32_port::CreateDirectoryExW(template_wpath.c_str(),
-                                              wpath.c_str(), nullptr)) {
-    if (detail::win32_port::GetLastError() != ERROR_ALREADY_EXISTS)
+  if (detail::win32_port::CreateDirectoryExW(template_wpath.c_str(),
+                                             wpath.c_str(), nullptr) == 0) {
+    if (detail::win32_port::GetLastError() != ERROR_ALREADY_EXISTS) {
       err.report(capture_errno());
+    }
   }
   return true;
 #else
@@ -718,19 +750,20 @@ auto create_directory_impl(path const &p, path const &existing_template,
 //                             create symlink
 // -----------------------------------------------------------------------------
 
-void create_directory_symlink_impl(path const &target, path const &link,
+void create_directory_symlink_impl(path const &target, path const &new_symlink,
                                    std::error_code *ec) {
-  ErrorHandler<void> err("create_directory_symlink", ec, &target, &link);
+  ErrorHandler<void> err("create_directory_symlink", ec, &target, &new_symlink);
 #if defined(ASAP_WINDOWS)
-  auto link_wpath = link.wstring();
+  auto link_wpath = new_symlink.wstring();
   auto target_wpath = target.wstring();
-  if (!detail::win32_port::CreateSymbolicLinkW(
+  if (detail::win32_port::CreateSymbolicLinkW(
           link_wpath.c_str(), target_wpath.c_str(),
           SYMBOLIC_LINK_FLAG_DIRECTORY |
-              SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE))
+              SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE) == 0U) {
     return err.report(capture_errno());
+  }
 #else
-  if (detail::posix_port::symlink(target.c_str(), link.c_str()) != 0) {
+  if (detail::posix_port::symlink(target.c_str(), new_symlink.c_str()) != 0) {
     return err.report(capture_errno());
   }
 #endif
@@ -740,11 +773,12 @@ void create_hard_link_impl(const path &target, const path &new_hard_link,
                            std::error_code *ec) {
   ErrorHandler<void> err("create_hard_link", ec, &target, &new_hard_link);
 #if defined(ASAP_WINDOWS)
-  auto link_wpath = link.wstring();
+  auto link_wpath = new_hard_link.wstring();
   auto target_wpath = target.wstring();
-  if (!detail::win32_port::CreateHardLinkW(link_wpath.c_str(),
-                                           target_wpath.c_str(), nullptr))
+  if (detail::win32_port::CreateHardLinkW(link_wpath.c_str(),
+                                          target_wpath.c_str(), nullptr) == 0) {
     return err.report(capture_errno());
+  }
 #else
   if (detail::posix_port::link(target.c_str(), new_hard_link.c_str()) == -1) {
     return err.report(capture_errno());
@@ -758,10 +792,11 @@ void create_symlink_impl(path const &target, path const &new_symlink,
 #if defined(ASAP_WINDOWS)
   auto link_wpath = link.wstring();
   auto target_wpath = target.wstring();
-  if (!detail::win32_port::CreateSymbolicLinkW(
+  if (detail::win32_port::CreateSymbolicLinkW(
           link_wpath.c_str(), target_wpath.c_str(),
-          SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE))
+          SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE) == 0U) {
     return err.report(capture_errno());
+  }
 #else
   if (detail::posix_port::symlink(target.c_str(), new_symlink.c_str()) == -1) {
     return err.report(capture_errno());
@@ -779,8 +814,10 @@ auto current_path_impl(std::error_code *ec) -> path {
   auto size = detail::win32_port::GetCurrentDirectoryW(0, nullptr);
   auto buff = std::unique_ptr<WCHAR[]>(new WCHAR[size + 1]);
   if (detail::win32_port::GetCurrentDirectoryW(
-          static_cast<DWORD>(size), reinterpret_cast<LPWSTR>(buff.get())) == 0)
+          static_cast<DWORD>(size), reinterpret_cast<LPWSTR>(buff.get())) ==
+      0) {
     return err.report(capture_errno(), "call to GetCurrentDirectoryW failed");
+  }
   return {buff.get()};
 #else
   auto size = detail::posix_port::pathconf(".", _PC_PATH_MAX);
@@ -798,8 +835,9 @@ void current_path_impl(const path &p, std::error_code *ec) {
   ErrorHandler<void> err("current_path", ec, &p);
 #if defined(ASAP_WINDOWS)
   auto wpath = p.wstring();
-  if (!detail::win32_port::SetCurrentDirectoryW(wpath.c_str()))
+  if (detail::win32_port::SetCurrentDirectoryW(wpath.c_str()) == 0) {
     err.report(capture_errno());
+  }
 #else
   if (detail::posix_port::chdir(p.c_str()) == -1) {
     err.report(capture_errno());
@@ -819,11 +857,15 @@ auto equivalent_impl(const path &p1, const path &p2, std::error_code *ec)
   auto file1 = detail::FileDescriptor::Create(
       &p1, m_ec, 0, FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
       nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, nullptr);
-  if (m_ec) return err.report(m_ec);
+  if (m_ec) {
+    return err.report(m_ec);
+  }
   auto file2 = detail::FileDescriptor::Create(
       &p2, m_ec, 0, FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
       nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, nullptr);
-  if (m_ec) return err.report(m_ec);
+  if (m_ec) {
+    return err.report(m_ec);
+  }
 
   if (file1.fd_ == detail::win32_port::invalid_handle_value ||
       file2.fd_ == detail::win32_port::invalid_handle_value) {
@@ -833,18 +875,18 @@ auto equivalent_impl(const path &p1, const path &p2, std::error_code *ec)
         file2.fd_ == detail::win32_port::invalid_handle_value) {
       return err.report(std::errc::not_supported,
                         "both paths refer to invalid files");
-    } else {
-      return false;
     }
+    return false;
   }
   // at this point, both handles are known to be valid
 
-  BY_HANDLE_FILE_INFORMATION info1, info2;
+  BY_HANDLE_FILE_INFORMATION info1;
+  BY_HANDLE_FILE_INFORMATION info2;
 
-  if (!detail::win32_port::GetFileInformationByHandle(file1.fd_, &info1)) {
+  if (detail::win32_port::GetFileInformationByHandle(file1.fd_, &info1) == 0) {
     return err.report(capture_errno());
   }
-  if (!detail::win32_port::GetFileInformationByHandle(file2.fd_, &info2)) {
+  if (detail::win32_port::GetFileInformationByHandle(file2.fd_, &info2) == 0) {
     return err.report(capture_errno());
   }
 
@@ -889,8 +931,8 @@ auto file_size_impl(const path &p, std::error_code *ec) -> uintmax_t {
 #if defined(ASAP_WINDOWS)
   WIN32_FILE_ATTRIBUTE_DATA fad;
   auto wpath = p.wstring();
-  if (!detail::win32_port::GetFileAttributesExW(
-          wpath.c_str(), ::GetFileExInfoStandard, &fad)) {
+  if (detail::win32_port::GetFileAttributesExW(
+          wpath.c_str(), ::GetFileExInfoStandard, &fad) == 0) {
     return err.report(capture_errno());
   }
 
@@ -932,14 +974,16 @@ auto hard_link_count_impl(const path &p, std::error_code *ec) -> uintmax_t {
   auto file = detail::FileDescriptor::Create(
       &p, m_ec, 0, FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
       nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, nullptr);
-  if (m_ec) return err.report(m_ec);
+  if (m_ec) {
+    return err.report(m_ec);
+  }
 
   BY_HANDLE_FILE_INFORMATION info;
-  if (!detail::win32_port::GetFileInformationByHandle(file.fd_, &info)) {
+  if (detail::win32_port::GetFileInformationByHandle(file.fd_, &info) == 0) {
     return err.report(capture_errno());
-  } else {
-    return info.nNumberOfLinks;
   }
+  return info.nNumberOfLinks;
+
 #else
   std::error_code m_ec;
   StatT st;
@@ -971,13 +1015,13 @@ auto is_empty_impl(const path &p, std::error_code *ec) -> bool {
 #if defined(ASAP_WINDOWS)
   WIN32_FILE_ATTRIBUTE_DATA fad;
   auto wpath = p.wstring();
-  if (!detail::win32_port::GetFileAttributesExW(
-          wpath.c_str(), ::GetFileExInfoStandard, &fad)) {
+  if (detail::win32_port::GetFileAttributesExW(
+          wpath.c_str(), ::GetFileExInfoStandard, &fad) == 0) {
     return err.report(capture_errno());
   }
-  return (fad.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+  return (fad.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0U
              ? is_empty_directory(p, ec)
-             : (!fad.nFileSizeHigh && !fad.nFileSizeLow);
+             : ((fad.nFileSizeHigh == 0U) && (fad.nFileSizeLow == 0U));
 #else
   std::error_code m_ec;
   StatT pst;
@@ -1013,11 +1057,14 @@ auto last_write_time_impl(const path &p, std::error_code *ec)
       &p, m_ec, FILE_READ_ATTRIBUTES,
       FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr,
       OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, nullptr);
-  if (m_ec) return err.report(m_ec);
+  if (m_ec) {
+    return err.report(m_ec);
+  }
 
   FILETIME lwt;
-  if (!detail::win32_port::GetFileTime(file.fd_, 0, 0, &lwt))
+  if (detail::win32_port::GetFileTime(file.fd_, nullptr, nullptr, &lwt) == 0) {
     return err.report(capture_errno());
+  }
   auto ft = detail::win32_port::FileTimeTypeFromWindowsFileTime(lwt, m_ec);
   return (m_ec ? err.report(m_ec) : ft);
 #else
@@ -1042,12 +1089,16 @@ void last_write_time_impl(const path &p, file_time_type new_time,
       &p, m_ec, FILE_WRITE_ATTRIBUTES,
       FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr,
       OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, nullptr);
-  if (m_ec) return err.report(m_ec);
+  if (m_ec) {
+    return err.report(m_ec);
+  }
 
   auto wt = detail::win32_port::FileTimeTypeToWindowsFileTime(new_time, m_ec);
-  if (m_ec) return err.report(m_ec);
+  if (m_ec) {
+    return err.report(m_ec);
+  }
 
-  if (!detail::win32_port::SetFileTime(file.fd_, nullptr, nullptr, &wt)) {
+  if (detail::win32_port::SetFileTime(file.fd_, nullptr, nullptr, &wt) == 0) {
     return err.report(capture_errno());
   }
 #else  // ASAP_WINDOWS
@@ -1136,7 +1187,9 @@ void permissions_impl(const path &p, perms prms, perm_options opts,
 #if defined(ASAP_WINDOWS)
   std::error_code m_ec;
   detail::win32_port::SetPermissions(p, prms, set_sym_perms, &m_ec);
-  if (m_ec) return err.report(m_ec);
+  if (m_ec) {
+    return err.report(m_ec);
+  }
 #else  // ASAP_WINDOWS
   const auto real_perms = static_cast< ::mode_t>(prms & perms::mask);
 
@@ -1206,17 +1259,18 @@ auto remove_impl(const path &p, std::error_code *ec) -> bool {
     return (detail::win32_port::GetLastError() == ERROR_FILE_NOT_FOUND)
                ? false
                : err.report(capture_errno());
-  } else {
-    if (attrs & FILE_ATTRIBUTE_DIRECTORY) {
-      is_dir = true;
-    }
-    auto status = is_dir ? detail::win32_port::RemoveDirectoryW(wpath.c_str())
-                         : detail::win32_port::DeleteFileW(wpath.c_str());
-    if (!status && detail::win32_port::GetLastError() != ERROR_FILE_NOT_FOUND) {
-      err.report(capture_errno());
-      return false;
-    }
   }
+  if ((attrs & FILE_ATTRIBUTE_DIRECTORY) != 0U) {
+    is_dir = true;
+  }
+  auto status = is_dir ? detail::win32_port::RemoveDirectoryW(wpath.c_str())
+                       : detail::win32_port::DeleteFileW(wpath.c_str());
+  if ((status == 0) &&
+      detail::win32_port::GetLastError() != ERROR_FILE_NOT_FOUND) {
+    err.report(capture_errno());
+    return false;
+  }
+
 #else
   if (detail::posix_port::remove(p.c_str()) == -1) {
     if (errno != ENOENT) {
@@ -1304,13 +1358,18 @@ void resize_file_impl(const path &p, uintmax_t size, std::error_code *ec) {
   auto file = detail::FileDescriptor::Create(
       &p, m_ec, GENERIC_READ | GENERIC_WRITE, 0, nullptr, OPEN_EXISTING,
       FILE_ATTRIBUTE_NORMAL, nullptr);
-  if (m_ec) return err.report(m_ec);
+  if (m_ec) {
+    return err.report(m_ec);
+  }
   LARGE_INTEGER pos;
   pos.QuadPart = size;
-  if (!detail::win32_port::SetFilePointerEx(file.fd_, pos, nullptr, FILE_BEGIN))
+  if (detail::win32_port::SetFilePointerEx(file.fd_, pos, nullptr,
+                                           FILE_BEGIN) == 0) {
     return err.report(capture_errno());
-  if (!detail::win32_port::SetEndOfFile(file.fd_))
+  }
+  if (detail::win32_port::SetEndOfFile(file.fd_) == 0) {
     return err.report(capture_errno());
+  }
 #else
   if (::truncate(p.c_str(), static_cast< ::off_t>(size)) == -1) {
     return err.report(capture_errno());
@@ -1332,17 +1391,25 @@ auto space_impl(const path &p, std::error_code *ec) -> space_info {
   dir.remove_filename();
   auto pathname = dir.wstring();
   ;
-  ULARGE_INTEGER bytes_avail = {}, bytes_total = {}, bytes_free = {};
+  ULARGE_INTEGER bytes_avail = {};
+  ULARGE_INTEGER bytes_total = {};
+  ULARGE_INTEGER bytes_free = {};
   if (detail::win32_port::GetDiskFreeSpaceExW(pathname.c_str(), &bytes_avail,
-                                              &bytes_total, &bytes_free)) {
-    if (bytes_total.QuadPart != 0) si.capacity = bytes_total.QuadPart;
-    if (bytes_free.QuadPart != 0) si.free = bytes_free.QuadPart;
-    if (bytes_avail.QuadPart != 0) si.available = bytes_avail.QuadPart;
-    return si;
-  } else {
-    err.report(capture_errno());
+                                              &bytes_total, &bytes_free) != 0) {
+    if (bytes_total.QuadPart != 0) {
+      si.capacity = bytes_total.QuadPart;
+    }
+    if (bytes_free.QuadPart != 0) {
+      si.free = bytes_free.QuadPart;
+    }
+    if (bytes_avail.QuadPart != 0) {
+      si.available = bytes_avail.QuadPart;
+    }
     return si;
   }
+  err.report(capture_errno());
+  return si;
+
 #else
   struct statvfs m_svfs = {};
   if (::statvfs(p.c_str(), &m_svfs) != -1) {
@@ -1385,7 +1452,7 @@ auto status_impl(const path &p, std::error_code *ec) -> file_status {
   // Handle the case of reparse point.
   // Since GetFileAttributesW does not resolve symlinks, try to open the file
   // handle to discover if it exists.
-  if (attrs & FILE_ATTRIBUTE_REPARSE_POINT) {
+  if ((attrs & FILE_ATTRIBUTE_REPARSE_POINT) != 0U) {
     // Becasue we do not specify the flag FILE_FLAG_OPEN_REPARSE_POINT, symlinks
     // will be followed and the target is opened.
     auto file1 = detail::FileDescriptor::Create(
@@ -1396,12 +1463,12 @@ auto status_impl(const path &p, std::error_code *ec) -> file_status {
     }
     // Get the file attributes from its handle
     FILE_ATTRIBUTE_TAG_INFO file_info;
-    if (!detail::win32_port::GetFileInformationByHandleEx(
-            file1.fd_, FileAttributeTagInfo, &file_info, sizeof(file_info))) {
+    if (detail::win32_port::GetFileInformationByHandleEx(
+            file1.fd_, FileAttributeTagInfo, &file_info, sizeof(file_info)) ==
+        0) {
       return detail::win32_port::ProcessStatusFailure(capture_errno(), p, ec);
-    } else {
-      attrs = file_info.FileAttributes;
     }
+    attrs = file_info.FileAttributes;
   }
 
   auto prms = detail::win32_port::GetPermissions(p, attrs, true, &m_ec);
@@ -1409,7 +1476,7 @@ auto status_impl(const path &p, std::error_code *ec) -> file_status {
     return detail::win32_port::ProcessStatusFailure(m_ec, p, ec);
   }
 
-  return (attrs & FILE_ATTRIBUTE_DIRECTORY)
+  return (attrs & FILE_ATTRIBUTE_DIRECTORY) != 0U
              ? file_status(file_type::directory, prms)
              : file_status(file_type::regular, prms);
 #else
@@ -1420,7 +1487,9 @@ auto status_impl(const path &p, std::error_code *ec) -> file_status {
 
 auto symlink_status_impl(const path &p, std::error_code *ec) -> file_status {
 #if defined(ASAP_WINDOWS)
-  if (ec) ec->clear();
+  if (ec != nullptr) {
+    ec->clear();
+  }
   auto wpath = p.wstring();
   DWORD attr(detail::win32_port::GetFileAttributesW(wpath.c_str()));
   if (attr == INVALID_FILE_ATTRIBUTES) {
@@ -1433,12 +1502,12 @@ auto symlink_status_impl(const path &p, std::error_code *ec) -> file_status {
     return detail::win32_port::ProcessStatusFailure(m_ec, p, ec);
   }
 
-  if (attr & FILE_ATTRIBUTE_REPARSE_POINT)
+  if ((attr & FILE_ATTRIBUTE_REPARSE_POINT) != 0U)
     return detail::win32_port::IsReparsePointSymlink(p, ec)
                ? file_status(file_type::symlink, prms)
                : file_status(file_type::reparse_file, prms);
 
-  return (attr & FILE_ATTRIBUTE_DIRECTORY)
+  return (attr & FILE_ATTRIBUTE_DIRECTORY) != 0U
              ? file_status(file_type::directory, prms)
              : file_status(file_type::regular, prms);
 #else
@@ -1495,8 +1564,9 @@ auto temp_directory_path_impl(std::error_code *ec) -> path {
   auto buff = std::unique_ptr<WCHAR[]>(new WCHAR[MAX_PATH + 1]);
   auto gtp_ret = detail::win32_port::GetTempPathW(
       static_cast<DWORD>(MAX_PATH), reinterpret_cast<LPWSTR>(buff.get()));
-  if (gtp_ret > MAX_PATH || gtp_ret == 0)
+  if (gtp_ret > MAX_PATH || gtp_ret == 0) {
     return err.report(capture_errno(), "call to GetTempPathW failed");
+  }
 
   p = path(buff.get());
 #else

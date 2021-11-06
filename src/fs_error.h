@@ -31,8 +31,8 @@ namespace detail {
 //                        detail: error handling
 // -----------------------------------------------------------------------------
 
-inline std::error_code capture_errno() {
-  int error;
+inline auto capture_errno() -> std::error_code {
+  int error = 0;
 #if defined(ASAP_WINDOWS)
   error = ::GetLastError();
 #else
@@ -43,43 +43,43 @@ inline std::error_code capture_errno() {
 }
 
 template <class T>
-T error_value();
+auto error_value() -> T;
 
 template <>
 inline constexpr void error_value<void>() {}
 
 template <>
-inline bool error_value<bool>() {
+inline auto error_value<bool>() -> bool {
   return false;
 }
 
 template <>
-inline uintmax_t error_value<uintmax_t>() {
+inline auto error_value<uintmax_t>() -> uintmax_t {
   return uintmax_t(-1);
 }
 
 template <>
-inline int error_value<int>() {
+inline auto error_value<int>() -> int {
   return -1;
 }
 
 template <>
-inline constexpr file_time_type error_value<file_time_type>() {
+inline constexpr auto error_value<file_time_type>() -> file_time_type {
   return file_time_type::min();
 }
 
 template <>
-inline path error_value<path>() {
+inline auto error_value<path>() -> path {
   return {};
 }
 
 template <>
-inline file_type error_value<file_type>() {
+inline auto error_value<file_type>() -> file_type {
   return file_type::none;
 }
 
 template <>
-inline perms error_value<perms>() {
+inline auto error_value<perms>() -> perms {
   return perms::unknown;
 }
 
@@ -90,56 +90,58 @@ struct ErrorHandler {
   const path *p1 = nullptr;
   const path *p2 = nullptr;
 
-  ErrorHandler(const char *fname, std::error_code *eec, const path *pp1 = nullptr,
-               const path *pp2 = nullptr)
+  ErrorHandler(const char *fname, std::error_code *eec,
+               const path *pp1 = nullptr, const path *pp2 = nullptr)
       : func_name(fname), ec(eec), p1(pp1), p2(pp2) {
-    if (ec) ec->clear();
+    if (ec != nullptr) {
+      ec->clear();
+    }
   }
   ErrorHandler(ErrorHandler const &) = delete;
-  ErrorHandler &operator=(ErrorHandler const &) = delete;
+  auto operator=(ErrorHandler const &) -> ErrorHandler & = delete;
 
-  T report(const std::error_code &m_ec) const {
-    if (ec) {
+  auto report(const std::error_code &m_ec) const -> T {
+    if (ec != nullptr) {
       *ec = m_ec;
       return error_value<T>();
     }
     std::string what = std::string("in ") + func_name;
-    if (p1) {
-      if (p2) {
+    if (p1 != nullptr) {
+      if (p2 != nullptr) {
         throw filesystem_error(what, *p1, *p2, m_ec);
-      } else {
-        throw filesystem_error(what, *p1, m_ec);
       }
-    } else {
-      throw filesystem_error(what, m_ec);
+      throw filesystem_error(what, *p1, m_ec);
     }
+    throw filesystem_error(what, m_ec);
+
     // Unreachable
     ASAP_UNREACHABLE();
   }
 
-  T report(const std::error_code &m_ec, std::string msg) const {
-    if (ec) {
+  auto report(const std::error_code &m_ec, const std::string &msg) const -> T {
+    if (ec != nullptr) {
       *ec = m_ec;
       return error_value<T>();
     }
     std::string what =
         std::string("in ").append(func_name).append(": ").append(msg);
-    if (p1) {
-      if (p2) {
+    if (p1 != nullptr) {
+      if (p2 != nullptr) {
         throw filesystem_error(what, *p1, *p2, m_ec);
-      } else {
-        throw filesystem_error(what, *p1, m_ec);
       }
-    } else {
-      throw filesystem_error(what, m_ec);
+      throw filesystem_error(what, *p1, m_ec);
     }
+    throw filesystem_error(what, m_ec);
+
     // Unreachable
     ASAP_UNREACHABLE();
   }
 
-  T report(std::errc const &err) const { return report(make_error_code(err)); }
+  auto report(std::errc const &err) const -> T {
+    return report(make_error_code(err));
+  }
 
-  T report(std::errc const &err, std::string msg) const {
+  auto report(std::errc const &err, std::string msg) const -> T {
     return report(make_error_code(err), msg);
   }
 };

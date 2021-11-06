@@ -41,10 +41,13 @@ void path::SplitComponents() {
       if (!IsDirSeparator(pathname_[2])) {
         // got root name, find its end
         pos = 3;
-        while (pos < len && !IsDirSeparator(pathname_[pos])) ++pos;
+        while (pos < len && !IsDirSeparator(pathname_[pos])) {
+          ++pos;
+        }
         AddRootName(pos);
-        if (pos < len)  // also got root directory
+        if (pos < len) {  // also got root directory
           AddRootDir(pos);
+        }
       } else {
         // got something like "///foo" which is just a root directory
         // composed of multiple redundant directory separators
@@ -69,7 +72,9 @@ void path::SplitComponents() {
   else if (len > 1 && pathname_[1] == ':') {
     // got disk designator
     AddRootName(2);
-    if (len > 2 && IsDirSeparator(pathname_[2])) AddRootDir(2);
+    if (len > 2 && IsDirSeparator(pathname_[2])) {
+      AddRootDir(2);
+    }
     pos = 2;
   }
 #endif
@@ -170,7 +175,9 @@ auto path::is_absolute() const -> bool {
 #if defined(ASAP_WINDOWS)
   if (has_root_name()) {
     auto rn = root_name().pathname_;
-    if (IsDirSeparator(rn[0]) && IsDirSeparator(rn[1])) return true;
+    if (IsDirSeparator(rn[0]) && IsDirSeparator(rn[1])) {
+      return true;
+    }
   }
   return has_root_directory();
 #else
@@ -368,7 +375,9 @@ void path::AddRootDir(size_t pos) {
   auto rootdir = pathname_.substr(pos, 1);
 #if defined(ASAP_WINDOWS)
   // Replace separator with preferred separator '\'
-  if (rootdir[0] == slash) rootdir[0] = preferred_separator;
+  if (rootdir[0] == slash) {
+    rootdir[0] = preferred_separator;
+  }
 #endif
   components_.emplace_back(rootdir, Type::ROOT_DIR, pos);
 }

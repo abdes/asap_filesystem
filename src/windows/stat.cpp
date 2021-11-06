@@ -107,7 +107,7 @@ bool IsReparsePointSymlink(const path &p, std::error_code *ec) {
          || info.rdb.ReparseTag == IO_REPARSE_TAG_MOUNT_POINT;
 }
 
-path ReadSymlinkFromReparsePoint(const path &p, std::error_code *ec) {
+auto ReadSymlinkFromReparsePoint(const path &p, std::error_code *ec) -> path {
   ErrorHandler<path> err("read_symlink", ec, &p);
 
   // Open a handle to the symbolic link and read the reparse point data
@@ -118,53 +118,58 @@ path ReadSymlinkFromReparsePoint(const path &p, std::error_code *ec) {
       FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr,
       OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT,
       nullptr);
-  if (m_ec) return err.report(m_ec);
+  if (m_ec) {
+    return err.report(m_ec);
+  }
 
   union info_t {
     char
         buf[REPARSE_DATA_BUFFER_HEADER_SIZE + MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
     REPARSE_DATA_BUFFER rdb;
-  } info;
+  } info{};
 
   // Query the reparse data
   DWORD dwRetLen;
   BOOL result = detail::win32_port::DeviceIoControl(
       file.fd_, FSCTL_GET_REPARSE_POINT, nullptr, 0, info.buf,
       MAXIMUM_REPARSE_DATA_BUFFER_SIZE, &dwRetLen, nullptr);
-  if (!result) return err.report(capture_errno());
+  if (result == 0) {
+    return err.report(capture_errno());
+  }
 
-  return path(
+  return {
       static_cast<wchar_t *>(info.rdb.SymbolicLinkReparseBuffer.PathBuffer) +
           info.rdb.SymbolicLinkReparseBuffer.PrintNameOffset / sizeof(wchar_t),
       static_cast<wchar_t *>(info.rdb.SymbolicLinkReparseBuffer.PathBuffer) +
           info.rdb.SymbolicLinkReparseBuffer.PrintNameOffset / sizeof(wchar_t) +
-          info.rdb.SymbolicLinkReparseBuffer.PrintNameLength / sizeof(wchar_t));
+          info.rdb.SymbolicLinkReparseBuffer.PrintNameLength / sizeof(wchar_t)};
 }
 
-file_status ProcessStatusFailure(std::error_code m_ec, const path &p,
-                                 std::error_code *ec = nullptr) {
-  if (ec) *ec = m_ec;
+auto ProcessStatusFailure(std::error_code m_ec, const path &p,
+                          std::error_code *ec = nullptr) -> file_status {
+  if (ec != nullptr) {
+    *ec = m_ec;
+  }
   if (m_ec) {
     if (IsNotFoundError(m_ec.value())) {
       return file_status(file_type::not_found, perms::none);
-    } else if (m_ec.value() == ERROR_SHARING_VIOLATION) {
+    }
+    if (m_ec.value() == ERROR_SHARING_VIOLATION) {
       return file_status(file_type::unknown);
-    } else {
-      if (ec) {
-        ErrorHandler<void> err("file_stat", ec, &p);
+    }
+    if (ec != nullptr) {
+      ErrorHandler<void> err("file_stat", ec, &p);
 #if defined(ASAP_WINDOWS)
-        if (m_ec.value() == ERROR_ACCESS_DENIED) {
-          err.report(std::errc::permission_denied,
-                     "failed to determine attributes for the specified path");
-        } else {
-          err.report(m_ec,
-                     "failed to determine attributes for the specified path");
-        }
-#else   // ASAP_WINDOWS
+      if (m_ec.value() == ERROR_ACCESS_DENIED) {
+        err.report(std::errc::permission_denied,
+                   "failed to determine attributes for the specified path");
+      } else {
         err.report(m_ec,
                    "failed to determine attributes for the specified path");
-#endif  // ASAP_WINDOWS
       }
+#else   // ASAP_WINDOWS
+      err.report(m_ec, "failed to determine attributes for the specified path");
+#endif  // ASAP_WINDOWS
     }
   }
   return file_status(file_type::none);

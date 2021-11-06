@@ -16,13 +16,13 @@ namespace filesystem {
 namespace detail {
 namespace win32_port {
 
-file_time_type FileTimeTypeFromWindowsFileTime(const FILETIME &ft,
-                                               std::error_code &ec) {
+auto FileTimeTypeFromWindowsFileTime(const FILETIME &ft, std::error_code &ec)
+    -> file_time_type {
   ec.clear();
 
   // Contains a 64-bit value representing the number of 100-nanosecond intervals
   // since January 1, 1601 (UTC).
-  ULARGE_INTEGER ulft{0, 0};
+  ULARGE_INTEGER ulft{{0, 0}};
   ulft.HighPart = ft.dwHighDateTime;
   ulft.LowPart = ft.dwLowDateTime;
 
@@ -33,8 +33,8 @@ file_time_type FileTimeTypeFromWindowsFileTime(const FILETIME &ft,
   return file_time_type(fs_seconds(ulft.QuadPart / 10000000 - EPOCH_DIFF));
 }
 
-FILETIME FileTimeTypeToWindowsFileTime(const file_time_type &ft,
-                                       std::error_code &ec) {
+auto FileTimeTypeToWindowsFileTime(const file_time_type &ft,
+                                   std::error_code &ec) -> FILETIME {
   ec.clear();
 
   FILETIME wt{0, 0};
@@ -45,8 +45,8 @@ FILETIME FileTimeTypeToWindowsFileTime(const file_time_type &ft,
     return wt;
   }
   auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>(d);
-  long long ll = ns.count() / 100 + 116444736000000000LL;
-  wt.dwLowDateTime = (DWORD)ll;
+  std::uint64_t ll = ns.count() / 100 + 116444736000000000LL;
+  wt.dwLowDateTime = static_cast<DWORD>(ll);
   wt.dwHighDateTime = ll >> 32;
   return wt;
 }

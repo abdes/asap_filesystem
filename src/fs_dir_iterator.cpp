@@ -29,75 +29,75 @@ void directory_entry::UpdateBasicFileInformation(bool follow_symlinks,
   DWORD attr(detail::win32_port::GetFileAttributesW(wpath.c_str()));
   if (attr == INVALID_FILE_ATTRIBUTES) {
     return err.report(detail::capture_errno());
-  } else {
-    // Check if we have a symbolic link
-    if (attr & FILE_ATTRIBUTE_REPARSE_POINT) {
-      try {
-        if (detail::win32_port::IsReparsePointSymlink(path_)) {
-          cached_data_.symlink = true;
-          cached_data_.type = file_type::symlink;
-        } else {
-          cached_data_.type = file_type::reparse_file;
-        }
-      } catch (filesystem_error const &ex) {
-        return err.report(ex.code());
-      }
-    }
-
-    // Check if we have a directory
-    if (attr & FILE_ATTRIBUTE_DIRECTORY) {
-      cached_data_.type = file_type::directory;
-    }
-
-    if (cached_data_.type == file_type::none ||
-        (cached_data_.type == file_type::symlink && follow_symlinks)) {
-      // Either we still have not determined yet the file type or it is a
-      // symlink and we must follow it to get the target file type.
-      std::error_code m_ec;
-      auto file = detail::FileDescriptor::Create(
-          &path_, m_ec, 0,
-          FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr,
-          OPEN_EXISTING,
-          FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT, nullptr);
-      if (m_ec) {
-        return err.report(m_ec);
+  }
+  // Check if we have a symbolic link
+  if ((attr & FILE_ATTRIBUTE_REPARSE_POINT) != 0U) {
+    try {
+      if (detail::win32_port::IsReparsePointSymlink(path_)) {
+        cached_data_.symlink = true;
+        cached_data_.type = file_type::symlink;
       } else {
-        BY_HANDLE_FILE_INFORMATION info;
-        if (!detail::win32_port::GetFileInformationByHandle(file.fd_, &info)) {
-          return err.report(detail::capture_errno());
-        } else {
-          if (attr & FILE_ATTRIBUTE_REPARSE_POINT) {
-            cached_data_.type = file_type::reparse_file;
-          }
-          // Check if we have a directory
-          else if (attr & FILE_ATTRIBUTE_DIRECTORY) {
-            cached_data_.type = file_type::directory;
-          } else {
-            // Call GetFileType to try to figure out precisely (as much as
-            // possible) what is the real file type
-            switch (detail::win32_port::GetFileType(file.fd_)) {
-              case FILE_TYPE_CHAR:
-                cached_data_.type = file_type::character;
-                break;
-              case FILE_TYPE_PIPE:
-                cached_data_.type = file_type::fifo;
-                break;
-              case FILE_TYPE_DISK:
-                cached_data_.type = file_type::regular;
-              default:
-                std::error_code windows_err = detail::capture_errno();
-                if (windows_err) {
-                  return err.report(windows_err);
-                } else {
-                  cached_data_.type = file_type::unknown;
-                }
-            }
-          }
-        }
+        cached_data_.type = file_type::reparse_file;
       }
-      if (cached_data_.symlink) cached_data_.type_resolved = true;
+    } catch (filesystem_error const &ex) {
+      return err.report(ex.code());
     }
   }
+
+  // Check if we have a directory
+  if ((attr & FILE_ATTRIBUTE_DIRECTORY) != 0U) {
+    cached_data_.type = file_type::directory;
+  }
+
+  if (cached_data_.type == file_type::none ||
+      (cached_data_.type == file_type::symlink && follow_symlinks)) {
+    // Either we still have not determined yet the file type or it is a
+    // symlink and we must follow it to get the target file type.
+    std::error_code m_ec;
+    auto file = detail::FileDescriptor::Create(
+        &path_, m_ec, 0, FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
+        nullptr, OPEN_EXISTING,
+        FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT, nullptr);
+    if (m_ec) {
+      return err.report(m_ec);
+    }
+
+    BY_HANDLE_FILE_INFORMATION info;
+    if (detail::win32_port::GetFileInformationByHandle(file.fd_, &info) == 0) {
+      return err.report(detail::capture_errno());
+    }
+    if ((attr & FILE_ATTRIBUTE_REPARSE_POINT) != 0U) {
+      cached_data_.type = file_type::reparse_file;
+    }
+    // Check if we have a directory
+    else if ((attr & FILE_ATTRIBUTE_DIRECTORY) != 0U) {
+      cached_data_.type = file_type::directory;
+    } else {
+      // Call GetFileType to try to figure out precisely (as much as
+      // possible) what is the real file type
+      switch (detail::win32_port::GetFileType(file.fd_)) {
+        case FILE_TYPE_CHAR:
+          cached_data_.type = file_type::character;
+          break;
+        case FILE_TYPE_PIPE:
+          cached_data_.type = file_type::fifo;
+          break;
+        case FILE_TYPE_DISK:
+          cached_data_.type = file_type::regular;
+        default:
+          std::error_code windows_err = detail::capture_errno();
+          if (windows_err) {
+            return err.report(windows_err);
+          }
+          cached_data_.type = file_type::unknown;
+      }
+    }
+
+    if (cached_data_.symlink) {
+      cached_data_.type_resolved = true;
+    }
+  }
+
   cached_data_.cache_type = CacheType_::BASIC;
 #else   // !ASAP_WINDOWS
   std::error_code m_ec;
@@ -159,7 +159,7 @@ void directory_entry::UpdateExtraFileInformation(bool follow_symlinks,
     }
 
     BY_HANDLE_FILE_INFORMATION info;
-    if (!detail::win32_port::GetFileInformationByHandle(file.fd_, &info)) {
+    if (detail::win32_port::GetFileInformationByHandle(file.fd_, &info) == 0) {
       return err.report(detail::capture_errno());
     }
 
@@ -178,7 +178,7 @@ void directory_entry::UpdateExtraFileInformation(bool follow_symlinks,
     }
 
     BY_HANDLE_FILE_INFORMATION info;
-    if (!detail::win32_port::GetFileInformationByHandle(file.fd_, &info)) {
+    if (detail::win32_port::GetFileInformationByHandle(file.fd_, &info) == 0) {
       return err.report(detail::capture_errno());
     }
 
@@ -193,11 +193,15 @@ void directory_entry::UpdateExtraFileInformation(bool follow_symlinks,
 
     // Last write time
     FILETIME lwt;
-    if (!detail::win32_port::GetFileTime(file.fd_, 0, 0, &lwt))
+    if (detail::win32_port::GetFileTime(file.fd_, nullptr, nullptr, &lwt) ==
+        0) {
       return err.report(detail::capture_errno());
+    }
     cached_data_.write_time =
         detail::win32_port::FileTimeTypeFromWindowsFileTime(lwt, m_ec);
-    if (m_ec) return err.report(m_ec);
+    if (m_ec) {
+      return err.report(m_ec);
+    }
 
     cached_data_.extra_resolved = true;
   }
@@ -229,8 +233,9 @@ void directory_entry::UpdatePermissionsInformation(bool follow_symlinks,
     }
 
     FILE_ATTRIBUTE_TAG_INFO file_info;
-    if (!detail::win32_port::GetFileInformationByHandleEx(
-            file.fd_, FileAttributeTagInfo, &file_info, sizeof(file_info))) {
+    if (detail::win32_port::GetFileInformationByHandleEx(
+            file.fd_, FileAttributeTagInfo, &file_info, sizeof(file_info)) ==
+        0) {
       return err.report(detail::capture_errno());
     }
     if (cached_data_.symlink) {
@@ -257,8 +262,9 @@ void directory_entry::UpdatePermissionsInformation(bool follow_symlinks,
     }
 
     FILE_ATTRIBUTE_TAG_INFO file_info;
-    if (!detail::win32_port::GetFileInformationByHandleEx(
-            file.fd_, FileAttributeTagInfo, &file_info, sizeof(file_info))) {
+    if (detail::win32_port::GetFileInformationByHandleEx(
+            file.fd_, FileAttributeTagInfo, &file_info, sizeof(file_info)) ==
+        0) {
       return err.report(detail::capture_errno());
     }
     cached_data_.non_symlink_perms = detail::win32_port::GetPermissions(
@@ -517,13 +523,17 @@ auto directory_entry::DoRefresh_impl() const noexcept -> std::error_code {
   return failure_ec;
 }
 #else
-std::error_code directory_entry::DoRefresh_impl() const noexcept {
+auto directory_entry::DoRefresh_impl() const noexcept -> std::error_code {
   cached_data_.Reset();
   std::error_code failure_ec;
   UpdateBasicFileInformation(true, &failure_ec);
-  if (failure_ec) return failure_ec;
+  if (failure_ec) {
+    return failure_ec;
+  }
   UpdateExtraFileInformation(true, &failure_ec);
-  if (failure_ec) return failure_ec;
+  if (failure_ec) {
+    return failure_ec;
+  }
   UpdatePermissionsInformation(true, &failure_ec);
   return failure_ec;
 }
@@ -576,10 +586,12 @@ auto posix_readdir(DIR *dir_stream, std::error_code &ec)
 }
 #else
 
-file_type get_file_type(const WIN32_FIND_DATAW &data) {
+auto get_file_type(const WIN32_FIND_DATAW &data) -> file_type {
   auto attrs = data.dwFileAttributes;
-  if (attrs & FILE_ATTRIBUTE_DIRECTORY) return file_type::directory;
-  if (attrs & FILE_ATTRIBUTE_REPARSE_POINT) {
+  if ((attrs & FILE_ATTRIBUTE_DIRECTORY) != 0U) {
+    return file_type::directory;
+  }
+  if ((attrs & FILE_ATTRIBUTE_REPARSE_POINT) != 0U) {
     auto reparseTag = data.dwReserved0;
     return (reparseTag == IO_REPARSE_TAG_SYMLINK
             // Directory junctions are very similar to symlinks, but have some
@@ -593,21 +605,21 @@ file_type get_file_type(const WIN32_FIND_DATAW &data) {
   return file_type::regular;
 }
 
-uintmax_t get_file_size(const WIN32_FIND_DATAW &data) {
-  return (data.nFileSizeHigh * (MAXDWORD + 1)) + data.nFileSizeLow;
-}
-file_time_type get_write_time(const WIN32_FIND_DATAW &data) {
-  ULARGE_INTEGER tmp;
-  auto &time = data.ftLastWriteTime;
-  tmp.u.LowPart = time.dwLowDateTime;
-  tmp.u.HighPart = time.dwHighDateTime;
+// TODO(Abdessattar): eventually delete if caching optimizations dont need this
+// auto get_file_size(const WIN32_FIND_DATAW &data) -> uintmax_t {
+//   return (data.nFileSizeHigh * (MAXDWORD + 1)) + data.nFileSizeLow;
+// }
+// auto get_write_time(const WIN32_FIND_DATAW &data) -> file_time_type {
+//   ULARGE_INTEGER tmp;
+//   const auto &time = data.ftLastWriteTime;
+//   tmp.u.LowPart = time.dwLowDateTime;
+//   tmp.u.HighPart = time.dwHighDateTime;
 
-  const long WINDOWS_TICK = 10000000;
-  const long long NANOSEC_TO_UNIX_EPOCH = 11644473600000000000LL;
+//   const std::uint64_t NANOSEC_TO_UNIX_EPOCH = 11644473600000000000LL;
 
-  return file_time_type(
-      file_time_type::duration(tmp.QuadPart * 100 - NANOSEC_TO_UNIX_EPOCH));
-}
+//   return file_time_type(
+//       file_time_type::duration(tmp.QuadPart * 100 - NANOSEC_TO_UNIX_EPOCH));
+// }
 
 #endif
 
@@ -620,7 +632,7 @@ using detail::ErrorHandler;
 class DirectoryStream {
  public:
   DirectoryStream() = delete;
-  DirectoryStream &operator=(const DirectoryStream &) = delete;
+  auto operator=(const DirectoryStream &) -> DirectoryStream & = delete;
 
   DirectoryStream(DirectoryStream &&other) noexcept
       : stream_(other.stream_),
@@ -641,9 +653,9 @@ class DirectoryStream {
     stream_ = ::FindFirstFileW(wdirpath.c_str(), &entry_data_);
     // Skip the '.' and '..'
     if (stream_ != INVALID_HANDLE_VALUE) {
-      while (!wcscmp(entry_data_.cFileName, L".") ||
-             !wcscmp(entry_data_.cFileName, L"..")) {
-        if (!::FindNextFileW(stream_, &entry_data_)) {
+      while ((wcscmp(entry_data_.cFileName, L".") == 0) ||
+             (wcscmp(entry_data_.cFileName, L"..") == 0)) {
+        if (::FindNextFileW(stream_, &entry_data_) == 0) {
           close();
           break;
         }
@@ -654,15 +666,18 @@ class DirectoryStream {
       const bool ignore_permission_denied =
           bool(opts & directory_options::skip_permission_denied);
       if (ec.value() == ERROR_ACCESS_DENIED) {
-        if (ignore_permission_denied)
+        if (ignore_permission_denied) {
           ec.clear();
-        else
+        } else {
           ec.assign(static_cast<typename std::underlying_type<std::errc>::type>(
                         std::errc::permission_denied),
                     std::generic_category());
+        }
       }
       // We consider the situation of no more files available as ok
-      if (ec.value() == ERROR_NO_MORE_FILES) ec.clear();
+      if (ec.value() == ERROR_NO_MORE_FILES) {
+        ec.clear();
+      }
     } else {
       entry_.path_ = root_ / entry_data_.cFileName;
       entry_.cached_data_.type = detail::get_file_type(entry_data_);
@@ -683,17 +698,20 @@ class DirectoryStream {
   }
 
   ~DirectoryStream() noexcept {
-    if (stream_ == INVALID_HANDLE_VALUE) return;
+    if (stream_ == INVALID_HANDLE_VALUE) {
+      return;
+    }
     close();
   }
 
-  bool good() const noexcept { return stream_ != INVALID_HANDLE_VALUE; }
+  auto good() const noexcept -> bool { return stream_ != INVALID_HANDLE_VALUE; }
 
-  bool advance(std::error_code &ec) {
-    while (::FindNextFileW(stream_, &entry_data_)) {
-      if (!wcscmp(entry_data_.cFileName, L".") ||
-          !wcscmp(entry_data_.cFileName, L".."))
+  auto advance(std::error_code &ec) -> bool {
+    while (::FindNextFileW(stream_, &entry_data_) != 0) {
+      if ((wcscmp(entry_data_.cFileName, L".") == 0) ||
+          (wcscmp(entry_data_.cFileName, L"..") == 0)) {
         continue;
+      }
 
       entry_.path_ = root_ / entry_data_.cFileName;
       entry_.cached_data_.type = detail::get_file_type(entry_data_);
@@ -715,21 +733,23 @@ class DirectoryStream {
     ec = std::error_code(::GetLastError(), std::generic_category());
     close();
     // We consider the situation of no more files available as ok
-    if (ec.value() == ERROR_NO_MORE_FILES) ec.clear();
+    if (ec.value() == ERROR_NO_MORE_FILES) {
+      ec.clear();
+    }
     return false;
   }
 
  private:
-  std::error_code close() noexcept {
+  auto close() noexcept -> std::error_code {
     std::error_code ec;
-    if (!::FindClose(stream_))
+    if (::FindClose(stream_) == 0)
       ec = std::error_code(::GetLastError(), std::generic_category());
     stream_ = INVALID_HANDLE_VALUE;
     return ec;
   }
 
   HANDLE stream_{INVALID_HANDLE_VALUE};
-  WIN32_FIND_DATAW entry_data_;
+  WIN32_FIND_DATAW entry_data_{};
 
  public:
   path root_;
@@ -869,7 +889,9 @@ recursive_directory_iterator::recursive_directory_iterator(
   if (m_ec) {
     err.report(m_ec);
   }
-  if (m_ec || !new_s.good()) return;
+  if (m_ec || !new_s.good()) {
+    return;
+  }
 
   impl_ = std::make_shared<SharedImpl>();
   impl_->options = opt;
