@@ -17,6 +17,7 @@
 #endif  // __clang__
 
 #include <algorithm>
+#include <array>
 #include <catch2/catch.hpp>
 #include <vector>
 
