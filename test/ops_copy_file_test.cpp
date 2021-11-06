@@ -6,7 +6,9 @@
 #if defined(__clang__)
 #pragma clang diagnostic push
 // Catch2 uses a lot of macro names that will make clang go crazy
+#if !defined(__APPLE__)
 #pragma clang diagnostic ignored "-Wreserved-identifier"
+#endif
 // Big mess created because of the way spdlog is organizing its source code
 // based on header only builds vs library builds. The issue is that spdlog
 // places the template definitions in a separate file and explicitly
