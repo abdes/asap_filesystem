@@ -143,7 +143,13 @@ using ::SetFileTime;
 //                          detail: file time utils
 // -----------------------------------------------------------------------------
 
+// Use typedef instead of using to avoid gcc warning on struct ::stat not
+// declaring anything. (alternative is: "using StatT = struct ::stat;" )
+#if !HEDLEY_GNUC_VERSION_CHECK(11, 0, 0)
+typedef struct ::timespec TimeSpec;  // NOLINT
+#else
 using TimeSpec = struct ::timespec;
+#endif
 
 #if defined(ASAP_POSIX)
 namespace posix_port {
@@ -173,8 +179,8 @@ namespace posix_port {
 
 // Use typedef instead of using to avoid gcc warning on struct ::stat not
 // declaring anything. (alternative is: "using StatT = struct ::stat;" )
-#if defined(HEDLEY_GNUC_VERSION)
-typedef struct ::stat StatT;
+#if !HEDLEY_GNUC_VERSION_CHECK(11, 0, 0)
+typedef struct ::stat StatT;  // NOLINT
 #else
 using StatT = struct ::stat;
 #endif
