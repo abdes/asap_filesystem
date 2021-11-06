@@ -128,6 +128,12 @@ asap_test_executable(
   COMPILE_OPTIONS
   ${compile_options})
 
+set_target_properties(${target} PROPERTIES
+    CXX_STANDARD 14
+    CXX_STANDARD_REQUIRED YES
+    CXX_EXTENSIONS NO
+)
+
 # ------------------------------------------------------------------------------
 # Add support for (optional) code quality tools
 # ------------------------------------------------------------------------------
