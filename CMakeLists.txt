@@ -162,12 +162,10 @@ tidy_target(${target})
 # API Documentation
 # ------------------------------------------------------------------------------
 
-configure_doxyfile(
+asap_with_doxygen(
   ${target} "\"C++17 filesystem backport Module\""
   "\"A module to provide the functionality of std::filesystem from C++ 17\""
   "${CMAKE_CURRENT_SOURCE_DIR}/src ${CMAKE_CURRENT_SOURCE_DIR}/include")
-
-add_doxygen_target(${target})
 
 add_sphinx_target(${target})
 
