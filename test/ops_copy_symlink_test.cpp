@@ -6,7 +6,7 @@
 #if defined(__clang__)
 #pragma clang diagnostic push
 // Catch2 uses a lot of macro names that will make clang go crazy
-#if !defined(__APPLE__)
+#if (__clang_major__ >= 13) && !defined(__APPLE__)
 #pragma clang diagnostic ignored "-Wreserved-identifier"
 #endif
 // Big mess created because of the way spdlog is organizing its source code
@@ -16,7 +16,7 @@
 // with clang (rightfully) complaining that the template definitions are not
 // available when the template needs to be instantiated here.
 #pragma clang diagnostic ignored "-Wundefined-func-template"
-#endif  // __clang__
+#endif // __clang__
 
 #include <catch2/catch.hpp>
 #include <fstream>
@@ -29,8 +29,7 @@ using testing::ComparePaths;
 //  copy_symlink
 // -----------------------------------------------------------------------------
 
-TEST_CASE("Ops / copy_symlink / does not exist",
-          "[common][filesystem][ops][copy_symlink]") {
+TEST_CASE("Ops / copy_symlink / does not exist", "[common][filesystem][ops][copy_symlink]") {
   std::error_code ec;
 
   auto from = testing::nonexistent_path();
@@ -41,8 +40,7 @@ TEST_CASE("Ops / copy_symlink / does not exist",
   REQUIRE(!exists(to));
 }
 
-TEST_CASE("Ops / copy_symlink / not symlink",
-          "[common][filesystem][ops][copy_symlink]") {
+TEST_CASE("Ops / copy_symlink / not symlink", "[common][filesystem][ops][copy_symlink]") {
   std::error_code ec;
 
   auto from = testing::nonexistent_path();
@@ -58,12 +56,12 @@ TEST_CASE("Ops / copy_symlink / not symlink",
   REQUIRE(!exists(to));
 }
 
-TEST_CASE("Ops / copy_symlink / link to file",
-          "[common][filesystem][ops][copy_symlink]") {
+TEST_CASE("Ops / copy_symlink / link to file", "[common][filesystem][ops][copy_symlink]") {
   // This test case requires symlinks and on windows, this will only work if
   // developer mode is enabled or the test cases are run as administrator.
 #if defined(ASAP_WINDOWS)
-  if (!testing::IsDeveloperModeEnabled()) return;
+  if (!testing::IsDeveloperModeEnabled())
+    return;
 #endif
 
   std::error_code ec;
@@ -73,7 +71,7 @@ TEST_CASE("Ops / copy_symlink / link to file",
   auto from = testing::nonexistent_path();
   testing::scoped_file sfrom(from, testing::scoped_file::adopt_file);
   REQUIRE(!exists(from));
-  create_symlink(tgt, from, ec);  // create the symlink
+  create_symlink(tgt, from, ec); // create the symlink
   REQUIRE(!ec);
   REQUIRE(exists(from));
   REQUIRE(is_symlink(from));
@@ -91,12 +89,12 @@ TEST_CASE("Ops / copy_symlink / link to file",
   REQUIRE(tgt == to_tgt);
 }
 
-TEST_CASE("Ops / copy_symlink / link to directory",
-          "[common][filesystem][ops][copy_symlink]") {
+TEST_CASE("Ops / copy_symlink / link to directory", "[common][filesystem][ops][copy_symlink]") {
   // This test case requires symlinks and on windows, this will only work if
   // developer mode is enabled or the test cases are run as administrator.
 #if defined(ASAP_WINDOWS)
-  if (!testing::IsDeveloperModeEnabled()) return;
+  if (!testing::IsDeveloperModeEnabled())
+    return;
 #endif
 
   std::error_code ec;
@@ -108,7 +106,7 @@ TEST_CASE("Ops / copy_symlink / link to directory",
   auto from = testing::nonexistent_path();
   testing::scoped_file sfrom(from, testing::scoped_file::adopt_file);
   REQUIRE(!exists(from));
-  create_directory_symlink(tgt, from, ec);  // create the symlink
+  create_directory_symlink(tgt, from, ec); // create the symlink
   REQUIRE(!ec);
   REQUIRE(exists(from));
   REQUIRE(is_symlink(from));
@@ -128,4 +126,4 @@ TEST_CASE("Ops / copy_symlink / link to directory",
 
 #if defined(__clang__)
 #pragma clang diagnostic pop
-#endif  // __clang__
+#endif // __clang__

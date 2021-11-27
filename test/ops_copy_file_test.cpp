@@ -6,7 +6,7 @@
 #if defined(__clang__)
 #pragma clang diagnostic push
 // Catch2 uses a lot of macro names that will make clang go crazy
-#if !defined(__APPLE__)
+#if (__clang_major__ >= 13) && !defined(__APPLE__)
 #pragma clang diagnostic ignored "-Wreserved-identifier"
 #endif
 // Big mess created because of the way spdlog is organizing its source code
@@ -16,7 +16,7 @@
 // with clang (rightfully) complaining that the template definitions are not
 // available when the template needs to be instantiated here.
 #pragma clang diagnostic ignored "-Wundefined-func-template"
-#endif  // __clang__
+#endif // __clang__
 
 #include <catch2/catch.hpp>
 #include <fstream>
@@ -29,8 +29,7 @@ using testing::ComparePaths;
 //  copy_file
 // -----------------------------------------------------------------------------
 
-TEST_CASE("Ops / copy_file / does not exist",
-          "[common][filesystem][ops][copy_file]") {
+TEST_CASE("Ops / copy_file / does not exist", "[common][filesystem][ops][copy_file]") {
   std::error_code ec;
 
   auto from = testing::nonexistent_path();
@@ -43,8 +42,7 @@ TEST_CASE("Ops / copy_file / does not exist",
   REQUIRE(!exists(to));
 }
 
-TEST_CASE("Ops / copy_file / not regular file",
-          "[common][filesystem][ops][copy_file]") {
+TEST_CASE("Ops / copy_file / not regular file", "[common][filesystem][ops][copy_file]") {
   std::error_code ec;
 
   auto from = testing::nonexistent_path();
@@ -117,4 +115,4 @@ TEST_CASE("Ops / copy_file", "[common][filesystem][ops][copy_file]") {
 
 #if defined(__clang__)
 #pragma clang diagnostic pop
-#endif  // __clang__
+#endif // __clang__

@@ -6,7 +6,7 @@
 #if defined(__clang__)
 #pragma clang diagnostic push
 // Catch2 uses a lot of macro names that will make clang go crazy
-#if !defined(__APPLE__)
+#if (__clang_major__ >= 13) && !defined(__APPLE__)
 #pragma clang diagnostic ignored "-Wreserved-identifier"
 #endif
 // Big mess created because of the way spdlog is organizing its source code
@@ -16,18 +16,18 @@
 // with clang (rightfully) complaining that the template definitions are not
 // available when the template needs to be instantiated here.
 #pragma clang diagnostic ignored "-Wundefined-func-template"
-#endif  // __clang__
+#endif // __clang__
 
 #include <catch2/catch.hpp>
 
 #include "fs_testsuite.h"
 
 namespace {
-auto check(fs::space_info const& s) -> bool {
+auto check(fs::space_info const &s) -> bool {
   const auto err = static_cast<uintmax_t>(-1);
   return s.capacity != err || s.free != err || s.available != err;
 }
-}  // namespace
+} // namespace
 
 // -----------------------------------------------------------------------------
 //  space
@@ -58,4 +58,4 @@ TEST_CASE("Ops / space / capacity > free", "[common][filesystem][ops][space]") {
 
 #if defined(__clang__)
 #pragma clang diagnostic pop
-#endif  // __clang__
+#endif // __clang__

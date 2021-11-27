@@ -6,7 +6,7 @@
 #if defined(__clang__)
 #pragma clang diagnostic push
 // Catch2 uses a lot of macro names that will make clang go crazy
-#if !defined(__APPLE__)
+#if (__clang_major__ >= 13) && !defined(__APPLE__)
 #pragma clang diagnostic ignored "-Wreserved-identifier"
 #endif
 // Big mess created because of the way spdlog is organizing its source code
@@ -16,7 +16,7 @@
 // with clang (rightfully) complaining that the template definitions are not
 // available when the template needs to be instantiated here.
 #pragma clang diagnostic ignored "-Wundefined-func-template"
-#endif  // __clang__
+#endif // __clang__
 
 #include <catch2/catch.hpp>
 #include <fstream>
@@ -29,8 +29,7 @@ using testing::ComparePaths;
 //  is_empty
 // -----------------------------------------------------------------------------
 
-TEST_CASE("Ops / is_empty / permissions",
-          "[common][filesystem][ops][is_empty]") {
+TEST_CASE("Ops / is_empty / permissions", "[common][filesystem][ops][is_empty]") {
   auto p = testing::nonexistent_path();
   create_directory(p);
   testing::scoped_file sp(p, testing::scoped_file::adopt_file);
@@ -42,8 +41,8 @@ TEST_CASE("Ops / is_empty / permissions",
   REQUIRE(ec == std::make_error_code(std::errc::permission_denied));
   REQUIRE(!result);
 
-  REQUIRE_THROWS_MATCHES(fs::is_empty(p), fs::filesystem_error,
-                         testing::FilesystemErrorDetail(ec, p));
+  REQUIRE_THROWS_MATCHES(
+      fs::is_empty(p), fs::filesystem_error, testing::FilesystemErrorDetail(ec, p));
 
   result = fs::is_empty(p / "f", ec);
 
@@ -56,16 +55,14 @@ TEST_CASE("Ops / is_empty / permissions",
   //  traversal errors. The primary use for the FILE_TRAVERSE access right on
   //  directories is to enable conformance to certain IEEE and ISO POSIX
   //  standards when interoperability with Unix systems is a requirement.
-  REQUIRE(((ec.value() ==
-            static_cast<typename std::underlying_type<std::errc>::type>(
-                std::errc::permission_denied)) ||
-           (ec.value() ==
-            static_cast<typename std::underlying_type<std::errc>::type>(
-                std::errc::no_such_file_or_directory))));
+  REQUIRE(((ec.value() == static_cast<typename std::underlying_type<std::errc>::type>(
+                              std::errc::permission_denied)) ||
+           (ec.value() == static_cast<typename std::underlying_type<std::errc>::type>(
+                              std::errc::no_such_file_or_directory))));
   REQUIRE(!result);
 
-  REQUIRE_THROWS_MATCHES(fs::is_empty(p / "f"), fs::filesystem_error,
-                         testing::FilesystemErrorDetail(ec, p / "f"));
+  REQUIRE_THROWS_MATCHES(
+      fs::is_empty(p / "f"), fs::filesystem_error, testing::FilesystemErrorDetail(ec, p / "f"));
 }
 
 TEST_CASE("Ops / is_empty", "[common][filesystem][ops][is_empty]") {
@@ -109,4 +106,4 @@ TEST_CASE("Ops / is_empty", "[common][filesystem][ops][is_empty]") {
 
 #if defined(__clang__)
 #pragma clang diagnostic pop
-#endif  // __clang__
+#endif // __clang__

@@ -6,7 +6,7 @@
 #if defined(__clang__)
 #pragma clang diagnostic push
 // Catch2 uses a lot of macro names that will make clang go crazy
-#if !defined(__APPLE__)
+#if (__clang_major__ >= 13) && !defined(__APPLE__)
 #pragma clang diagnostic ignored "-Wreserved-identifier"
 #endif
 // Big mess created because of the way spdlog is organizing its source code
@@ -16,7 +16,7 @@
 // with clang (rightfully) complaining that the template definitions are not
 // available when the template needs to be instantiated here.
 #pragma clang diagnostic ignored "-Wundefined-func-template"
-#endif  // __clang__
+#endif // __clang__
 
 #include <catch2/catch.hpp>
 
@@ -35,12 +35,12 @@ TEST_CASE("Path / native / native", "[common][filesystem][path][native]") {
   REQUIRE(p.c_str() == s);
   REQUIRE(static_cast<string_type>(p) == s);
 
-  string_type s2 = p;  // implicit conversion
+  string_type s2 = p; // implicit conversion
   REQUIRE(s2 == p.native());
 }
 
 TEST_CASE("Path / native / strings", "[common][filesystem][path][native]") {
-  const char* s = "abc";
+  const char *s = "abc";
   path p(s);
 
   auto str = p.string();
@@ -54,4 +54,4 @@ TEST_CASE("Path / native / strings", "[common][filesystem][path][native]") {
 
 #if defined(__clang__)
 #pragma clang diagnostic pop
-#endif  // __clang__
+#endif // __clang__

@@ -6,7 +6,7 @@
 #if defined(__clang__)
 #pragma clang diagnostic push
 // Catch2 uses a lot of macro names that will make clang go crazy
-#if !defined(__APPLE__)
+#if (__clang_major__ >= 13) && !defined(__APPLE__)
 #pragma clang diagnostic ignored "-Wreserved-identifier"
 #endif
 // Big mess created because of the way spdlog is organizing its source code
@@ -16,7 +16,7 @@
 // with clang (rightfully) complaining that the template definitions are not
 // available when the template needs to be instantiated here.
 #pragma clang diagnostic ignored "-Wundefined-func-template"
-#endif  // __clang__
+#endif // __clang__
 
 #include <algorithm>
 #include <array>
@@ -31,8 +31,7 @@ using testing::TEST_PATHS;
 //  Iterator
 // -----------------------------------------------------------------------------
 
-TEST_CASE("Path / iterator / components",
-          "[common][filesystem][path][iterator]") {
+TEST_CASE("Path / iterator / components", "[common][filesystem][path][iterator]") {
   for (const path p : TEST_PATHS()) {
     CAPTURE(p);
     if (p.empty()) {
@@ -41,7 +40,7 @@ TEST_CASE("Path / iterator / components",
       REQUIRE(std::distance(p.begin(), p.end()) != 0);
     }
 
-    for (const path& cmpt : p) {
+    for (const path &cmpt : p) {
       if (cmpt.empty()) {
         REQUIRE(std::distance(cmpt.begin(), cmpt.end()) == 0);
       } else {
@@ -51,8 +50,7 @@ TEST_CASE("Path / iterator / components",
   }
 }
 
-TEST_CASE("Path / iterator / traversal",
-          "[common][filesystem][path][iterator]") {
+TEST_CASE("Path / iterator / traversal", "[common][filesystem][path][iterator]") {
   path p;
   REQUIRE(p.begin() == p.end());
 
@@ -140,11 +138,9 @@ TEST_CASE("Path / iterator / reverse", "[common][filesystem][path][iterator]") {
   }
 }
 
-TEST_CASE("Path / iterator / special cases",
-          "[common][filesystem][path][iterator]") {
-  std::array<path, 4> paths{"single", "multiple/elements", "trailing/slash/",
-                            "/."};
-  for (const path& p : paths) {
+TEST_CASE("Path / iterator / special cases", "[common][filesystem][path][iterator]") {
+  std::array<path, 4> paths{"single", "multiple/elements", "trailing/slash/", "/."};
+  for (const path &p : paths) {
     for (auto iter = p.begin(); iter != p.end(); ++iter) {
       auto iter2 = iter;
       ++iter;
@@ -159,4 +155,4 @@ TEST_CASE("Path / iterator / special cases",
 
 #if defined(__clang__)
 #pragma clang diagnostic pop
-#endif  // __clang__
+#endif // __clang__

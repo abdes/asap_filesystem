@@ -6,7 +6,7 @@
 #if defined(__clang__)
 #pragma clang diagnostic push
 // Catch2 uses a lot of macro names that will make clang go crazy
-#if !defined(__APPLE__)
+#if (__clang_major__ >= 13) && !defined(__APPLE__)
 #pragma clang diagnostic ignored "-Wreserved-identifier"
 #endif
 // Big mess created because of the way spdlog is organizing its source code
@@ -16,7 +16,7 @@
 // with clang (rightfully) complaining that the template definitions are not
 // available when the template needs to be instantiated here.
 #pragma clang diagnostic ignored "-Wundefined-func-template"
-#endif  // __clang__
+#endif // __clang__
 
 #include <catch2/catch.hpp>
 
@@ -26,8 +26,7 @@
 //  dir_iterator
 // -----------------------------------------------------------------------------
 
-TEST_CASE("Dir / dir_iterator / dne",
-          "[common][filesystem][ops][dir_iterator]") {
+TEST_CASE("Dir / dir_iterator / dne", "[common][filesystem][ops][dir_iterator]") {
   std::error_code ec;
 
   // Test non-existent path.
@@ -37,8 +36,7 @@ TEST_CASE("Dir / dir_iterator / dne",
   REQUIRE(iter == end(iter));
 }
 
-TEST_CASE("Dir / dir_iterator / empty",
-          "[common][filesystem][ops][dir_iterator]") {
+TEST_CASE("Dir / dir_iterator / empty", "[common][filesystem][ops][dir_iterator]") {
   const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
   std::error_code ec;
 
@@ -61,11 +59,11 @@ TEST_CASE("Dir / dir_iterator / empty",
 //
 // This is in line with the default behavior of 'ls' command and with the fact
 // that POSIX opendir always follows symlinks in the given path.
-TEST_CASE("Dir / dir_iterator / over symlink",
-          "[common][filesystem][ops][dir_iterator]") {
+TEST_CASE("Dir / dir_iterator / over symlink", "[common][filesystem][ops][dir_iterator]") {
 #if defined(ASAP_WINDOWS)
-  if (!testing::IsDeveloperModeEnabled()) return;
-#endif  // ASAP_WINDOWS
+  if (!testing::IsDeveloperModeEnabled())
+    return;
+#endif // ASAP_WINDOWS
   const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
   std::error_code ec;
 
@@ -89,8 +87,7 @@ TEST_CASE("Dir / dir_iterator / over symlink",
   // Iterate over the link with follow_directory_symlink specified and check it
   // finds the file inside
   ec = bad_ec;
-  auto iter = fs::directory_iterator(
-      lnk, fs::directory_options::follow_directory_symlink, ec);
+  auto iter = fs::directory_iterator(lnk, fs::directory_options::follow_directory_symlink, ec);
   REQUIRE(!ec);
   REQUIRE(iter != fs::directory_iterator());
   REQUIRE(iter->path() == lnk / f);
@@ -110,8 +107,7 @@ TEST_CASE("Dir / dir_iterator / over symlink",
   REQUIRE(iter == end(iter));
 }
 
-TEST_CASE("Dir / dir_iterator / contains single dir",
-          "[common][filesystem][ops][dir_iterator]") {
+TEST_CASE("Dir / dir_iterator / contains single dir", "[common][filesystem][ops][dir_iterator]") {
   const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
   std::error_code ec;
 
@@ -135,8 +131,7 @@ TEST_CASE("Dir / dir_iterator / contains single dir",
   REQUIRE(iter == end(iter));
 }
 
-TEST_CASE("Dir / dir_iterator / contains single file",
-          "[common][filesystem][ops][dir_iterator]") {
+TEST_CASE("Dir / dir_iterator / contains single file", "[common][filesystem][ops][dir_iterator]") {
   const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
   std::error_code ec;
 
@@ -161,11 +156,11 @@ TEST_CASE("Dir / dir_iterator / contains single file",
   REQUIRE(iter == end(iter));
 }
 
-TEST_CASE("Dir / dir_iterator / contains symlink",
-          "[common][filesystem][ops][dir_iterator]") {
+TEST_CASE("Dir / dir_iterator / contains symlink", "[common][filesystem][ops][dir_iterator]") {
 #if defined(ASAP_WINDOWS)
-  if (!testing::IsDeveloperModeEnabled()) return;
-#endif  // ASAP_WINDOWS
+  if (!testing::IsDeveloperModeEnabled())
+    return;
+#endif // ASAP_WINDOWS
   const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
   std::error_code ec;
 
@@ -182,7 +177,7 @@ TEST_CASE("Dir / dir_iterator / contains symlink",
   REQUIRE(!exists(l));
 
   ec = bad_ec;
-  create_symlink(".." / tgt, p / l, ec);  // create the symlink
+  create_symlink(".." / tgt, p / l, ec); // create the symlink
   REQUIRE(!ec);
   REQUIRE(exists(p / l));
   REQUIRE(is_symlink(p / l));
@@ -198,8 +193,7 @@ TEST_CASE("Dir / dir_iterator / contains symlink",
 }
 
 #if !(defined(ASAP_WINDOWS))
-TEST_CASE("Dir / dir_iterator / no permission",
-          "[common][filesystem][ops][dir_iterator]") {
+TEST_CASE("Dir / dir_iterator / no permission", "[common][filesystem][ops][dir_iterator]") {
   const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
   std::error_code ec;
 
@@ -230,8 +224,7 @@ TEST_CASE("Dir / dir_iterator / no permission",
 }
 #endif
 
-TEST_CASE("Dir / dir_iterator / ++",
-          "[common][filesystem][ops][dir_iterator]") {
+TEST_CASE("Dir / dir_iterator / ++", "[common][filesystem][ops][dir_iterator]") {
   const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
   std::error_code ec;
   const auto p = testing::nonexistent_path();
@@ -254,8 +247,7 @@ TEST_CASE("Dir / dir_iterator / ++",
   REQUIRE(iter == end(iter));
 }
 
-TEST_CASE("Dir / dir_iterator / noexcept",
-          "[common][filesystem][ops][dir_iterator]") {
+TEST_CASE("Dir / dir_iterator / noexcept", "[common][filesystem][ops][dir_iterator]") {
   auto p = testing::nonexistent_path();
   create_directory(p);
   testing::scoped_file sp(p, testing::scoped_file::adopt_file);
@@ -270,4 +262,4 @@ TEST_CASE("Dir / dir_iterator / noexcept",
 
 #if defined(__clang__)
 #pragma clang diagnostic pop
-#endif  // __clang__
+#endif // __clang__

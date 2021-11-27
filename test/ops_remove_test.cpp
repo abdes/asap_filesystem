@@ -6,7 +6,7 @@
 #if defined(__clang__)
 #pragma clang diagnostic push
 // Catch2 uses a lot of macro names that will make clang go crazy
-#if !defined(__APPLE__)
+#if (__clang_major__ >= 13) && !defined(__APPLE__)
 #pragma clang diagnostic ignored "-Wreserved-identifier"
 #endif
 // Big mess created because of the way spdlog is organizing its source code
@@ -16,7 +16,7 @@
 // with clang (rightfully) complaining that the template definitions are not
 // available when the template needs to be instantiated here.
 #pragma clang diagnostic ignored "-Wundefined-func-template"
-#endif  // __clang__
+#endif // __clang__
 
 #include <catch2/catch.hpp>
 
@@ -26,8 +26,7 @@
 //  remove
 // -----------------------------------------------------------------------------
 
-TEST_CASE("Ops / remove / nonexistent path",
-          "[common][filesystem][ops][remove]") {
+TEST_CASE("Ops / remove / nonexistent path", "[common][filesystem][ops][remove]") {
   std::error_code ec;
   const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
   bool n = false;
@@ -46,7 +45,7 @@ TEST_CASE("Ops / remove / empty path", "[common][filesystem][ops][remove]") {
 
   ec = bad_ec;
   n = fs::remove("", ec);
-  REQUIRE(!ec);  // This seems odd, but is what the standard requires.
+  REQUIRE(!ec); // This seems odd, but is what the standard requires.
   REQUIRE(!n);
 }
 
@@ -65,8 +64,7 @@ TEST_CASE("Ops / remove / file", "[common][filesystem][ops][remove]") {
   REQUIRE(n);
 }
 
-TEST_CASE("Ops / remove / empty directory",
-          "[common][filesystem][ops][remove]") {
+TEST_CASE("Ops / remove / empty directory", "[common][filesystem][ops][remove]") {
   std::error_code ec;
   const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
   bool n = false;
@@ -83,12 +81,12 @@ TEST_CASE("Ops / remove / empty directory",
   REQUIRE(n);
 }
 
-TEST_CASE("Ops / remove / symlink to nonexistent path",
-          "[common][filesystem][ops][remove]") {
+TEST_CASE("Ops / remove / symlink to nonexistent path", "[common][filesystem][ops][remove]") {
   // This test case requires symlinks and on windows, this will only work if
   // developer mode is enabled or the test cases are run as administrator.
 #if defined(ASAP_WINDOWS)
-  if (!testing::IsDeveloperModeEnabled()) return;
+  if (!testing::IsDeveloperModeEnabled())
+    return;
 #endif
 
   std::error_code ec;
@@ -97,7 +95,7 @@ TEST_CASE("Ops / remove / symlink to nonexistent path",
 
   auto p = testing::nonexistent_path();
   auto link = testing::nonexistent_path();
-  create_directory_symlink(p, link);  // dangling symlink
+  create_directory_symlink(p, link); // dangling symlink
   ec = bad_ec;
   n = remove(link, ec);
   REQUIRE(!ec);
@@ -105,12 +103,12 @@ TEST_CASE("Ops / remove / symlink to nonexistent path",
   REQUIRE(!exists(symlink_status(link)));
 }
 
-TEST_CASE("Ops / remove / symlink to actual path",
-          "[common][filesystem][ops][remove]") {
+TEST_CASE("Ops / remove / symlink to actual path", "[common][filesystem][ops][remove]") {
   // This test case requires symlinks and on windows, this will only work if
   // developer mode is enabled or the test cases are run as administrator.
 #if defined(ASAP_WINDOWS)
-  if (!testing::IsDeveloperModeEnabled()) return;
+  if (!testing::IsDeveloperModeEnabled())
+    return;
 #endif
 
   std::error_code ec;
@@ -126,12 +124,11 @@ TEST_CASE("Ops / remove / symlink to actual path",
   n = remove(link, ec);
   REQUIRE(!ec);
   REQUIRE(n);
-  REQUIRE(!exists(symlink_status(link)));  // The symlink is removed, but
-  REQUIRE(exists(p));                      // its target is not.
+  REQUIRE(!exists(symlink_status(link))); // The symlink is removed, but
+  REQUIRE(exists(p));                     // its target is not.
 }
 
-TEST_CASE("Ops / remove / non-empty directory",
-          "[common][filesystem][ops][remove]") {
+TEST_CASE("Ops / remove / non-empty directory", "[common][filesystem][ops][remove]") {
   std::error_code ec;
   const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
   bool n = false;
@@ -157,9 +154,8 @@ TEST_CASE("Ops / remove / non-empty directory",
 // FIXME: this is not correct on POSIX
 // To remove a file, you need write permissions on the containing directory
 // permissions on the file itself are not sued
-TEST_CASE("Ops / remove / file permissions",
-          "[common][filesystem][ops][remove]") {
-#if 0   // FIXME
+TEST_CASE("Ops / remove / file permissions", "[common][filesystem][ops][remove]") {
+#if 0  // FIXME
   //  std::error_code ec;
   const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
   bool n = false;
@@ -182,7 +178,7 @@ TEST_CASE("Ops / remove / file permissions",
   REQUIRE(!ec);
   REQUIRE(n);
   REQUIRE(!exists(p));
-#endif  // FIXME
+#endif // FIXME
 }
 
 // FIXME: need to add test cases for permission scenarios involving files and
@@ -192,18 +188,16 @@ TEST_CASE("Ops / remove / file permissions",
 //  remove_all
 // -----------------------------------------------------------------------------
 
-TEST_CASE("Ops / remove_all / empty path",
-          "[common][filesystem][ops][remove_all]") {
+TEST_CASE("Ops / remove_all / empty path", "[common][filesystem][ops][remove_all]") {
   std::error_code ec;
   std::uintmax_t n = 0;
 
   n = fs::remove_all("", ec);
-  REQUIRE(!ec);  // This seems odd, but is what the standard requires.
+  REQUIRE(!ec); // This seems odd, but is what the standard requires.
   REQUIRE(n == 0);
 }
 
-TEST_CASE("Ops / remove_all / nonexistent path",
-          "[common][filesystem][ops][remove_all]") {
+TEST_CASE("Ops / remove_all / nonexistent path", "[common][filesystem][ops][remove_all]") {
   std::error_code ec;
   const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
   std::uintmax_t n = 0;
@@ -215,12 +209,13 @@ TEST_CASE("Ops / remove_all / nonexistent path",
   REQUIRE(n == 0);
 }
 
-TEST_CASE("Ops / remove_all / symlink to nonexistent path",
-          "[common][filesystem][ops][remove_all]") {
+TEST_CASE(
+    "Ops / remove_all / symlink to nonexistent path", "[common][filesystem][ops][remove_all]") {
   // This test case requires symlinks and on windows, this will only work if
   // developer mode is enabled or the test cases are run as administrator.
 #if defined(ASAP_WINDOWS)
-  if (!testing::IsDeveloperModeEnabled()) return;
+  if (!testing::IsDeveloperModeEnabled())
+    return;
 #endif
 
   std::error_code ec;
@@ -229,20 +224,20 @@ TEST_CASE("Ops / remove_all / symlink to nonexistent path",
 
   auto p = testing::nonexistent_path();
   auto link = testing::nonexistent_path();
-  create_symlink(p, link);  // dangling symlink
+  create_symlink(p, link); // dangling symlink
   ec = bad_ec;
   n = remove_all(link, ec);
   REQUIRE(!ec);
   REQUIRE(n == 1);
-  REQUIRE(!exists(symlink_status(link)));  // DR 2721
+  REQUIRE(!exists(symlink_status(link))); // DR 2721
 }
 
-TEST_CASE("Ops / remove_all / symlink to actual path",
-          "[common][filesystem][ops][remove_all]") {
+TEST_CASE("Ops / remove_all / symlink to actual path", "[common][filesystem][ops][remove_all]") {
   // This test case requires symlinks and on windows, this will only work if
   // developer mode is enabled or the test cases are run as administrator.
 #if defined(ASAP_WINDOWS)
-  if (!testing::IsDeveloperModeEnabled()) return;
+  if (!testing::IsDeveloperModeEnabled())
+    return;
 #endif
 
   std::error_code ec;
@@ -257,8 +252,8 @@ TEST_CASE("Ops / remove_all / symlink to actual path",
   n = remove_all(link, ec);
   REQUIRE(!ec);
   REQUIRE(n == 1);
-  REQUIRE(!exists(symlink_status(link)));  // The symlink is removed, but
-  REQUIRE(exists(p));                      // its target is not.
+  REQUIRE(!exists(symlink_status(link))); // The symlink is removed, but
+  REQUIRE(exists(p));                     // its target is not.
 }
 
 TEST_CASE("Ops / remove_all / tree", "[common][filesystem][ops][remove_all]") {
@@ -292,8 +287,7 @@ TEST_CASE("Ops / remove_all / tree", "[common][filesystem][ops][remove_all]") {
   b2.path_.clear();
 }
 
-TEST_CASE("Ops / remove_all / multiple levels",
-          "[common][filesystem][ops][remove_all]") {
+TEST_CASE("Ops / remove_all / multiple levels", "[common][filesystem][ops][remove_all]") {
   const auto dir = testing::nonexistent_path();
   create_directories(dir / "a/b/c");
   std::uintmax_t n = remove_all(dir / "a");
@@ -312,4 +306,4 @@ TEST_CASE("Ops / remove_all / multiple levels",
 
 #if defined(__clang__)
 #pragma clang diagnostic pop
-#endif  // __clang__
+#endif // __clang__

@@ -6,7 +6,7 @@
 #if defined(__clang__)
 #pragma clang diagnostic push
 // Catch2 uses a lot of macro names that will make clang go crazy
-#if !defined(__APPLE__)
+#if (__clang_major__ >= 13) && !defined(__APPLE__)
 #pragma clang diagnostic ignored "-Wreserved-identifier"
 #endif
 // Big mess created because of the way spdlog is organizing its source code
@@ -16,7 +16,7 @@
 // with clang (rightfully) complaining that the template definitions are not
 // available when the template needs to be instantiated here.
 #pragma clang diagnostic ignored "-Wundefined-func-template"
-#endif  // __clang__
+#endif // __clang__
 
 #include <catch2/catch.hpp>
 
@@ -33,13 +33,10 @@ using testing::TEST_PATHS;
 // Equivalent to: return path(lhs) /= rhs;
 
 namespace {
-void test(const path& lhs, const path& rhs) {
-  ComparePaths(lhs / rhs, path(lhs) /= rhs);
-}
-}  // namespace
+void test(const path &lhs, const path &rhs) { ComparePaths(lhs / rhs, path(lhs) /= rhs); }
+} // namespace
 
-TEST_CASE("Path / nonmembers / '/' / special",
-          "[common][filesystem][path][nonmembers]") {
+TEST_CASE("Path / nonmembers / '/' / special", "[common][filesystem][path][nonmembers]") {
   test("/foo/bar", "/foo/");
 
   test("baz", "baz");
@@ -65,8 +62,7 @@ TEST_CASE("Path / nonmembers / '/' / special",
   test("foo", "c:\\bar");
 }
 
-TEST_CASE("Path / nonmembers / '/' / suite",
-          "[common][filesystem][path][nonmembers]") {
+TEST_CASE("Path / nonmembers / '/' / suite", "[common][filesystem][path][nonmembers]") {
   for (path p : TEST_PATHS()) {
     CAPTURE(p);
     for (path q : TEST_PATHS()) {
@@ -76,14 +72,12 @@ TEST_CASE("Path / nonmembers / '/' / suite",
   }
 }
 
-TEST_CASE("Path / nonmembers / hash_value / sanity",
-          "[common][filesystem][path][nonmembers]") {
+TEST_CASE("Path / nonmembers / hash_value / sanity", "[common][filesystem][path][nonmembers]") {
   REQUIRE(hash_value(path("a//b")) == hash_value(path("a/b")));
   REQUIRE(hash_value(path("a/")) == hash_value(path("a//")));
 }
 
-TEST_CASE("Path / nonmembers / hash_value / suite",
-          "[common][filesystem][path][nonmembers]") {
+TEST_CASE("Path / nonmembers / hash_value / suite", "[common][filesystem][path][nonmembers]") {
   for (path p : TEST_PATHS()) {
     path pp = p.native();
     REQUIRE(hash_value(p) == hash_value(pp));
@@ -92,4 +86,4 @@ TEST_CASE("Path / nonmembers / hash_value / suite",
 
 #if defined(__clang__)
 #pragma clang diagnostic pop
-#endif  // __clang__
+#endif // __clang__

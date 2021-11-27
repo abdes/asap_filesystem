@@ -6,7 +6,7 @@
 #if defined(__clang__)
 #pragma clang diagnostic push
 // Catch2 uses a lot of macro names that will make clang go crazy
-#if !defined(__APPLE__)
+#if (__clang_major__ >= 13) && !defined(__APPLE__)
 #pragma clang diagnostic ignored "-Wreserved-identifier"
 #endif
 // Big mess created because of the way spdlog is organizing its source code
@@ -16,7 +16,7 @@
 // with clang (rightfully) complaining that the template definitions are not
 // available when the template needs to be instantiated here.
 #pragma clang diagnostic ignored "-Wundefined-func-template"
-#endif  // __clang__
+#endif // __clang__
 
 #include <catch2/catch.hpp>
 
@@ -80,8 +80,9 @@ TEST_CASE("Ops / status / file", "[common][filesystem][ops][status]") {
 
 TEST_CASE("Ops / status / symlink", "[common][filesystem][ops][status]") {
 #if defined(ASAP_WINDOWS)
-  if (!testing::IsDeveloperModeEnabled()) return;
-#endif  // ASAP_WINDOWS
+  if (!testing::IsDeveloperModeEnabled())
+    return;
+#endif // ASAP_WINDOWS
 
   const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
   std::error_code ec;
@@ -91,7 +92,7 @@ TEST_CASE("Ops / status / symlink", "[common][filesystem][ops][status]") {
   fs::create_directory(tgt);
   auto lnk = testing::nonexistent_path();
   testing::scoped_file slnk(lnk, testing::scoped_file::adopt_file);
-  create_directory_symlink(tgt, lnk, ec);  // create the symlink once
+  create_directory_symlink(tgt, lnk, ec); // create the symlink once
   REQUIRE(!ec);
   REQUIRE(exists(lnk));
   REQUIRE(is_symlink(lnk));
@@ -116,4 +117,4 @@ TEST_CASE("Ops / status / no-permission", "[common][filesystem][ops][status]") {
 
 #if defined(__clang__)
 #pragma clang diagnostic pop
-#endif  // __clang__
+#endif // __clang__

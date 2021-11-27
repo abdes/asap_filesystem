@@ -6,7 +6,7 @@
 #if defined(__clang__)
 #pragma clang diagnostic push
 // Catch2 uses a lot of macro names that will make clang go crazy
-#if !defined(__APPLE__)
+#if (__clang_major__ >= 13) && !defined(__APPLE__)
 #pragma clang diagnostic ignored "-Wreserved-identifier"
 #endif
 // Big mess created because of the way spdlog is organizing its source code
@@ -16,7 +16,7 @@
 // with clang (rightfully) complaining that the template definitions are not
 // available when the template needs to be instantiated here.
 #pragma clang diagnostic ignored "-Wundefined-func-template"
-#endif  // __clang__
+#endif // __clang__
 
 #include <catch2/catch.hpp>
 #include <fstream>
@@ -66,8 +66,7 @@ TEST_CASE("Ops / exists / not", "[common][filesystem][ops][exists]") {
   REQUIRE(!ec);
 }
 
-TEST_CASE("Ops / exists / not (absolute)",
-          "[common][filesystem][ops][exists]") {
+TEST_CASE("Ops / exists / not (absolute)", "[common][filesystem][ops][exists]") {
   path abs = absolute(testing::nonexistent_path());
   REQUIRE(!exists(abs));
 
@@ -102,13 +101,11 @@ TEST_CASE("Ops / exists / permissions", "[common][filesystem][ops][exists]") {
   REQUIRE(ec == std::errc::permission_denied);
   ec.clear();
 
-  REQUIRE_THROWS_MATCHES(
-      exists(unr), fs::filesystem_error,
-      testing::FilesystemErrorDetail(
-          std::make_error_code(std::errc::permission_denied), unr));
-#endif  // ASAP_WINDOWS
+  REQUIRE_THROWS_MATCHES(exists(unr), fs::filesystem_error,
+      testing::FilesystemErrorDetail(std::make_error_code(std::errc::permission_denied), unr));
+#endif // ASAP_WINDOWS
 }
 
 #if defined(__clang__)
 #pragma clang diagnostic pop
-#endif  // __clang__
+#endif // __clang__

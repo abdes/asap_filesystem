@@ -6,7 +6,7 @@
 #if defined(__clang__)
 #pragma clang diagnostic push
 // Catch2 uses a lot of macro names that will make clang go crazy
-#if !defined(__APPLE__)
+#if (__clang_major__ >= 13) && !defined(__APPLE__)
 #pragma clang diagnostic ignored "-Wreserved-identifier"
 #endif
 // Big mess created because of the way spdlog is organizing its source code
@@ -16,7 +16,7 @@
 // with clang (rightfully) complaining that the template definitions are not
 // available when the template needs to be instantiated here.
 #pragma clang diagnostic ignored "-Wundefined-func-template"
-#endif  // __clang__
+#endif // __clang__
 
 #include <catch2/catch.hpp>
 
@@ -26,12 +26,12 @@
 //  symlink_status
 // -----------------------------------------------------------------------------
 
-TEST_CASE("Ops / symlink_status / dot",
-          "[common][filesystem][ops][symlink_status]") {
+TEST_CASE("Ops / symlink_status / dot", "[common][filesystem][ops][symlink_status]") {
   // This test case requires symlinks and on windows, this will only work if
   // developer mode is enabled or the test cases are run as administrator.
 #if defined(ASAP_WINDOWS)
-  if (!testing::IsDeveloperModeEnabled()) return;
+  if (!testing::IsDeveloperModeEnabled())
+    return;
 #endif
 
   const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
@@ -57,8 +57,7 @@ TEST_CASE("Ops / symlink_status / dot",
   REQUIRE(st2.type() == fs::file_type::symlink);
 }
 
-TEST_CASE("Ops / symlink_status / non-existing",
-          "[common][filesystem][ops][symlink_status]") {
+TEST_CASE("Ops / symlink_status / non-existing", "[common][filesystem][ops][symlink_status]") {
   fs::path p = testing::nonexistent_path();
 
   std::error_code ec;
@@ -72,4 +71,4 @@ TEST_CASE("Ops / symlink_status / non-existing",
 
 #if defined(__clang__)
 #pragma clang diagnostic pop
-#endif  // __clang__
+#endif // __clang__

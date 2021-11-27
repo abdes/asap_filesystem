@@ -6,7 +6,7 @@
 #if defined(__clang__)
 #pragma clang diagnostic push
 // Catch2 uses a lot of macro names that will make clang go crazy
-#if !defined(__APPLE__)
+#if (__clang_major__ >= 13) && !defined(__APPLE__)
 #pragma clang diagnostic ignored "-Wreserved-identifier"
 #endif
 // Big mess created because of the way spdlog is organizing its source code
@@ -16,7 +16,7 @@
 // with clang (rightfully) complaining that the template definitions are not
 // available when the template needs to be instantiated here.
 #pragma clang diagnostic ignored "-Wundefined-func-template"
-#endif  // __clang__
+#endif // __clang__
 
 #include <catch2/catch.hpp>
 #include <fstream>
@@ -35,14 +35,11 @@ TEST_CASE("Ops / file_size / special", "[common][filesystem][ops][file_size]") {
   REQUIRE(ec == std::errc::is_a_directory);
   REQUIRE(size == static_cast<std::uintmax_t>(-1));
 
-  REQUIRE_THROWS_MATCHES(
-      fs::file_size("."), fs::filesystem_error,
-      testing::FilesystemErrorDetail(
-          std::make_error_code(std::errc::is_a_directory), "."));
+  REQUIRE_THROWS_MATCHES(fs::file_size("."), fs::filesystem_error,
+      testing::FilesystemErrorDetail(std::make_error_code(std::errc::is_a_directory), "."));
 }
 
-TEST_CASE("Ops / file_size / not existing",
-          "[common][filesystem][ops][exists]") {
+TEST_CASE("Ops / file_size / not existing", "[common][filesystem][ops][exists]") {
   fs::path p = testing::nonexistent_path();
 
   std::error_code ec;
@@ -53,7 +50,7 @@ TEST_CASE("Ops / file_size / not existing",
   try {
     size = fs::file_size(p);
     ec.clear();
-  } catch (const fs::filesystem_error& e) {
+  } catch (const fs::filesystem_error &e) {
     ec = e.code();
   }
   REQUIRE(ec);
@@ -62,4 +59,4 @@ TEST_CASE("Ops / file_size / not existing",
 
 #if defined(__clang__)
 #pragma clang diagnostic pop
-#endif  // __clang__
+#endif // __clang__

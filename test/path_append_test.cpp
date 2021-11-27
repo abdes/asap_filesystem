@@ -6,7 +6,7 @@
 #if defined(__clang__)
 #pragma clang diagnostic push
 // Catch2 uses a lot of macro names that will make clang go crazy
-#if !defined(__APPLE__)
+#if (__clang_major__ >= 13) && !defined(__APPLE__)
 #pragma clang diagnostic ignored "-Wreserved-identifier"
 #endif
 // Big mess created because of the way spdlog is organizing its source code
@@ -16,7 +16,7 @@
 // with clang (rightfully) complaining that the template definitions are not
 // available when the template needs to be instantiated here.
 #pragma clang diagnostic ignored "-Wundefined-func-template"
-#endif  // __clang__
+#endif // __clang__
 
 #include <catch2/catch.hpp>
 
@@ -28,11 +28,11 @@ using testing::TEST_PATHS;
 // path::operator/=(const path&)
 
 namespace {
-auto Append(fs::path l, const fs::path& r) -> fs::path {
+auto Append(fs::path l, const fs::path &r) -> fs::path {
   l /= r;
   return l;
 }
-}  // namespace
+} // namespace
 
 // -----------------------------------------------------------------------------
 //  Append
@@ -88,7 +88,7 @@ TEST_CASE("Path / append / path", "[common][filesystem][path][append]") {
 
   // path("foo") / "c:"; // yields "c:"
   ComparePaths(Append("foo", "c:"), "c:");
-#endif  // ASAP_WINDOWS
+#endif // ASAP_WINDOWS
 }
 
 // path::operator/=(const Source& source)
@@ -98,8 +98,7 @@ TEST_CASE("Path / append / path", "[common][filesystem][path][append]") {
 // path::Append(InputIterator first, InputIterator last)
 // Equivalent to: return operator/=(path(first, last));
 
-template <typename Char>
-void test(const fs::path& p, const Char* s) {
+template <typename Char> void test(const fs::path &p, const Char *s) {
   fs::path expected = p;
   expected /= fs::path(s);
 
@@ -144,8 +143,7 @@ TEST_CASE("Path / append / source", "[common][filesystem][fs::path][append]") {
   test("foo", "c:\\bar");
 }
 
-TEST_CASE("Path / append / source / TEST_PATHS",
-          "[common][filesystem][fs::path][append]") {
+TEST_CASE("Path / append / source / TEST_PATHS", "[common][filesystem][fs::path][append]") {
   for (const fs::path p : TEST_PATHS()) {
     for (const fs::path q : TEST_PATHS()) {
       test(p, q.c_str());
@@ -165,4 +163,4 @@ TEST_CASE("Path / append / source / wstring",
 
 #if defined(__clang__)
 #pragma clang diagnostic pop
-#endif  // __clang__
+#endif // __clang__

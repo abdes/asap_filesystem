@@ -6,7 +6,7 @@
 #if defined(__clang__)
 #pragma clang diagnostic push
 // Catch2 uses a lot of macro names that will make clang go crazy
-#if !defined(__APPLE__)
+#if (__clang_major__ >= 13) && !defined(__APPLE__)
 #pragma clang diagnostic ignored "-Wreserved-identifier"
 #endif
 // Big mess created because of the way spdlog is organizing its source code
@@ -16,7 +16,7 @@
 // with clang (rightfully) complaining that the template definitions are not
 // available when the template needs to be instantiated here.
 #pragma clang diagnostic ignored "-Wundefined-func-template"
-#endif  // __clang__
+#endif // __clang__
 
 #include <catch2/catch.hpp>
 
@@ -38,8 +38,7 @@ TEST_CASE("Path / modifiers / clear", "[common][filesystem][path][modifiers]") {
   }
 }
 
-TEST_CASE("Path / modifiers / make_preferred",
-          "[common][filesystem][path][modifiers]") {
+TEST_CASE("Path / modifiers / make_preferred", "[common][filesystem][path][modifiers]") {
 #ifdef ASAP_WINDOWS
   REQUIRE(path("foo/bar").make_preferred() == "foo\\bar");
 #else
@@ -47,16 +46,15 @@ TEST_CASE("Path / modifiers / make_preferred",
 #endif
 }
 
-TEST_CASE("Path / modifiers / remove_file_name / special",
-          "[common][filesystem][path][modifiers]") {
+TEST_CASE(
+    "Path / modifiers / remove_file_name / special", "[common][filesystem][path][modifiers]") {
   ComparePaths(path("foo/bar").remove_filename(), "foo/");
   ComparePaths(path("foo/").remove_filename(), "foo/");
   ComparePaths(path("/foo").remove_filename(), "/");
   ComparePaths(path("/").remove_filename(), "/");
 }
 
-TEST_CASE("Path / modifiers / remove_file_name / suite",
-          "[common][filesystem][path][modifiers]") {
+TEST_CASE("Path / modifiers / remove_file_name / suite", "[common][filesystem][path][modifiers]") {
   for (path p : TEST_PATHS()) {
     path p2(p);
     p2.remove_filename();
@@ -65,29 +63,27 @@ TEST_CASE("Path / modifiers / remove_file_name / suite",
   }
 }
 
-TEST_CASE("Path / modifiers / replace_extension / special",
-          "[common][filesystem][path][modifiers]") {
+TEST_CASE(
+    "Path / modifiers / replace_extension / special", "[common][filesystem][path][modifiers]") {
   ComparePaths(path("/foo.txt").replace_extension("cpp"), "/foo.cpp");
   ComparePaths(path("/foo.txt").replace_extension(".cpp"), "/foo.cpp");
   ComparePaths(path("/").replace_extension("bar"), "/.bar");
 }
 
-TEST_CASE("Path / modifiers / replace_extension / suite",
-          "[common][filesystem][path][modifiers]") {
+TEST_CASE("Path / modifiers / replace_extension / suite", "[common][filesystem][path][modifiers]") {
   for (path p : TEST_PATHS()) {
     path p2(p);
     ComparePaths(p2.replace_extension(p2.extension()), p);
   }
 }
 
-TEST_CASE("Path / modifiers / replace_filename / special",
-          "[common][filesystem][path][modifiers]") {
+TEST_CASE(
+    "Path / modifiers / replace_filename / special", "[common][filesystem][path][modifiers]") {
   ComparePaths(path("/foo").replace_filename("bar"), "/bar");
   ComparePaths(path("/").replace_filename("bar"), "/bar");
 }
 
-TEST_CASE("Path / modifiers / replace_filename / suite",
-          "[common][filesystem][path][modifiers]") {
+TEST_CASE("Path / modifiers / replace_filename / suite", "[common][filesystem][path][modifiers]") {
   for (path p : TEST_PATHS()) {
     path p2(p);
     p2.replace_filename(p.filename());
@@ -106,4 +102,4 @@ TEST_CASE("Path / modifiers / swap", "[common][filesystem][path][modifiers]") {
 
 #if defined(__clang__)
 #pragma clang diagnostic pop
-#endif  // __clang__
+#endif // __clang__

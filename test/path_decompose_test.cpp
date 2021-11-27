@@ -6,7 +6,7 @@
 #if defined(__clang__)
 #pragma clang diagnostic push
 // Catch2 uses a lot of macro names that will make clang go crazy
-#if !defined(__APPLE__)
+#if (__clang_major__ >= 13) && !defined(__APPLE__)
 #pragma clang diagnostic ignored "-Wreserved-identifier"
 #endif
 // Big mess created because of the way spdlog is organizing its source code
@@ -16,7 +16,7 @@
 // with clang (rightfully) complaining that the template definitions are not
 // available when the template needs to be instantiated here.
 #pragma clang diagnostic ignored "-Wundefined-func-template"
-#endif  // __clang__
+#endif // __clang__
 
 #include <catch2/catch.hpp>
 
@@ -28,8 +28,7 @@ using testing::TEST_PATHS;
 //  DECOMPOSE
 // -----------------------------------------------------------------------------
 
-TEST_CASE("Path / decompose / extension",
-          "[common][filesystem][path][decompose]") {
+TEST_CASE("Path / decompose / extension", "[common][filesystem][path][decompose]") {
   REQUIRE(path("/foo/bar.txt").extension() == path(".txt"));
   REQUIRE(path("/foo/bar.baz.txt").extension() == path(".txt"));
   REQUIRE(path(".bar.baz.txt").extension() == path(".txt"));
@@ -49,8 +48,8 @@ TEST_CASE("Path / decompose / extension",
   REQUIRE(path().extension() == path());
 }
 
-TEST_CASE("Path / decompose / stem + extension = filename",
-          "[common][filesystem][path][decompose]") {
+TEST_CASE(
+    "Path / decompose / stem + extension = filename", "[common][filesystem][path][decompose]") {
   for (const path p : TEST_PATHS()) {
     auto stem = p.stem();
     auto ext = p.extension();
@@ -63,8 +62,7 @@ TEST_CASE("Path / decompose / stem + extension = filename",
   }
 }
 
-TEST_CASE("Path / decompose / filename",
-          "[common][filesystem][path][decompose]") {
+TEST_CASE("Path / decompose / filename", "[common][filesystem][path][decompose]") {
   for (const path p : TEST_PATHS()) {
     CAPTURE(p);
     path f = p.filename();
@@ -79,8 +77,7 @@ TEST_CASE("Path / decompose / filename",
   }
 }
 
-TEST_CASE("Path / decompose / filename special cases",
-          "[common][filesystem][path][decompose]") {
+TEST_CASE("Path / decompose / filename special cases", "[common][filesystem][path][decompose]") {
   // [fs.path.decompose] p7
   REQUIRE(path("/foo/bar.txt").filename() == "bar.txt");
   REQUIRE(path("/foo/bar").filename() == "bar");
@@ -95,8 +92,7 @@ TEST_CASE("Path / decompose / filename special cases",
   REQUIRE(path("..").filename() == "..");
 }
 
-TEST_CASE("Path / decompose / parent_path basic",
-          "[common][filesystem][path][decompose]") {
+TEST_CASE("Path / decompose / parent_path basic", "[common][filesystem][path][decompose]") {
   REQUIRE(path("/var/tmp/example.txt").parent_path() == path("/var/tmp"));
   REQUIRE(path("/var/tmp/.").parent_path() == path("/var/tmp"));
   REQUIRE(path("/var").parent_path() == path("/"));
@@ -116,8 +112,7 @@ TEST_CASE("Path / decompose / parent_path basic",
 #endif
 }
 
-TEST_CASE("Path / decompose / relative_path basic",
-          "[common][filesystem][path][decompose]") {
+TEST_CASE("Path / decompose / relative_path basic", "[common][filesystem][path][decompose]") {
   path p1 = "foo";
   REQUIRE(p1.relative_path() == p1);
   path p2 = "foo/bar";
@@ -126,8 +121,7 @@ TEST_CASE("Path / decompose / relative_path basic",
   REQUIRE(p3.relative_path() == p2);
 }
 
-TEST_CASE("Path / decompose / relative_path",
-          "[common][filesystem][path][decompose]") {
+TEST_CASE("Path / decompose / relative_path", "[common][filesystem][path][decompose]") {
   for (const path p : TEST_PATHS()) {
     bool after_root = false;
     const path prel = p.relative_path();
@@ -145,8 +139,8 @@ TEST_CASE("Path / decompose / relative_path",
   }
 }
 
-TEST_CASE("Path / decompose / root_directory special cases",
-          "[common][filesystem][path][decompose]") {
+TEST_CASE(
+    "Path / decompose / root_directory special cases", "[common][filesystem][path][decompose]") {
   path p1 = "foo/bar";
   REQUIRE(p1.root_directory() == path());
   path p2 = "/foo/bar";
@@ -175,8 +169,7 @@ TEST_CASE("Path / decompose / root_directory special cases",
 #endif
 }
 
-TEST_CASE("Path / decompose / root_directory",
-          "[common][filesystem][path][decompose]") {
+TEST_CASE("Path / decompose / root_directory", "[common][filesystem][path][decompose]") {
   for (const path p : TEST_PATHS()) {
     CAPTURE(p);
     path rootdir = p.root_directory();
@@ -187,8 +180,7 @@ TEST_CASE("Path / decompose / root_directory",
   }
 }
 
-TEST_CASE("Path / decompose / root_name",
-          "[common][filesystem][path][decompose]") {
+TEST_CASE("Path / decompose / root_name", "[common][filesystem][path][decompose]") {
 #ifdef ASAP_WINDOWS
   REQUIRE(path("//").root_name().empty());
   REQUIRE(path("//foo").root_name() == "//foo");
@@ -206,8 +198,7 @@ TEST_CASE("Path / decompose / root_name",
 #endif
 }
 
-TEST_CASE("Path / decompose / root_path basic",
-          "[common][filesystem][path][decompose]") {
+TEST_CASE("Path / decompose / root_path basic", "[common][filesystem][path][decompose]") {
   path p1 = "foo/bar";
   REQUIRE(p1.root_path() == path());
   path p2 = "/foo/bar";
@@ -253,4 +244,4 @@ TEST_CASE("Path / decompose / stem", "[common][filesystem][path][decompose]") {
 
 #if defined(__clang__)
 #pragma clang diagnostic pop
-#endif  // __clang__
+#endif // __clang__

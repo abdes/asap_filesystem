@@ -6,7 +6,7 @@
 #if defined(__clang__)
 #pragma clang diagnostic push
 // Catch2 uses a lot of macro names that will make clang go crazy
-#if !defined(__APPLE__)
+#if (__clang_major__ >= 13) && !defined(__APPLE__)
 #pragma clang diagnostic ignored "-Wreserved-identifier"
 #endif
 // Big mess created because of the way spdlog is organizing its source code
@@ -16,7 +16,7 @@
 // with clang (rightfully) complaining that the template definitions are not
 // available when the template needs to be instantiated here.
 #pragma clang diagnostic ignored "-Wundefined-func-template"
-#endif  // __clang__
+#endif // __clang__
 
 #include <catch2/catch.hpp>
 
@@ -26,8 +26,7 @@
 //  dir_recursive_iterator
 // -----------------------------------------------------------------------------
 
-TEST_CASE("Dir / dir_recursive_iterator",
-          "[common][filesystem][ops][dir_recursive_iterator]") {
+TEST_CASE("Dir / dir_recursive_iterator", "[common][filesystem][ops][dir_recursive_iterator]") {
   const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
   std::error_code ec;
 
@@ -89,10 +88,10 @@ TEST_CASE("Dir / dir_recursive_iterator",
   REQUIRE(!ec);
   REQUIRE(iter != end(iter));
   REQUIRE(iter->path() == p / "d1");
-  ++iter;  // should recurse into d1
+  ++iter; // should recurse into d1
   REQUIRE(iter != end(iter));
   REQUIRE(iter->path() == p / "d1/d2");
-  iter.increment(ec);  // should fail to recurse into p/d1/d2
+  iter.increment(ec); // should fail to recurse into p/d1/d2
   REQUIRE(ec);
   REQUIRE(iter == end(iter));
 
@@ -102,11 +101,11 @@ TEST_CASE("Dir / dir_recursive_iterator",
   REQUIRE(!ec);
   REQUIRE(iter != end(iter));
   REQUIRE(iter->path() == p / "d1");
-  ++iter;  // should recurse into d1
+  ++iter; // should recurse into d1
   REQUIRE(iter != end(iter));
   REQUIRE(iter->path() == p / "d1/d2");
   ec = bad_ec;
-  iter.increment(ec);  // should fail to recurse into p/d1/d2, so skip it
+  iter.increment(ec); // should fail to recurse into p/d1/d2, so skip it
   REQUIRE(!ec);
   REQUIRE(iter == end(iter));
 #endif
@@ -115,8 +114,8 @@ TEST_CASE("Dir / dir_recursive_iterator",
   remove_all(p, ec);
 }
 
-TEST_CASE("Dir / dir_recursive_iterator / ++",
-          "[common][filesystem][ops][dir_recursive_iterator]") {
+TEST_CASE(
+    "Dir / dir_recursive_iterator / ++", "[common][filesystem][ops][dir_recursive_iterator]") {
   const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
   std::error_code ec;
   const auto p = testing::nonexistent_path();
@@ -143,7 +142,7 @@ TEST_CASE("Dir / dir_recursive_iterator / ++",
 }
 
 TEST_CASE("Dir / dir_recursive_iterator / noexcept",
-          "[common][filesystem][ops][dir_recursive_iterator]") {
+    "[common][filesystem][ops][dir_recursive_iterator]") {
   auto p = testing::nonexistent_path();
   create_directory(p);
   create_directory(p / "x");
@@ -160,4 +159,4 @@ TEST_CASE("Dir / dir_recursive_iterator / noexcept",
 
 #if defined(__clang__)
 #pragma clang diagnostic pop
-#endif  // __clang__
+#endif // __clang__

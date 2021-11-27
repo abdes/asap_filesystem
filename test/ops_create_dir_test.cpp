@@ -6,7 +6,7 @@
 #if defined(__clang__)
 #pragma clang diagnostic push
 // Catch2 uses a lot of macro names that will make clang go crazy
-#if !defined(__APPLE__)
+#if (__clang_major__ >= 13) && !defined(__APPLE__)
 #pragma clang diagnostic ignored "-Wreserved-identifier"
 #endif
 // Big mess created because of the way spdlog is organizing its source code
@@ -16,7 +16,7 @@
 // with clang (rightfully) complaining that the template definitions are not
 // available when the template needs to be instantiated here.
 #pragma clang diagnostic ignored "-Wundefined-func-template"
-#endif  // __clang__
+#endif // __clang__
 
 #include <catch2/catch.hpp>
 #include <fstream>
@@ -29,8 +29,7 @@ using testing::ComparePaths;
 //  create_directories
 // -----------------------------------------------------------------------------
 
-TEST_CASE("Ops / create_directories",
-          "[common][filesystem][ops][create_directories]") {
+TEST_CASE("Ops / create_directories", "[common][filesystem][ops][create_directories]") {
   const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
   std::error_code ec;
 
@@ -82,8 +81,7 @@ TEST_CASE("Ops / create_directories",
 //  create_directory
 // -----------------------------------------------------------------------------
 
-TEST_CASE("Ops / create_directory",
-          "[common][filesystem][ops][create_directory]") {
+TEST_CASE("Ops / create_directory", "[common][filesystem][ops][create_directory]") {
   const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
   std::error_code ec;
 
@@ -99,7 +97,7 @@ TEST_CASE("Ops / create_directory",
   REQUIRE(!exists(p));
 
   ec = bad_ec;
-  b = create_directory(p, ec);  // create the directory once
+  b = create_directory(p, ec); // create the directory once
   REQUIRE(!ec);
   REQUIRE(b);
   REQUIRE(exists(p));
@@ -115,4 +113,4 @@ TEST_CASE("Ops / create_directory",
 
 #if defined(__clang__)
 #pragma clang diagnostic pop
-#endif  // __clang__
+#endif // __clang__

@@ -6,7 +6,7 @@
 #if defined(__clang__)
 #pragma clang diagnostic push
 // Catch2 uses a lot of macro names that will make clang go crazy
-#if !defined(__APPLE__)
+#if (__clang_major__ >= 13) && !defined(__APPLE__)
 #pragma clang diagnostic ignored "-Wreserved-identifier"
 #endif
 // Big mess created because of the way spdlog is organizing its source code
@@ -16,7 +16,7 @@
 // with clang (rightfully) complaining that the template definitions are not
 // available when the template needs to be instantiated here.
 #pragma clang diagnostic ignored "-Wundefined-func-template"
-#endif  // __clang__
+#endif // __clang__
 
 #include <catch2/catch.hpp>
 
@@ -28,8 +28,7 @@ using testing::ComparePaths;
 //  permissions
 // -----------------------------------------------------------------------------
 
-TEST_CASE("Ops / permissions / read",
-          "[common][filesystem][ops][permissions]") {
+TEST_CASE("Ops / permissions / read", "[common][filesystem][ops][permissions]") {
   using fs::perm_options;
   using fs::perms;
 
@@ -109,8 +108,7 @@ TEST_CASE("Ops / permissions / symlink",
 }
 */
 
-TEST_CASE("Ops / permissions / file",
-          "[common][filesystem][ops][permissions]") {
+TEST_CASE("Ops / permissions / file", "[common][filesystem][ops][permissions]") {
   const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
   using fs::perm_options;
   using fs::perms;
@@ -133,8 +131,7 @@ TEST_CASE("Ops / permissions / file",
   REQUIRE(st.permissions() == p);
 }
 
-TEST_CASE("Ops / permissions / directory",
-          "[common][filesystem][ops][permissions]") {
+TEST_CASE("Ops / permissions / directory", "[common][filesystem][ops][permissions]") {
   const std::error_code bad_ec = make_error_code(std::errc::invalid_argument);
   using fs::perm_options;
   using fs::perms;
@@ -167,8 +164,7 @@ TEST_CASE("Ops / permissions / directory",
   REQUIRE(st.permissions() == (perms::owner_read | perms::owner_exec));
 }
 
-TEST_CASE("Ops / permissions / error",
-          "[common][filesystem][ops][permissions]") {
+TEST_CASE("Ops / permissions / error", "[common][filesystem][ops][permissions]") {
   using perms = fs::perms;
 
   auto p = testing::nonexistent_path();
@@ -178,9 +174,9 @@ TEST_CASE("Ops / permissions / error",
   REQUIRE(ec);
 
   REQUIRE_THROWS_MATCHES(permissions(p, perms::owner_all), fs::filesystem_error,
-                         testing::FilesystemErrorDetail(ec, p));
+      testing::FilesystemErrorDetail(ec, p));
 }
 
 #if defined(__clang__)
 #pragma clang diagnostic pop
-#endif  // __clang__
+#endif // __clang__

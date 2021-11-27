@@ -6,7 +6,7 @@
 #if defined(__clang__)
 #pragma clang diagnostic push
 // Catch2 uses a lot of macro names that will make clang go crazy
-#if !defined(__APPLE__)
+#if (__clang_major__ >= 13) && !defined(__APPLE__)
 #pragma clang diagnostic ignored "-Wreserved-identifier"
 #endif
 // Big mess created because of the way spdlog is organizing its source code
@@ -16,7 +16,7 @@
 // with clang (rightfully) complaining that the template definitions are not
 // available when the template needs to be instantiated here.
 #pragma clang diagnostic ignored "-Wundefined-func-template"
-#endif  // __clang__
+#endif // __clang__
 
 #include <catch2/catch.hpp>
 #include <cstdlib>
@@ -36,7 +36,7 @@ void clean_env() {
 #endif
 }
 
-auto set_env(const char* name, const std::string& value) -> bool {
+auto set_env(const char *name, const std::string &value) -> bool {
 #if defined(ASAP_WINDOWS)
   std::string s = name;
   s += '=';
@@ -46,18 +46,17 @@ auto set_env(const char* name, const std::string& value) -> bool {
   return ::setenv(name, value.c_str(), 1) == 0;
 #endif
 }
-}  // namespace
+} // namespace
 
 // -----------------------------------------------------------------------------
 //  temp_dir
 // -----------------------------------------------------------------------------
 
-TEST_CASE("Ops / temp_dir / default (/tmp)",
-          "[common][filesystem][ops][temp_dir]") {
+TEST_CASE("Ops / temp_dir / default (/tmp)", "[common][filesystem][ops][temp_dir]") {
   clean_env();
 
   if (!fs::exists("/tmp")) {
-    return;  // just give up
+    return; // just give up
   }
 
   std::error_code ec = make_error_code(std::errc::invalid_argument);
@@ -73,7 +72,7 @@ TEST_CASE("Ops / temp_dir / TMP", "[common][filesystem][ops][temp_dir]") {
   clean_env();
 
   if (!set_env("TMP", testing::nonexistent_path().string())) {
-    return;  // just give up
+    return; // just give up
   }
 
   std::error_code ec;
@@ -81,20 +80,19 @@ TEST_CASE("Ops / temp_dir / TMP", "[common][filesystem][ops][temp_dir]") {
   REQUIRE(ec);
   REQUIRE(p == fs::path());
 
-  REQUIRE_THROWS_MATCHES(fs::temp_directory_path(), fs::filesystem_error,
-                         testing::FilesystemErrorDetail(ec));
+  REQUIRE_THROWS_MATCHES(
+      fs::temp_directory_path(), fs::filesystem_error, testing::FilesystemErrorDetail(ec));
 
   std::error_code ec2;
   try {
     p = fs::temp_directory_path();
-  } catch (const fs::filesystem_error& e) {
+  } catch (const fs::filesystem_error &e) {
     ec2 = e.code();
   }
   REQUIRE(ec2 == ec);
 }
 
-TEST_CASE("Ops / temp_dir / permission",
-          "[common][filesystem][ops][temp_dir]") {
+TEST_CASE("Ops / temp_dir / permission", "[common][filesystem][ops][temp_dir]") {
   auto p = testing::nonexistent_path();
   testing::scoped_file sp(p, testing::scoped_file::adopt_file);
   create_directories(p / "tmp");
@@ -118,14 +116,13 @@ TEST_CASE("Ops / temp_dir / permission",
   std::error_code ec2;
   try {
     fs::temp_directory_path();
-  } catch (const fs::filesystem_error& e) {
+  } catch (const fs::filesystem_error &e) {
     ec2 = e.code();
   }
   REQUIRE(ec2 == ec);
 }
 
-TEST_CASE("Ops / temp_dir / not a directory",
-          "[common][filesystem][ops][temp_dir]") {
+TEST_CASE("Ops / temp_dir / not a directory", "[common][filesystem][ops][temp_dir]") {
   testing::scoped_file f;
 #if defined(ASAP_WINDOWS)
   // Use TMP as it is the first env variable to be checked, making sure that
@@ -144,7 +141,7 @@ TEST_CASE("Ops / temp_dir / not a directory",
   std::error_code ec2;
   try {
     fs::temp_directory_path();
-  } catch (const fs::filesystem_error& e) {
+  } catch (const fs::filesystem_error &e) {
     ec2 = e.code();
   }
   REQUIRE(ec2 == ec);
@@ -152,4 +149,4 @@ TEST_CASE("Ops / temp_dir / not a directory",
 
 #if defined(__clang__)
 #pragma clang diagnostic pop
-#endif  // __clang__
+#endif // __clang__

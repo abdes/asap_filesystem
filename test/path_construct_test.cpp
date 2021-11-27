@@ -6,7 +6,7 @@
 #if defined(__clang__)
 #pragma clang diagnostic push
 // Catch2 uses a lot of macro names that will make clang go crazy
-#if !defined(__APPLE__)
+#if (__clang_major__ >= 13) && !defined(__APPLE__)
 #pragma clang diagnostic ignored "-Wreserved-identifier"
 #endif
 // Big mess created because of the way spdlog is organizing its source code
@@ -16,7 +16,7 @@
 // with clang (rightfully) complaining that the template definitions are not
 // available when the template needs to be instantiated here.
 #pragma clang diagnostic ignored "-Wundefined-func-template"
-#endif  // __clang__
+#endif // __clang__
 
 #include <catch2/catch.hpp>
 #include <cstring>
@@ -30,8 +30,7 @@ using testing::TEST_PATHS;
 //  Construction
 // -----------------------------------------------------------------------------
 
-TEST_CASE("Path / construct / default",
-          "[common][filesystem][path][construct]") {
+TEST_CASE("Path / construct / default", "[common][filesystem][path][construct]") {
   path p;
   CHECK(p.empty());
   CHECK(!p.has_root_path());
@@ -49,7 +48,7 @@ TEST_CASE("Path / construct / default",
 
 TEST_CASE("Path / construct / copy", "[common][filesystem][path][construct]") {
   for (const path p : TEST_PATHS()) {
-    path copy = p;  // NOLINT(performance-unnecessary-copy-initialization)
+    path copy = p; // NOLINT(performance-unnecessary-copy-initialization)
     ComparePaths(p, copy);
   }
 }
@@ -62,8 +61,8 @@ TEST_CASE("Path / construct / move", "[common][filesystem][path][construct]") {
   }
 }
 
-TEST_CASE("Path / construct / path(string_type&&, format)",
-          "[common][filesystem][path][construct]") {
+TEST_CASE(
+    "Path / construct / path(string_type&&, format)", "[common][filesystem][path][construct]") {
   // path(string_type&&, format)
   auto s = [&]() -> path::string_type { return path("foo/bar").native(); };
   path p0(s());
@@ -75,8 +74,8 @@ TEST_CASE("Path / construct / path(string_type&&, format)",
   REQUIRE(p3 == p0);
 }
 
-TEST_CASE("Path / construct / path(const Source&, format)",
-          "[common][filesystem][path][construct]") {
+TEST_CASE(
+    "Path / construct / path(const Source&, format)", "[common][filesystem][path][construct]") {
   // path(const Source&, format)
   SECTION("Source = path::string_type") {
     const path::string_type s = path("foo/bar").native();
@@ -123,7 +122,7 @@ TEST_CASE("Path / construct / path(const Source&, format)",
 }
 
 TEST_CASE("Path / construct / path(InputIterator, InputIterator, format)",
-          "[common][filesystem][path][construct]") {
+    "[common][filesystem][path][construct]") {
   // path(InputIterator, InputIterator, format)
   const char s[] = "foo/bar";
   const std::vector<char> c(s, s + strlen(s));
@@ -169,7 +168,7 @@ TEST_CASE("Path / construct / range", "[common][filesystem][path][construct]") {
     ComparePaths(p1, p9);
 
     std::vector<char> r2(s.c_str(),
-                         s.c_str() + s.size() + 1);  // includes null-terminator
+        s.c_str() + s.size() + 1); // includes null-terminator
     path p10(r2.begin());
     ComparePaths(p1, p10);
 
@@ -178,7 +177,7 @@ TEST_CASE("Path / construct / range", "[common][filesystem][path][construct]") {
     ComparePaths(p1, p11);
 
     std::vector<char> r4(s.c_str(),
-                         s.c_str() + s.size() + 1);  // includes null-terminator
+        s.c_str() + s.size() + 1); // includes null-terminator
     path p12(r4.begin());
     ComparePaths(p1, p12);
 
@@ -187,9 +186,8 @@ TEST_CASE("Path / construct / range", "[common][filesystem][path][construct]") {
     path p13(r5.begin(), r5.end());
     ComparePaths(p1, p13);
 
-    std::vector<wchar_t> r6(
-        ws.c_str(),
-        ws.c_str() + ws.size() + 1);  // includes null-terminator
+    std::vector<wchar_t> r6(ws.c_str(),
+        ws.c_str() + ws.size() + 1); // includes null-terminator
     path p14(r6.begin());
     ComparePaths(p1, p14);
 
@@ -197,8 +195,7 @@ TEST_CASE("Path / construct / range", "[common][filesystem][path][construct]") {
     path p15(r7.begin(), r7.end());
     ComparePaths(p1, p15);
 
-    std::vector<wchar_t> r8(
-        ws.c_str(), ws.c_str() + ws.size() + 1);  // includes null-terminator
+    std::vector<wchar_t> r8(ws.c_str(), ws.c_str() + ws.size() + 1); // includes null-terminator
     path p16(r8.begin());
     ComparePaths(p1, p16);
   }
@@ -206,4 +203,4 @@ TEST_CASE("Path / construct / range", "[common][filesystem][path][construct]") {
 
 #if defined(__clang__)
 #pragma clang diagnostic pop
-#endif  // __clang__
+#endif // __clang__
