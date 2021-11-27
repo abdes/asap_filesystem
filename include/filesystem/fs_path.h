@@ -372,10 +372,17 @@ class ASAP_FILESYSTEM_API path {
   template <typename Allocator = std::allocator<value_type>>
   auto make_generic(const Allocator &alloc = Allocator()) const -> string_type;
 
-  string_type pathname_;
   struct Component;
   using List = std::vector<Component>;
-  List components_;  // empty unless type_ == Type::MULTI
+#if defined(HEDLEY_MSVC_VERSION)
+#pragma warning(push)
+#pragma warning(disable : 4251)
+#endif
+  string_type pathname_;
+  List components_; // empty unless type_ == Type::MULTI
+#if defined(HEDLEY_MSVC_VERSION)
+#pragma warning(pop)
+#endif
   Type type_ = Type::MULTI;
 };
 
@@ -433,8 +440,15 @@ class ASAP_FILESYSTEM_API path::iterator {
   auto equals(iterator) const -> bool;
 
   const path *path_{};
+#if defined(HEDLEY_MSVC_VERSION)
+#pragma warning(push)
+#pragma warning(disable : 4251)
+#endif
   path::List::const_iterator cur_;
-  bool at_end_{};  // only used when type != MULTI
+#if defined(HEDLEY_MSVC_VERSION)
+#pragma warning(pop)
+#endif
+  bool at_end_{}; // only used when type != MULTI
 };
 
 inline auto operator<(const path &lhs, const path &rhs) noexcept -> bool {
